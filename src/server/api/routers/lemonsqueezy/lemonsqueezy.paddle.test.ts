@@ -463,6 +463,43 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  test("a Paddle row is managed without the Lemon Squeezy env", async () => {
+    await seed();
+    const lemonSqueezyEnv = {
+      LEMONSQUEEZY_API_KEY: env.LEMONSQUEEZY_API_KEY,
+      LEMONSQUEEZY_STORE_ID: env.LEMONSQUEEZY_STORE_ID,
+      LEMONSQUEEZY_WEBHOOK_SECRET: env.LEMONSQUEEZY_WEBHOOK_SECRET,
+    };
+    Object.assign(env, {
+      LEMONSQUEEZY_API_KEY: undefined,
+      LEMONSQUEEZY_STORE_ID: undefined,
+      LEMONSQUEEZY_WEBHOOK_SECRET: undefined,
+    });
+    try {
+      expect(await caller().subscriptionDetails()).toMatchObject({
+        customer_portal: PORTAL.overview,
+      });
+      respond = () =>
+        paddleSub({
+          scheduled_change: { action: "cancel", effective_at: PERIOD_END, resume_at: null },
+        });
+      await caller().cancelSubscription();
+      expect(await stored()).toMatchObject({ status: "cancelled" });
+    } finally {
+      Object.assign(env, lemonSqueezyEnv);
+    }
+  });
+
+  test("a failed portal session is reported as a provider error", async () => {
+    await seed();
+    portalFails = true;
+
+    await expect(caller().subscriptionDetails()).rejects.toMatchObject({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Our payment provider is unavailable right now. Please try again in a few minutes.",
+    });
+  });
+
   test("a Lemon Squeezy row still goes to Lemon Squeezy", async () => {
     await seed({
       billingProvider: "lemonsqueezy",

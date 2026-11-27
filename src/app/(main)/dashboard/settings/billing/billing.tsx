@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { subscribedPlan } from "@/lib/billing/entitlements";
 import { PLAN_CAPS, subscriptionInterval } from "@/lib/billing/plans";
+import { subscribedPriceDisplay, subscriptionDiscount } from "@/lib/billing/pricing";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -22,6 +23,7 @@ type BillingProps = {
   subscriptions: RouterOutputs["subscriptions"]["get"];
   /** Running promo, only passed when the next upgrade is a new checkout that gets the code. */
   promo: Promo | null;
+  latestCheckout: RouterOutputs["lemonsqueezy"]["latestCheckoutStart"];
 };
 
 type SubscriptionRow = NonNullable<RouterOutputs["subscriptions"]["get"]["subscriptions"]>;
@@ -86,7 +88,7 @@ function getStatusDisplay(subscription: SubscriptionRow): StatusDisplay {
 
 const proLinksLimit = PLAN_CAPS.pro.linksLimit?.toLocaleString() ?? "more";
 
-export default function Billing({ subscriptions, promo }: BillingProps) {
+export default function Billing({ subscriptions, promo, latestCheckout }: BillingProps) {
   const [loadingTarget, setLoadingTarget] = useState<"portal" | "payment" | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
 
@@ -100,6 +102,18 @@ export default function Billing({ subscriptions, promo }: BillingProps) {
   const isPaid = currentPlan !== "free";
   const statusDisplay = subscription && isPaid ? getStatusDisplay(subscription) : null;
   const isPastDue = isPaid && subscription?.status === "past_due";
+  const currentPrice =
+    subscription && currentPlan !== "free"
+      ? subscribedPriceDisplay(
+          currentPlan,
+          currentInterval,
+          subscriptionDiscount(latestCheckout, {
+            plan: currentPlan,
+            interval: currentInterval,
+            provider: subscription.billingProvider,
+          }),
+        )
+      : null;
 
   const getSubscriptionDetails = api.lemonsqueezy.subscriptionDetails.useMutation({
     onSuccess: (urls) => {
@@ -115,15 +129,19 @@ export default function Billing({ subscriptions, promo }: BillingProps) {
       }
     },
     onError: (error) => {
-      toast.error(error.message);
+      const target = loadingTarget ?? "portal";
+      toast.error("Couldn't open the billing portal", {
+        description: error.message,
+        action: { label: "Retry", onClick: () => openPortal(target) },
+      });
       setLoadingTarget(null);
     },
   });
 
-  const openPortal = (target: "portal" | "payment") => {
+  function openPortal(target: "portal" | "payment") {
     setLoadingTarget(target);
     getSubscriptionDetails.mutate();
-  };
+  }
 
   return (
     <div className="space-y-5 rounded-xl border border-neutral-200 dark:border-border p-5">
@@ -231,6 +249,7 @@ export default function Billing({ subscriptions, promo }: BillingProps) {
           subscriptionMode={subscriptionMode}
           renewsAt={subscription?.renewsAt ?? null}
           promo={promo}
+          currentPrice={currentPrice}
           subscription={subscription ?? null}
           isPaused={isPaused}
         />

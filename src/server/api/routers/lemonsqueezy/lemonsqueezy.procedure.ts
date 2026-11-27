@@ -316,6 +316,8 @@ export type NewCheckoutDeps = {
   paddleConfig: PaddleConfig | null;
   paddleClient: PaddleCheckoutClient | null;
   createLemonSqueezyCheckout: typeof createCheckout;
+  /** Runs before a Lemon Squeezy checkout only, so a Paddle checkout works without its env. */
+  configureLemonSqueezy: () => void;
 };
 
 export type NewCheckoutInput = CreateCheckoutOrUpdateInput & {
@@ -325,16 +327,17 @@ export type NewCheckoutInput = CreateCheckoutOrUpdateInput & {
 };
 
 async function lemonSqueezyCheckout(
-  createLemonSqueezyCheckout: NewCheckoutDeps["createLemonSqueezyCheckout"],
+  deps: NewCheckoutDeps,
   input: NewCheckoutInput,
   attribution: Attribution,
   promoCode: string | undefined,
 ) {
+  deps.configureLemonSqueezy();
   const { userId } = input;
   const variantId = getVariantId(input.plan, input.interval);
   const { result: checkout, discountCode } = await createCheckoutWithPromoFallback(
     (discountCode) =>
-      createLemonSqueezyCheckout(env.LEMONSQUEEZY_STORE_ID!, variantId, {
+      deps.createLemonSqueezyCheckout(env.LEMONSQUEEZY_STORE_ID!, variantId, {
         checkoutOptions: {
           // The app opens the URL as a full page; an embed checkout's close button only works
           // inside the Lemon.js overlay.
@@ -417,7 +420,7 @@ export async function startNewCheckout(deps: NewCheckoutDeps, input: NewCheckout
         attribution,
         promoCode,
       })
-    : await lemonSqueezyCheckout(deps.createLemonSqueezyCheckout, input, attribution, promoCode);
+    : await lemonSqueezyCheckout(deps, input, attribution, promoCode);
 
   void runBackgroundTask(
     deps.recordStart({
@@ -450,8 +453,6 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
     createCheckoutOrUpdate: protectedProcedure
       .input(createCheckoutOrUpdateInput)
       .mutation(async ({ ctx, input }) => {
-        configureLemonSqueezy();
-
         const userId = ctx.auth.userId;
         const variantId = getVariantId(input.plan, input.interval);
 
@@ -518,6 +519,8 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
             return { status: "updated" as const, message: "You are already on this plan." };
           }
 
+          configureLemonSqueezy();
+
           const updatedSub = await updateSubscription(subscriptionId, {
             variantId,
             invoiceImmediately: true,
@@ -552,14 +555,13 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
             paddleConfig: getPaddleConfig(),
             paddleClient: getPaddleClient(),
             createLemonSqueezyCheckout: createCheckout,
+            configureLemonSqueezy,
           },
           { userId, user, subscription: userSubscription, ...input },
         );
       }),
 
     cancelSubscription: protectedProcedure.mutation(async ({ ctx }) => {
-      configureLemonSqueezy();
-
       const userId = ctx.auth.userId;
       const userSubscription = await getUserSubscription(ctx);
       const mode = getSubscriptionMode(userSubscription);
@@ -587,6 +589,7 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
       }
 
       const subscriptionId = userSubscription.subscriptionId;
+      configureLemonSqueezy();
       const cancelledSub = await cancelSubscription(subscriptionId);
 
       if (cancelledSub.error) {
@@ -601,8 +604,6 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
     }),
 
     resumeSubscription: protectedProcedure.mutation(async ({ ctx }) => {
-      configureLemonSqueezy();
-
       const userId = ctx.auth.userId;
       const userSubscription = await getUserSubscription(ctx);
 
@@ -628,6 +629,7 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
       }
 
       const subscriptionId = userSubscription.subscriptionId;
+      configureLemonSqueezy();
       const resumedSub = await updateSubscription(
         subscriptionId,
         resumeUpdate(userSubscription.status),
@@ -643,23 +645,28 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
     }),
 
     subscriptionDetails: protectedProcedure.mutation(async ({ ctx }) => {
-      configureLemonSqueezy();
-
+      const userId = ctx.auth.userId;
       const userSubscription = await getUserSubscription(ctx);
 
       if (!userSubscription) {
-        throw new Error("No active subscription found");
+        throw new TRPCError({ code: "NOT_FOUND", message: "No subscription found." });
       }
 
       if (isPaddleRow(userSubscription)) {
-        const urls = await paddlePortalUrls(
-          requirePaddle(deps, ctx.auth.userId),
-          userSubscription,
-          ctx.auth.userId,
-        );
+        const urls = await paddlePortalUrls(requirePaddle(deps, userId), userSubscription, userId);
         if (urls) return urls;
-        throw new Error("Unable to retrieve subscription management URL");
+        log.error(
+          {
+            userId,
+            provider: "paddle",
+            providerSubscriptionId: userSubscription.providerSubscriptionId,
+          },
+          "paddle subscription has no customer id for a portal session",
+        );
+        throw new TRPCError(providerErrorToClient(null));
       }
+
+      configureLemonSqueezy();
 
       // Try to get subscription details if we have a valid subscriptionId
       if (userSubscription.subscriptionId && userSubscription.subscriptionId > 0) {
@@ -682,7 +689,18 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
         }
       }
 
-      throw new Error("Unable to retrieve subscription management URL");
+      log.error({ userId }, "lemon squeezy returned no portal url");
+      throw new TRPCError(providerErrorToClient(null));
+    }),
+
+    // The checkout that created the current subscription, for its discount (subscriptionDiscount).
+    latestCheckoutStart: protectedProcedure.query(async ({ ctx }) => {
+      const start = await ctx.db.query.checkoutStart.findFirst({
+        where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
+        orderBy: (table, { desc }) => [desc(table.createdAt), desc(table.id)],
+        columns: { plan: true, interval: true, promoCode: true, provider: true, createdAt: true },
+      });
+      return start ?? null;
     }),
 
     // The subscription's update-payment-method page. Lemon Squeezy signs this URL
@@ -745,8 +763,6 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
     downgradeWithFeedback: protectedProcedure
       .input(downgradeWithFeedbackInput)
       .mutation(async ({ ctx, input }) => {
-        configureLemonSqueezy();
-
         const userId = ctx.auth.userId;
         const { targetPlan, reason, additionalFeedback } = input;
 
@@ -788,6 +804,7 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
         }
         const paddle = paddleRow ? requirePaddle(deps, userId) : null;
         if (paddleRow && targetPlan !== "free") assertPaddleItemsChangeable(paddleRow);
+        if (!paddleRow) configureLemonSqueezy();
 
         const cancellation = {
           toPlan: targetPlan,
@@ -904,8 +921,6 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
     pauseSubscription: protectedProcedure
       .input(pauseSubscriptionInput)
       .mutation(async ({ ctx, input }) => {
-        configureLemonSqueezy();
-
         const userId = ctx.auth.userId;
         const [userRecord, userSubscription] = await Promise.all([
           ctx.db.query.user.findFirst({ where: (table, { eq }) => eq(table.id, userId) }),
@@ -947,6 +962,7 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
         } else {
           const subscriptionId = userSubscription.subscriptionId ?? 0;
           const resumesAt = pauseResumesAt(input.months);
+          configureLemonSqueezy();
 
           const pausedSub = await updateSubscription(subscriptionId, pauseUpdate(resumesAt));
           if (pausedSub.error) {
