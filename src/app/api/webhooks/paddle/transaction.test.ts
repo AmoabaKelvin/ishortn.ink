@@ -5,6 +5,7 @@ import { z } from "zod";
 import { buildPaddleConfig } from "@/lib/paddle/config";
 
 import {
+  isFirstPayment,
   orderCompletedEvent,
   paddleTransactionSchema,
   paidSubscriptionId,
@@ -44,7 +45,10 @@ function transaction(overrides: Partial<z.input<typeof paddleTransactionSchema>>
     items: [{ price_id: PRO_ANNUAL, price: { id: PRO_ANNUAL }, quantity: 1 }],
     details: { totals: { total: "5990", currency_code: "USD" } },
     payments: [
-      { method_details: { type: "card", card: { type: "american_express", last4: "0005" } } },
+      {
+        status: "captured",
+        method_details: { type: "card", card: { type: "american_express", last4: "0005" } },
+      },
     ],
     custom_data: {
       user_id: "user_1",
@@ -56,9 +60,28 @@ function transaction(overrides: Partial<z.input<typeof paddleTransactionSchema>>
   });
 }
 
+describe("isFirstPayment", () => {
+  test("is true for a captured subscription payment from an API or web checkout", () => {
+    expect(isFirstPayment(transaction({ origin: "api" }))).toBe(true);
+    expect(isFirstPayment(transaction({ origin: "web" }))).toBe(true);
+  });
+
+  test("is false for renewals, other origins and uncaptured or one-off transactions", () => {
+    expect(isFirstPayment(transaction({ origin: "subscription_recurring" }))).toBe(false);
+    expect(isFirstPayment(transaction({ origin: "subscription_charge" }))).toBe(false);
+    expect(isFirstPayment(transaction({ origin: null }))).toBe(false);
+    expect(isFirstPayment(transaction({ status: "paid" }))).toBe(false);
+    expect(isFirstPayment(transaction({ subscription_id: null }))).toBe(false);
+    expect(isFirstPayment(transaction({ payments: [] }))).toBe(false);
+    const failed = [{ status: "error", method_details: { card: { type: "visa", last4: "0002" } } }];
+    expect(isFirstPayment(transaction({ payments: failed }))).toBe(false);
+  });
+});
+
 describe("paidSubscriptionId", () => {
   test("is the subscription for a completed first payment or renewal", () => {
     expect(paidSubscriptionId(transaction())).toBe("sub_01test");
+    expect(paidSubscriptionId(transaction({ origin: "api" }))).toBe("sub_01test");
     expect(paidSubscriptionId(transaction({ origin: "subscription_recurring" }))).toBe(
       "sub_01test",
     );
@@ -66,7 +89,6 @@ describe("paidSubscriptionId", () => {
 
   test("is null for other statuses, origins and one-off transactions", () => {
     expect(paidSubscriptionId(transaction({ status: "paid" }))).toBeNull();
-    expect(paidSubscriptionId(transaction({ origin: "api" }))).toBeNull();
     expect(paidSubscriptionId(transaction({ origin: "subscription_charge" }))).toBeNull();
     expect(paidSubscriptionId(transaction({ subscription_id: null }))).toBeNull();
   });
@@ -77,6 +99,17 @@ describe("transactionCard", () => {
     expect(transactionCard(transaction())).toEqual({
       cardBrand: "american express",
       cardLastFour: "0005",
+    });
+  });
+
+  test("reads the captured payment after a failed attempt", () => {
+    const payments = [
+      { status: "error", method_details: { card: { type: "visa", last4: "0002" } } },
+      { status: "captured", method_details: { card: { type: "mastercard", last4: "4444" } } },
+    ];
+    expect(transactionCard(transaction({ payments }))).toEqual({
+      cardBrand: "mastercard",
+      cardLastFour: "4444",
     });
   });
 
@@ -109,6 +142,12 @@ describe("orderCompletedEvent", () => {
         provider: "paddle",
       },
     });
+  });
+
+  test("is the same for a checkout created through the API", () => {
+    expect(orderCompletedEvent(transaction({ origin: "api" }), config)).toEqual(
+      orderCompletedEvent(transaction(), config),
+    );
   });
 
   test("is not test mode in production", () => {
