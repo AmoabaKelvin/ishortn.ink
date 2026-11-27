@@ -46,6 +46,7 @@ export const paddleTransactionSchema = z.object({
   payments: z
     .array(
       z.object({
+        status: z.string().nullish(),
         method_details: z
           .object({
             card: z.object({ type: z.string().nullish(), last4: z.string().nullish() }).nullish(),
@@ -59,14 +60,29 @@ export const paddleTransactionSchema = z.object({
 
 export type PaddleTransaction = z.infer<typeof paddleTransactionSchema>;
 
-// The first payment from our checkout, and each renewal. Other origins (manual invoices, API
-// one-offs, proration charges) aren't subscription payments the funnel or the card reads.
-const SUBSCRIPTION_PAYMENT_ORIGINS = new Set(["web", "subscription_recurring"]);
+// Checkouts started server-side create the transaction through the API (`api`); the overlay
+// checkout creates it in the browser (`web`). Other origins (manual invoices, adjustments,
+// proration charges) aren't first payments.
+const FIRST_PAYMENT_ORIGINS = new Set(["web", "api"]);
 
-/** The subscription a completed subscription payment belongs to, or null for any other transaction. */
+function capturedPayment(transaction: PaddleTransaction) {
+  return transaction.payments?.find((payment) => payment.status === "captured") ?? null;
+}
+
+/** Whether the transaction is the completed, captured first payment of a subscription. */
+export function isFirstPayment(transaction: PaddleTransaction): boolean {
+  return (
+    transaction.status === "completed" &&
+    FIRST_PAYMENT_ORIGINS.has(transaction.origin ?? "") &&
+    Boolean(transaction.subscription_id) &&
+    capturedPayment(transaction) !== null
+  );
+}
+
+/** The subscription a first payment or renewal belongs to, or null for any other transaction. */
 export function paidSubscriptionId(transaction: PaddleTransaction): string | null {
   if (transaction.status !== "completed") return null;
-  if (!transaction.origin || !SUBSCRIPTION_PAYMENT_ORIGINS.has(transaction.origin)) return null;
+  if (!isFirstPayment(transaction) && transaction.origin !== "subscription_recurring") return null;
   return transaction.subscription_id || null;
 }
 
@@ -74,7 +90,9 @@ export function paidSubscriptionId(transaction: PaddleTransaction): string | nul
 export function transactionCard(
   transaction: PaddleTransaction,
 ): { cardBrand: string; cardLastFour: string } | null {
-  const card = transaction.payments?.[0]?.method_details?.card;
+  // A transaction can carry failed attempts before the one that succeeded.
+  const payment = capturedPayment(transaction) ?? transaction.payments?.[0];
+  const card = payment?.method_details?.card;
   const last4 = card?.last4;
   if (!last4) return null;
   // Paddle's types are snake_case (`american_express`); the billing page capitalises the brand.
@@ -91,7 +109,7 @@ const ZERO_DECIMAL_CURRENCIES = new Set(["JPY", "KRW"]);
  * completed first payment from the in-app checkout (no user_id) or is for an unknown price.
  */
 export function orderCompletedEvent(transaction: PaddleTransaction, config: PaddleConfig) {
-  if (transaction.origin !== "web" || !paidSubscriptionId(transaction)) return null;
+  if (!isFirstPayment(transaction)) return null;
   const customData = transaction.custom_data;
   const userId = customData?.user_id;
   const item = transaction.items?.[0];

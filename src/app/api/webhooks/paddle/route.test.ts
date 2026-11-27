@@ -109,7 +109,12 @@ function transactionEvent(overrides: Partial<z.input<typeof paddleTransactionSch
       customer_id: CUSTOMER_ID,
       items: [{ price_id: PRICES.proAnnual, price: { id: PRICES.proAnnual }, quantity: 1 }],
       details: { totals: { total: "5990", currency_code: "USD" } },
-      payments: [{ method_details: { type: "card", card: { type: "visa", last4: "4242" } } }],
+      payments: [
+        {
+          status: "captured",
+          method_details: { type: "card", card: { type: "visa", last4: "4242" } },
+        },
+      ],
       custom_data: { user_id: USER_ID, utm_source: "newsletter", discount_code: "BFCM20" },
       ...overrides,
     },
@@ -210,7 +215,7 @@ describe("POST /api/webhooks/paddle without a database", () => {
   });
 
   test("acknowledges a completed transaction that isn't a subscription payment", async () => {
-    expect((await deliver(transactionEvent({ origin: "api" }))).status).toBe(200);
+    expect((await deliver(transactionEvent({ origin: "subscription_charge" }))).status).toBe(200);
     expect((await deliver(transactionEvent({ subscription_id: null }))).status).toBe(200);
   });
 
@@ -458,32 +463,44 @@ describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/paddle (MySQL)", () => {
     expect(await storedSubscription()).toBeUndefined();
   });
 
-  test("a first payment records the card and one order_completed", async () => {
-    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+  test.each(["api", "web"])(
+    "a first payment from a %s checkout records the card and one order_completed",
+    async (origin) => {
+      await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
 
-    expect((await deliver(transactionEvent())).status).toBe(200);
+      expect((await deliver(transactionEvent({ origin }))).status).toBe(200);
 
-    expect(await storedSubscription()).toMatchObject({ cardBrand: "visa", cardLastFour: "4242" });
-    expect(captureSpy).toHaveBeenCalledTimes(1);
-    expect(captureSpy).toHaveBeenCalledWith({ id: USER_ID, email: USER_EMAIL }, "order_completed", {
-      plan: "pro",
-      interval: "annual",
-      discount_code: "BFCM20",
-      utm_source: "newsletter",
-      order_id: "txn_01routetest932",
-      amount: 59.9,
-      currency: "USD",
-      test_mode: true,
-      provider: "paddle",
-    });
-  });
+      expect(await storedSubscription()).toMatchObject({ cardBrand: "visa", cardLastFour: "4242" });
+      expect(captureSpy).toHaveBeenCalledTimes(1);
+      expect(captureSpy).toHaveBeenCalledWith(
+        { id: USER_ID, email: USER_EMAIL },
+        "order_completed",
+        {
+          plan: "pro",
+          interval: "annual",
+          discount_code: "BFCM20",
+          utm_source: "newsletter",
+          order_id: "txn_01routetest932",
+          amount: 59.9,
+          currency: "USD",
+          test_mode: true,
+          provider: "paddle",
+        },
+      );
+    },
+  );
 
   test("a renewal records the card without an order_completed", async () => {
     await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
 
     const renewal = transactionEvent({
       origin: "subscription_recurring",
-      payments: [{ method_details: { type: "card", card: { type: "mastercard", last4: "5555" } } }],
+      payments: [
+        {
+          status: "captured",
+          method_details: { type: "card", card: { type: "mastercard", last4: "5555" } },
+        },
+      ],
     });
     expect((await deliver(renewal)).status).toBe(200);
 
@@ -510,7 +527,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/paddle (MySQL)", () => {
 
     const paypal = transactionEvent({
       id: "txn_01routetest932b",
-      payments: [{ method_details: { type: "paypal", card: null } }],
+      payments: [{ status: "captured", method_details: { type: "paypal", card: null } }],
     });
     expect((await deliver(paypal)).status).toBe(200);
 

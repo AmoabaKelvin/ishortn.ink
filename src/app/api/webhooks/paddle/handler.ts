@@ -11,6 +11,7 @@ import { applySubscriptionEvent } from "@/server/lib/billing/apply-subscription-
 import { syncEntitlementsAfterBillingEvent } from "@/server/lib/entitlements/grace";
 
 import {
+  isFirstPayment,
   orderCompletedEvent,
   paddleTransactionSchema,
   paidSubscriptionId,
@@ -231,7 +232,7 @@ async function handleTransactionCompleted(
       if (result.affectedRows === 0) {
         // The first payment can be delivered before subscription.created writes the row; a retry
         // lands the card on it. order_completed waits too, so the retry doesn't send it twice.
-        if (transaction.origin === "web") {
+        if (isFirstPayment(transaction)) {
           log.warn(logContext, "no Paddle subscription row yet for first payment; retrying");
           return new Response("Subscription not found", { status: 500 });
         }
