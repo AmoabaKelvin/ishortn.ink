@@ -24,6 +24,8 @@ export type PlanGraceEmailProps = {
   teamName?: string;
   /** What stops being available (already phrased). */
   items: string[];
+  /** Set when `items` is the Free plan's summary because no paid feature is in use. */
+  itemsAreFreePlan?: boolean;
   upgradeUrl: string;
   /**
    * Set when the lapse is a failed payment: the button links here (a page that
@@ -33,7 +35,7 @@ export type PlanGraceEmailProps = {
 };
 
 function preview(props: PlanGraceEmailProps): string {
-  const { kind, reason, planName, endsOn, teamName, updatePaymentUrl } = props;
+  const { kind, reason, planName, endsOn, teamName, updatePaymentUrl, itemsAreFreePlan } = props;
   const linksKeepWorking = "Your links keep working either way.";
   if (reason === "team") {
     return updatePaymentUrl
@@ -42,16 +44,21 @@ function preview(props: PlanGraceEmailProps): string {
   }
   const onPlan = reason === "lapsed" ? "on Free" : "on your current plan";
   if (kind === "ended") {
-    return `Nothing is deleted. These features can't be added or changed ${onPlan}.`;
+    return itemsAreFreePlan
+      ? "Nothing is deleted. Here is what the Free plan includes from now on."
+      : `Nothing is deleted. These features can't be added or changed ${onPlan}.`;
   }
   if (updatePaymentUrl) {
     return `Update your card by ${endsOn} to keep ${planName}. ${linksKeepWorking}`;
   }
-  return `Nothing is deleted. After ${endsOn}, these features can't be added or changed ${onPlan}.`;
+  return itemsAreFreePlan
+    ? `Nothing is deleted. Here is what the Free plan includes after ${endsOn}.`
+    : `Nothing is deleted. After ${endsOn}, these features can't be added or changed ${onPlan}.`;
 }
 
 function intro(props: PlanGraceEmailProps) {
-  const { kind, reason, planName, endsOn, timeLeft, teamName, updatePaymentUrl } = props;
+  const { kind, reason, planName, endsOn, timeLeft, teamName, updatePaymentUrl, itemsAreFreePlan } =
+    props;
   if (reason === "team") {
     if (updatePaymentUrl) {
       return kind === "started"
@@ -64,9 +71,12 @@ function intro(props: PlanGraceEmailProps) {
   }
   if (reason === "lapsed") {
     if (kind === "ended") {
+      const list = itemsAreFreePlan
+        ? "Here is what the Free plan includes:"
+        : "These features can't be added or changed any more:";
       return updatePaymentUrl
-        ? `Your ${planName} access has ended because the last payment didn't go through, and your account is on the Free plan now. These features can't be added or changed any more:`
-        : `Your ${planName} access has ended and your account is on the Free plan now. These features can't be added or changed any more:`;
+        ? `Your ${planName} access has ended because the last payment didn't go through, and your account is on the Free plan now. ${list}`
+        : `Your ${planName} access has ended and your account is on the Free plan now. ${list}`;
     }
     if (updatePaymentUrl) {
       return kind === "started"

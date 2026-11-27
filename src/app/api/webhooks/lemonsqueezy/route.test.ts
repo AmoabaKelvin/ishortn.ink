@@ -334,6 +334,30 @@ describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/lemonsqueezy (MySQL)", () 
     expect((await storedSubscription())?.status).toBe("cancelled");
   });
 
+  test("acknowledges and ignores an event for a subscription Paddle now manages", async () => {
+    await db.insert(schema.subscription).values({
+      userId: USER_ID,
+      billingProvider: "paddle",
+      providerSubscriptionId: "sub_01route930",
+      subscriptionId: 0,
+      status: "active",
+      plan: "pro",
+      providerUpdatedAt: new Date("2026-11-19T00:00:00Z"),
+    });
+
+    for (const eventName of ["subscription_created", "subscription_expired"]) {
+      const response = await deliver(subscriptionEvent(eventName, "2026-11-20T00:00:00Z"));
+      expect(response.status).toBe(200);
+    }
+
+    const row = await storedSubscription();
+    expect(row?.billingProvider).toBe("paddle");
+    expect(row?.providerSubscriptionId).toBe("sub_01route930");
+    expect(row?.subscriptionId).toBe(0);
+    expect(row?.status).toBe("active");
+    expect(row?.plan).toBe("pro");
+  });
+
   test("acknowledges an event that matches no user, without writing", async () => {
     const response = await deliver(
       subscriptionEvent("subscription_created", "2026-11-20T00:00:00Z", null, {

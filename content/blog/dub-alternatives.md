@@ -9,7 +9,7 @@ tags: ["dub alternative", "url shortener", "comparison", "link management"]
 published: true
 ---
 
-Dub built a well-designed, open-source link shortener. Its free plan still exists but is small: 25 new links and 1,000 tracked events a month, 30 days of analytics history and 3 custom domains for one user. Paid Links plans start with Pro at $30 a month ($27 a month billed yearly) for 1,000 new links, and Business is $90 a month ([Dub Links pricing](https://dub.co/pricing/links), prices checked 22 November 2026). Dub's main [pricing page](https://dub.co/pricing) now leads with its Partners plans, which start at $90 a month.
+Dub built a well-designed, open-source link shortener. Its free plan still exists but is small: 25 new links and 1,000 events a month, 30 days of analytics history and 3 custom domains for one user. Paid Links plans start with Pro at $30 a month ($27 a month billed yearly) for 1,000 new links, and Business is $90 a month ([Dub Links pricing](https://dub.co/pricing/links), prices checked 22 November 2026). Dub's main [pricing page](https://dub.co/pricing) now leads with its Partners plans, which start at $90 a month.
 
 For a company running an affiliate or partner program, that may still be good value. Dub's recent [changelog](https://dub.co/changelog) is mostly partner and affiliate features, and that's clearly where the product is heading. If you're a freelancer, creator or small business who just wants branded short links, QR codes and click stats, 25 links a month runs out fast, and $30 a month is a lot to pay for the next step.
 
@@ -31,12 +31,12 @@ Fewer people used Dub's newer features: conversion and revenue attribution, and 
 
 | | Free plan | Cheapest plan with a custom domain | Good for |
 |---|---|---|---|
-| **iShortn** | 30 links/mo, 1,000 tracked events/mo, 5 dynamic QR codes, 1 bio page | Pro, $8/mo (3 domains) | Small businesses and creators who want links, QR codes and analytics cheaply |
+| **iShortn** | 30 links/mo, 1,000 tracked clicks/mo, 5 dynamic QR codes, 1 bio page | Pro, $8/mo (3 domains) | Small businesses and creators who want links, QR codes and analytics cheaply |
 | **Short.io** | 1,000 links total, 50,000 tracked clicks/mo, 5 custom domains | Free | People who need a custom domain at no cost |
 | **Rebrandly** | 10 links/mo, 100 tracked clicks/mo, watermarked QR codes, 1 custom domain | Free (1 domain); Essentials, $11/mo billed yearly, has 2 | Brands that need compliance features at higher tiers |
 | **Bitly** | 5 links and 2 QR codes/mo, no analytics history | Growth, $29/mo | Teams that want the best-known name |
 | **Self-hosted Dub** | Free software, you pay for hosting | Yours | Developers who want Dub itself and can run it |
-| **Dub** (for reference) | 25 new links/mo, 1,000 tracked events/mo, 3 custom domains | Free (3 domains); paid from Pro, $30/mo | Developers, partner programs and conversion attribution |
+| **Dub** (for reference) | 25 new links/mo, 1,000 events/mo, 3 custom domains | Free (3 domains); paid from Pro, $30/mo | Developers, partner programs and conversion attribution |
 
 Sources: [Short.io pricing](https://short.io/pricing), [Rebrandly pricing](https://www.rebrandly.com/pricing), [Bitly pricing](https://bitly.com/pages/pricing), [Dub Links pricing](https://dub.co/pricing/links). Prices change often, so check the live pages before you decide.
 
@@ -46,17 +46,17 @@ Sources: [Short.io pricing](https://short.io/pricing), [Rebrandly pricing](https
 
 **Free plan:**
 - 30 new links a month, ad-free, on `ishortn.ink`
-- 1,000 tracked events a month (clicks, QR scans and bio page views), with a 7-day analytics view
+- 1,000 tracked clicks a month (clicks, QR scans and bio page views), with a 7-day analytics view
 - 5 dynamic QR codes. You can change where they point at any time, and they don't expire.
 - 1 link-in-bio page with tracked links
 
 **Pro, $8 a month ($80 a year):**
-- 1,000 links and 10,000 tracked events a month
+- 1,000 links and 10,000 tracked clicks a month
 - 3 custom domains
 - A full year of detailed analytics, password-protected links, geo and device targeting, scheduled links, click milestone alerts
 - Branded QR codes and the REST API
 
-**Ultra, $15 a month:** unlimited links, events and domains, UTM fields and templates in the link editor, link cloaking, and team workspaces.
+**Ultra, $15 a month:** unlimited links, tracked clicks and domains, UTM fields and templates in the link editor, link cloaking, and team workspaces.
 
 **Where iShortn falls short of Dub:** we don't have conversion or revenue tracking yet, and we don't do affiliate or partner programs. Team workspaces are on Ultra rather than Pro. Free-plan analytics only shows the last 7 days.
 

@@ -19,6 +19,22 @@ export const ACTIVE_PROMO: Promo = {
   utmCampaign: "bfcm2026",
 };
 
+/** A promo that discounts the first year of a subscription (first-year-discount.ts). */
+export type FirstYearPromo = { code: string; percentOff: number; kind: "first_year" };
+
+/**
+ * Every first-year promo code ever offered, past campaigns included: plan changes on a promo
+ * subscription follow the first-year rules long after its campaign ends. Add each new campaign's
+ * code here before it goes live; never remove one.
+ */
+export const FIRST_YEAR_PROMOS: readonly FirstYearPromo[] = [
+  { code: "BFCM20", percentOff: 20, kind: "first_year" },
+];
+
+export function findFirstYearPromo(code: string | null | undefined): FirstYearPromo | null {
+  return (code && FIRST_YEAR_PROMOS.find((promo) => promo.code === code)) || null;
+}
+
 /** The promo running at `now`, or null outside its window. */
 export function getActivePromo(now = new Date(), promo: Promo = ACTIVE_PROMO): Promo | null {
   const t = now.getTime();
@@ -71,6 +87,11 @@ export function formatPromoEnd(iso: string): string {
 export function formatPromoEndShort(iso: string): string {
   const date = new Date(iso);
   return `${WEEKDAYS[date.getUTCDay()]!.slice(0, 3)} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]!.slice(0, 3)}`;
+}
+
+/** "25 Nov 2027", in UTC. */
+export function formatDayMonthYearShort(date: Date): string {
+  return `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]!.slice(0, 3)} ${date.getUTCFullYear()}`;
 }
 
 /** One-line announcement shown above the plan cards while the promo runs. */

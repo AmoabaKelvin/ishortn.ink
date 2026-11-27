@@ -6,13 +6,18 @@ export const PDF_SIZE_PRESETS_CM = [2, 3, 5] as const;
 export const PDF_MIN_SIZE_CM = 1;
 export const PDF_MAX_SIZE_CM = 50;
 export const PDF_LABEL_MAX_LENGTH = 24;
+/** ISO/IEC 18004 quiet zone, in modules, kept clear between the code and a frame. */
+export const PDF_FRAME_QUIET_ZONE_MODULES = 4;
 
 const POINTS_PER_MM = 72 / 25.4;
 // Bezier handle length for a quarter circle.
 const KAPPA = 0.5522847498;
 
 export type QrPdfOptions = {
-  /** Side of the code, quiet zone included. A frame adds its border and label band around it. */
+  /**
+   * Side of the code, quiet zone included. A frame adds its border and label band around it, and
+   * widens the quiet zone to 4 modules where the code's margin is narrower.
+   */
   sizeMm: number;
   frame?: { label: string } | null;
   /** The logo pre-rendered as a square JPEG over the light colour (PDF embeds JPEG as is). */
@@ -260,25 +265,37 @@ export function svgPathToPdf(d: string): string {
 /**
  * A one-page vector PDF of the code at its print size. The modules are filled paths, so the code
  * stays sharp at any size; only an embedded logo is a raster image. With a frame, the code sits on
- * a rounded dark card with the label in a band below it.
+ * a rounded dark card with the label in a band below it, inside a light window that keeps a
+ * 4-module quiet zone around the code.
  */
 export function createQrPdf(state: QRCodeGeneratorState, options: QrPdfOptions): Uint8Array {
   const vector = buildQrVector(state);
   const side = options.sizeMm * POINTS_PER_MM;
   const label = options.frame ? pdfLabelText(options.frame.label) : "";
 
-  const pad = options.frame ? side * 0.06 : 0;
-  const band = options.frame ? side * 0.2 : 0;
-  const width = side + pad * 2;
-  const height = side + pad + band;
-  const qrX = pad;
-  const qrY = band;
+  const unit = side / vector.size;
+
+  // The dark frame needs a full quiet zone inside it. Margin noise can reach the edge of the
+  // drawing, so only a noise-free margin counts; the rest is a light ring that grows the frame,
+  // never shrinks the code.
+  const clearMargin = state.marginNoise ? 0 : state.margin;
+  const quiet = options.frame ? Math.max(0, PDF_FRAME_QUIET_ZONE_MODULES - clearMargin) * unit : 0;
+  const framed = side + quiet * 2;
+  const pad = options.frame ? framed * 0.06 : 0;
+  const band = options.frame ? framed * 0.2 : 0;
+  const width = framed + pad * 2;
+  const height = framed + pad + band;
+  const qrX = pad + quiet;
+  const qrY = band + quiet;
 
   const resources: string[] = [];
   let content = "";
 
   if (options.frame) {
     content += `${rgb(state.darkColor)} rg\n${roundedRect(0, 0, width, height, pad * 1.5)}f\n`;
+    // A transparent code would show the dark card through it, so the window is always filled.
+    const windowColor = vector.background ?? state.lightColor;
+    content += `${rgb(windowColor)} rg\n${n(pad)} ${n(band)} ${n(framed)} ${n(framed)} re\nf\n`;
     if (label) {
       const textWidth = labelWidthEm(label);
       const fontSize = Math.min(band * 0.45, (width - pad * 2) / textWidth);
@@ -290,7 +307,6 @@ export function createQrPdf(state: QRCodeGeneratorState, options: QrPdfOptions):
   }
 
   // Draw the code in SVG module units: flip y and scale modules to points.
-  const unit = side / vector.size;
   content += `q\n${n(unit)} 0 0 ${n(-unit)} ${n(qrX)} ${n(qrY + side)} cm\n`;
   if (vector.background) {
     content += `${rgb(vector.background)} rg\n0 0 ${vector.size} ${vector.size} re\nf\n`;

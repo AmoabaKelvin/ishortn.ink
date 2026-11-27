@@ -1,8 +1,9 @@
 ---
 title: "QR Code for a Restaurant Menu: Static vs Dynamic, and How to Update It Without Reprinting"
-seoTitle: "QR Code for Restaurant Menus: Static vs Dynamic"
-description: "How to make a menu QR code for your restaurant or cafe, pick static or dynamic, host the menu so it reads well on a phone, and change it without reprinting a single table card."
+seoTitle: "Dynamic QR Code for Restaurant Menus: Free Guide"
+description: "Make a dynamic QR code for your restaurant menu: update the menu without reprinting table cards, print codes that scan, and see how many guests use them."
 date: "2026-11-23"
+updated: "2026-11-27"
 author: "Kelvin Amoaba"
 tags: ["qr code", "restaurant", "menu", "small business", "guide"]
 published: true
@@ -44,6 +45,14 @@ This is the decision that matters most.
 
 **A dynamic QR code** encodes a short link. The short link forwards to your menu. Because the forwarding happens on a server, you can change where it goes at any time, and every scan gets counted. The downside is that it depends on the provider: if they shut the short link off, the code stops working. That's how a lot of "expired" menu codes happen. Some generators disable codes when a free trial ends. (More on that in [why QR codes stop working](/blog/qr-code-stopped-working).)
 
+| | Static menu QR code | Dynamic menu QR code |
+| --- | --- | --- |
+| Change the menu link after printing | No | Yes, from your dashboard |
+| Counts scans | No | Yes: date, country and device |
+| Needs an account | No | Yes (free) |
+| Stops working when | the menu link inside it breaks | the provider switches the short link off |
+| On iShortn | Free, no account | Free for 5 codes; Pro ($8/month) has no QR code limit |
+
 So which one?
 
 - **Static is fine** when your menu is a page on your own website at a fixed address (yourcafe.com/menu) and you update the page itself. The link never changes, so the code never needs to.
@@ -55,7 +64,7 @@ Our [free QR code guide](/blog/free-qr-code-generator-guide) covers the general 
 
 ### Option A: a static code (no account)
 
-Use our [free QR code generator](/qr-code-generator). Paste your menu link, check the preview and download the PNG. No sign-up, no ads, and the code doesn't expire.
+Use our [free QR code generator](/qr-code-generator). Paste your menu link, check the preview and download it as a PNG or an SVG. If a designer or printer is laying out your table cards, send the SVG: it's a vector file, so it stays sharp at any size. No sign-up, no ads, and the code doesn't expire.
 
 ### Option B: a dynamic code you can update
 
@@ -65,9 +74,9 @@ In iShortn:
 2. Create a new code and paste your menu link as the destination.
 3. Name it clearly, for example "Menu - tables". If you also want a code for the window or takeaway bags, make those separately (more on that below).
 4. Style it: colours, pixel and corner shapes, and your logo in the middle if you like. Keep dark on light and good contrast. A pale code on a dark wooden table card is the most common reason menu codes fail to scan.
-5. Download the PNG and send it to your printer or drop it into your table card design.
+5. Download it. Use **Download PDF for print** to get the code at the exact size for your table card (3 cm or larger), or **Download SVG** to drop it into your own design. The PNG is fine for screens and social posts.
 
-On the free plan you get 5 dynamic QR codes. They never expire and show no ads, and you can edit the destination whenever you like. Each code also uses one of your 30 free links that month. Free scan analytics show the last 7 days and count up to 1,000 events a month; codes keep working past that, but new scans aren't recorded until the month resets. [Pro](/pricing) is $8/month if you need more codes or the full scan history.
+On the free plan you get 5 dynamic QR codes. They never expire and show no ads, and you can edit the destination whenever you like. Each code also uses one of your 30 free links that month. Free scan analytics show the last 7 days and count up to 1,000 tracked clicks a month; codes keep working past that, but new scans aren't recorded until the month resets. [Pro](/pricing) is $8/month if you need more codes or a year of scan history.
 
 ## Step 4: Print it so it scans
 
@@ -109,19 +118,41 @@ Every scan of a dynamic code is counted, so you can answer questions that used t
 
 The analytics show totals, time, location and device, not who scanned. For more on reading scan numbers and tagging menu links for Google Analytics, see [how to track QR code scans](/blog/how-to-track-qr-code-scans).
 
+If you run several venues, or want a separate code for every table or delivery partner, you don't have to make them one by one. On Pro, import the menu links from a CSV, tick **Also create QR codes**, and download every code as a ZIP of SVG and PNG files, up to 100 at a time.
+
 ## While you're printing table cards
 
 Table cards have room for one more code, and the best use of it is reviews. Guests waiting for the bill have a minute free, which is when they're most likely to leave one. Our guide to a [QR code for Google reviews](/blog/qr-code-for-google-reviews) shows how to set that up. Label both codes clearly so nobody scans "reviews" looking for the dessert list.
 
-## Quick answers
+## Common questions
 
-**Is a restaurant menu QR code free?** Yes. A static code from our [QR code generator](/qr-code-generator) is free with no account. Dynamic codes are free on iShortn's free plan (5 codes), with editing and scan counts.
+### What is a dynamic QR code for a restaurant menu?
 
-**Can I change a QR code after it's printed?** Only if it's dynamic. A static code's link is fixed in the pattern. If your printed code is static and the link inside it still works, keep that link working. If the link is dead, you'll need to reprint, ideally with a dynamic code this time.
+It's a QR code that contains a short link instead of your menu's address. The short link forwards guests to the menu, so you can point it at a new menu at any time and the printed table cards keep working. Every scan is counted.
 
-**Does iShortn host my menu?** No. iShortn makes the QR code and forwards scans to wherever your menu lives: your website, a PDF or an ordering page.
+### Is a restaurant menu QR code free?
 
-**Will my menu code expire?** iShortn's free dynamic codes don't expire and don't need a paid plan to keep working. Check this with any other generator before you print. Many disable codes when a trial or subscription ends.
+Yes. A static code from our [QR code generator](/qr-code-generator) is free with no account, as a PNG or SVG. Dynamic codes are free on iShortn's free plan (5 codes), with editing and scan counts.
+
+### Can I change a QR code after it's printed?
+
+Only if it's dynamic. A static code's link is fixed in the pattern. If your printed code is static and the link inside it still works, keep that link working. If the link is dead, you'll need to reprint, ideally with a dynamic code this time.
+
+### How big should a menu QR code be on a table card?
+
+At least 3 to 4 cm wide for a card read from 30 to 40 cm away, and bigger in dim light. Download the print PDF at the size you need, or the SVG, so the code stays sharp.
+
+### Can one QR code show different menus for lunch, dinner and drinks?
+
+The simplest way is a single menu page that links to each menu, with the QR code pointing at that page. If you'd rather have separate codes, make one per menu and label each card clearly.
+
+### Does iShortn host my menu?
+
+No. iShortn makes the QR code and forwards scans to wherever your menu lives: your website, a PDF or an ordering page.
+
+### Will my menu code expire?
+
+iShortn's free dynamic codes don't expire and don't need a paid plan to keep working. Check this with any other generator before you print. Many disable codes when a trial or subscription ends.
 
 ## Get your menu code
 

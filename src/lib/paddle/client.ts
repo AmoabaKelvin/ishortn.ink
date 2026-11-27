@@ -40,8 +40,17 @@ const jsonObjectSchema = z.record(z.string(), z.json());
 const transactionSchema = z.object({
   id: z.string(),
   status: z.string(),
+  // Set when the transaction belongs to an existing subscription (a payment-method update or a
+  // renewal); null on a checkout for a new one.
+  subscription_id: z.string().nullish(),
   // Paddle returns no checkout URL when the account has no default payment link.
   checkout: z.object({ url: z.string().nullable() }).nullable(),
+});
+
+const discountSchema = z.object({
+  id: z.string(),
+  recur: z.boolean(),
+  maximum_recurring_intervals: z.number().nullable(),
 });
 
 const customerSchema = z.object({
@@ -64,10 +73,23 @@ const subscriptionSchema = z.object({
     .nullable(),
   current_billing_period: z.object({ starts_at: z.string(), ends_at: z.string() }).nullable(),
   next_billed_at: z.string().nullable(),
+  canceled_at: z.string().nullish(),
   started_at: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
   custom_data: jsonObjectSchema.nullable(),
+});
+
+// Paddle returns the whole subscription with the preview; only the amount due now is read.
+const subscriptionPreviewSchema = z.object({
+  immediate_transaction: z
+    .object({
+      details: z.object({
+        // Amounts are strings in the currency's lowest denomination (cents for USD).
+        totals: z.object({ grand_total: z.string(), currency_code: z.string() }),
+      }),
+    })
+    .nullable(),
 });
 
 const portalSessionSchema = z.object({
@@ -89,9 +111,11 @@ const errorBodySchema = z.object({
 });
 
 export type PaddleTransaction = z.infer<typeof transactionSchema>;
+export type PaddleDiscount = z.infer<typeof discountSchema>;
 export type PaddleCustomer = z.infer<typeof customerSchema>;
 export type PaddleSubscription = z.infer<typeof subscriptionSchema>;
 export type PaddlePortalSession = z.infer<typeof portalSessionSchema>;
+export type PaddleSubscriptionPreview = z.infer<typeof subscriptionPreviewSchema>;
 
 export type PaddleItem = { priceId: string; quantity: number };
 export type PaddleCustomData = z.infer<typeof jsonObjectSchema>;
@@ -118,6 +142,17 @@ export type UpdateSubscriptionInput = {
   prorationBillingMode?: PaddleProrationBillingMode;
   /** `null` removes a pending scheduled change (cancel, pause). */
   scheduledChange?: null;
+  /** `null` removes the subscription's discount. */
+  discount?: { id: string; effectiveFrom: PaddleEffectiveFrom } | null;
+};
+
+export type CreateDiscountInput = {
+  /** Percent off, e.g. 20. */
+  percentOff: number;
+  description: string;
+  /** `null` for a one-off discount; otherwise how many billing periods it recurs for. */
+  maximumRecurringIntervals: number | null;
+  customData?: PaddleCustomData;
 };
 
 const toPaddleItems = (items: PaddleItem[]) =>
@@ -125,13 +160,17 @@ const toPaddleItems = (items: PaddleItem[]) =>
 
 export function createPaddleClient(config: PaddleConfig) {
   const baseUrl = paddleApiBaseUrl(config);
-  const discountCache = new Map<string, { id: string | undefined; expiresAt: number }>();
+  const discountCache = new Map<
+    string,
+    { discount: PaddleDiscount | undefined; expiresAt: number }
+  >();
 
   async function request<T>(
     method: "GET" | "POST" | "PATCH",
     path: string,
     schema: z.ZodType<T>,
     body?: PaddleRequestBody,
+    timeoutMs = REQUEST_TIMEOUT_MS,
   ): Promise<T> {
     const response = await fetch(`${baseUrl}${path}`, {
       method,
@@ -141,7 +180,7 @@ export function createPaddleClient(config: PaddleConfig) {
         Accept: "application/json",
       },
       ...(body && { body: JSON.stringify(body) }),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
 
     const json: unknown = await response.json().catch(() => null);
@@ -189,21 +228,49 @@ export function createPaddleClient(config: PaddleConfig) {
         collection_mode: input.collectionMode,
       }),
 
+    getTransaction: (id: string) =>
+      request("GET", `/transactions/${encodeURIComponent(id)}`, transactionSchema),
+
+    /** The customer's draft and ready transactions: checkouts not yet paid (first page only). */
+    listOpenTransactions: (customerId: string) => {
+      const query = new URLSearchParams({ customer_id: customerId, status: "draft,ready" });
+      return request("GET", `/transactions?${query}`, z.array(transactionSchema));
+    },
+
+    /** Only draft and ready transactions can be canceled. */
+    cancelTransaction: (id: string) =>
+      request("PATCH", `/transactions/${encodeURIComponent(id)}`, transactionSchema, {
+        status: "canceled",
+      }),
+
     /** Codes (including unknown ones) are cached for 10 minutes per isolate. */
-    findActiveDiscountIdByCode: async (code: string): Promise<string | undefined> => {
+    findActiveDiscountByCode: async (code: string): Promise<PaddleDiscount | undefined> => {
       const cached = discountCache.get(code);
-      if (cached && cached.expiresAt > Date.now()) return cached.id;
+      if (cached && cached.expiresAt > Date.now()) return cached.discount;
 
       const query = new URLSearchParams({ code, status: "active" });
-      const discounts = await request(
-        "GET",
-        `/discounts?${query}`,
-        z.array(z.object({ id: z.string() })),
-      );
-      const id = discounts[0]?.id;
-      discountCache.set(code, { id, expiresAt: Date.now() + DISCOUNT_CACHE_TTL_MS });
-      return id;
+      const discounts = await request("GET", `/discounts?${query}`, z.array(discountSchema));
+      const discount = discounts[0];
+      discountCache.set(code, { discount, expiresAt: Date.now() + DISCOUNT_CACHE_TTL_MS });
+      return discount;
     },
+
+    /** A percentage discount without a code, applied to subscriptions by id only. */
+    createDiscount: (input: CreateDiscountInput) =>
+      request("POST", "/discounts", discountSchema, {
+        type: "percentage",
+        amount: String(input.percentOff),
+        description: input.description,
+        enabled_for_checkout: false,
+        mode: "custom",
+        recur: input.maximumRecurringIntervals !== null,
+        maximum_recurring_intervals: input.maximumRecurringIntervals ?? undefined,
+        custom_data: input.customData,
+      }),
+
+    /** Retires a discount so it can't be applied again. */
+    archiveDiscount: (id: string) =>
+      request("PATCH", `/discounts/${id}`, discountSchema, { status: "archived" }),
 
     findCustomerByEmail,
 
@@ -223,8 +290,14 @@ export function createPaddleClient(config: PaddleConfig) {
       }
     },
 
-    getCustomer: (id: string) =>
-      request("GET", `/customers/${encodeURIComponent(id)}`, customerSchema),
+    getCustomer: (id: string, options?: { timeoutMs?: number }) =>
+      request(
+        "GET",
+        `/customers/${encodeURIComponent(id)}`,
+        customerSchema,
+        undefined,
+        options?.timeoutMs,
+      ),
 
     getSubscription: (id: string) =>
       request("GET", `/subscriptions/${encodeURIComponent(id)}`, subscriptionSchema),
@@ -234,7 +307,26 @@ export function createPaddleClient(config: PaddleConfig) {
         items: input.items && toPaddleItems(input.items),
         proration_billing_mode: input.prorationBillingMode,
         scheduled_change: input.scheduledChange,
+        discount: input.discount && {
+          id: input.discount.id,
+          effective_from: input.discount.effectiveFrom,
+        },
       }),
+
+    /** What an item change would bill, without applying it. */
+    previewSubscriptionUpdate: (
+      id: string,
+      input: { items: PaddleItem[]; prorationBillingMode: PaddleProrationBillingMode },
+    ) =>
+      request(
+        "PATCH",
+        `/subscriptions/${encodeURIComponent(id)}/preview`,
+        subscriptionPreviewSchema,
+        {
+          items: toPaddleItems(input.items),
+          proration_billing_mode: input.prorationBillingMode,
+        },
+      ),
 
     cancelSubscription: (id: string, effectiveFrom: PaddleEffectiveFrom) =>
       request("POST", `/subscriptions/${encodeURIComponent(id)}/cancel`, subscriptionSchema, {

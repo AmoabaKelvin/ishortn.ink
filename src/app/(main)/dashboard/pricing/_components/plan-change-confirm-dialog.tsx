@@ -12,59 +12,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
+import { Skeleton } from "@/components/ui/skeleton";
+import { buildPlanChangeCopy } from "@/lib/billing/plan-change-copy";
+import { api } from "@/trpc/react";
 
+import type { PlanChangeKind } from "@/lib/billing/plan-change-copy";
 import type { BillingInterval, Plan } from "@/lib/billing/plans";
 
-type PlanChangeKind = "switch" | "upgrade";
-
-type PlanChangeCopy = {
-  title: string;
-  description: string;
-  note?: string;
-  confirmLabel: string;
-};
-
-/**
- * Copy for confirming an immediate-charge, in-place plan change. Only used for
- * paths that bypass the Lemon Squeezy hosted checkout (interval switch and an
- * upgrade from an existing paid plan) and so charge the card on click.
- */
-export function buildPlanChangeCopy(
-  kind: PlanChangeKind,
-  targetPlan: Exclude<Plan, "free">,
-  interval: BillingInterval,
-): PlanChangeCopy {
-  const price =
-    interval === "annual" ? PLAN_PRICES_ANNUAL_USD[targetPlan] : PLAN_PRICES_USD[targetPlan];
-  const planName = targetPlan === "pro" ? "Pro" : "Ultra";
-
-  if (kind === "switch") {
-    if (interval === "annual") {
-      return {
-        title: "Switch to annual billing?",
-        description: `You'll be charged $${price} today, with credit for the unused part of your current month.`,
-        note: "That's 2 months free compared to paying monthly.",
-        confirmLabel: "Switch & save",
-      };
-    }
-    return {
-      title: "Switch to monthly billing?",
-      description: `You'll move to $${price}/month. Any unused time on your annual plan is credited to your account.`,
-      confirmLabel: "Switch to monthly",
-    };
-  }
-
-  return {
-    title: `Upgrade to ${planName}?`,
-    description: `You'll be charged $${price} today for ${planName} ${
-      interval === "annual" ? "annual" : "monthly"
-    }, with credit for the unused time on your current plan.`,
-    confirmLabel: `Upgrade to ${planName}`,
-  };
-}
-
-type PlanChangeConfirmDialogProps = PlanChangeCopy & {
+type PlanChangeConfirmDialogProps = {
+  kind: PlanChangeKind;
+  targetPlan: Exclude<Plan, "free">;
+  interval: BillingInterval;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   isLoading: boolean;
@@ -74,19 +32,39 @@ type PlanChangeConfirmDialogProps = PlanChangeCopy & {
 export function PlanChangeConfirmDialog({
   open,
   onOpenChange,
-  title,
-  description,
-  note,
-  confirmLabel,
+  kind,
+  targetPlan,
+  interval,
   isLoading,
   onConfirm,
 }: PlanChangeConfirmDialogProps) {
+  // The amount due today, prorated and discounted, comes from the provider's preview.
+  const quote = api.lemonsqueezy.previewPlanChange.useQuery(
+    { plan: targetPlan, interval },
+    { enabled: open, staleTime: 60_000, retry: false },
+  );
+  const isQuoting = open && quote.isLoading;
+  const { title, description, note, confirmLabel } = buildPlanChangeCopy(
+    kind,
+    targetPlan,
+    interval,
+    quote.isError ? { type: "prorated" } : quote.data,
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          {isQuoting ? (
+            <div className="space-y-2 pt-1" aria-busy="true">
+              <span className="sr-only">Calculating today&apos;s charge</span>
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          ) : (
+            <DialogDescription>{description}</DialogDescription>
+          )}
         </DialogHeader>
 
         {note && (
@@ -105,7 +83,12 @@ export function PlanChangeConfirmDialog({
           >
             Not now
           </Button>
-          <Button type="button" onClick={onConfirm} disabled={isLoading} className="h-9">
+          <Button
+            type="button"
+            onClick={onConfirm}
+            disabled={isLoading || isQuoting}
+            className="h-9"
+          >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

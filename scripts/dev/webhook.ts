@@ -6,20 +6,24 @@ import { fileURLToPath } from "node:url";
 
 import { Webhook } from "svix";
 
-// bun run webhook <clerk|resend|lemonsqueezy> <event> [--user <clerkUserId>] [--email <email>]
+// bun run webhook <clerk|resend|lemonsqueezy|paddle> <event> [--user <clerkUserId>] [--email <email>]
 // Signs scripts/dev/fixtures/<provider>/<event>.json and POSTs it to the local app.
 
 const FIXTURES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 const DEFAULT_USER_ID = "user_local_dev_00000000000000000";
 const DEFAULT_EMAIL = "dev+clerk_test@example.com";
 
-type Provider = "clerk" | "resend" | "lemonsqueezy";
-
 const ROUTES = {
   clerk: "/api/webhooks/clerk",
   resend: "/api/webhooks/resend",
   lemonsqueezy: "/api/webhooks/lemonsqueezy",
+  paddle: "/api/webhooks/paddle",
 } as const;
+
+type Provider = keyof typeof ROUTES;
+
+const isProvider = (value: string | undefined): value is Provider =>
+  value !== undefined && Object.hasOwn(ROUTES, value);
 
 function readFlag(argv: string[], name: string): string | undefined {
   const index = argv.indexOf(name);
@@ -30,7 +34,7 @@ function usage(message?: string): never {
   if (message) console.error(`error: ${message}\n`);
   console.error(
     [
-      "usage: bun run webhook <clerk|resend|lemonsqueezy> <event> [--user <id>] [--email <email>] [--url <base>]",
+      "usage: bun run webhook <clerk|resend|lemonsqueezy|paddle> <event> [--user <id>] [--email <email>] [--url <base>]",
       "",
       "  --user   Clerk user id substituted for __USER_ID__ (default: the seed dev user)",
       "  --email  email substituted for __EMAIL__ (default: dev+clerk_test@example.com)",
@@ -63,6 +67,11 @@ function sign(provider: Provider, body: string): Headers {
     headers.set("svix-id", msgId);
     headers.set("svix-timestamp", String(Math.floor(timestamp.getTime() / 1000)));
     headers.set("svix-signature", new Webhook(secret).sign(msgId, timestamp, body));
+  } else if (provider === "paddle") {
+    const secret = requireSecret("PADDLE_WEBHOOK_SECRET");
+    const ts = Math.floor(Date.now() / 1000);
+    const h1 = crypto.createHmac("sha256", secret).update(`${ts}:${body}`).digest("hex");
+    headers.set("Paddle-Signature", `ts=${ts};h1=${h1}`);
   } else {
     const secret = requireSecret("LEMONSQUEEZY_WEBHOOK_SECRET");
     headers.set("X-Signature", crypto.createHmac("sha256", secret).update(body).digest("hex"));
@@ -73,7 +82,7 @@ function sign(provider: Provider, body: string): Headers {
 async function main() {
   const argv = process.argv.slice(2);
   const [provider, event] = argv;
-  if (provider !== "clerk" && provider !== "resend" && provider !== "lemonsqueezy") {
+  if (!isProvider(provider)) {
     usage(`unknown provider "${provider ?? ""}"`);
   }
   if (!event) {
@@ -95,6 +104,7 @@ async function main() {
         .replaceAll("__USER_ID__", readFlag(argv, "--user") ?? DEFAULT_USER_ID)
         .replaceAll("__EMAIL__", readFlag(argv, "--email") ?? DEFAULT_EMAIL)
         .replaceAll("__NOW_ISO__", now.toISOString())
+        .replaceAll("__PADDLE_PRICE_PRO_MONTHLY__", process.env.PADDLE_PRICE_PRO_MONTHLY ?? "")
         .replaceAll('"__NOW_MS__"', String(now.getTime())),
     ),
   );

@@ -48,11 +48,11 @@ Stay if you need several custom domains and don't want to pay, if you make fewer
 
 | | Free plan | Cheapest plan with your own domain | More than one user |
 |---|---|---|---|
-| **iShortn** | 30 links/mo, 1,000 tracked events/mo, 5 dynamic QR codes | Pro, $8/mo (3 domains) | Ultra, $15/mo (team workspaces) |
+| **iShortn** | 30 links/mo, 1,000 tracked clicks/mo, 5 dynamic QR codes | Pro, $8/mo (3 domains) | Ultra, $15/mo (team workspaces) |
 | **Rebrandly** | 10 links/mo, detailed data on 100 clicks/mo, 1 custom domain | Free (1 domain); Essentials, $11/mo billed yearly, has 2 | Professional, $32/mo billed yearly |
 | **Bitly** | 5 links and 2 QR codes/mo | Growth, $29/mo billed yearly | Teams, custom pricing |
 | **TinyURL** | 30 links/mo, no click stats | Pro, $9/mo billed yearly (3 domains) | Not listed on Pro |
-| **Dub** | 25 links/mo, 1,000 tracked events/mo, 3 domains | Free | Not on Free (1 user) |
+| **Dub** | 25 links/mo, 1,000 events/mo, 3 domains | Free | Not on Free (1 user) |
 | **Cutt.ly** | 30 links/mo, 30 days of stats, 1 domain | Free | Team, $99/mo |
 | **Short.io** (for reference) | 1,000 links in total, 50,000 tracked clicks/mo, 5 domains | Free | Team, $48/mo |
 
@@ -62,11 +62,11 @@ Sources: [Rebrandly pricing](https://www.rebrandly.com/pricing), [Bitly pricing]
 
 [iShortn](/pricing) is a link shortener with custom domains, dynamic QR codes, link-in-bio pages and click analytics, for small businesses, creators and freelancers.
 
-**Free:** 30 new links a month, 1,000 tracked events a month (clicks, QR scans and bio page views) with a 7-day analytics view, 5 dynamic QR codes that don't expire, 1 bio page and link expiry by date or click count. You can edit any link's destination.
+**Free:** 30 new links a month, 1,000 tracked clicks a month (clicks, QR scans and bio page views) with a 7-day analytics view, 5 dynamic QR codes that don't expire, 1 bio page and link expiry by date or click count. You can edit any link's destination.
 
-**Pro, $8 a month ($80 a year):** 1,000 new links every month, 10,000 tracked events, 3 custom domains, a full year of detailed analytics, password-protected links, geo and device targeting, scheduled links, CSV import and the API.
+**Pro, $8 a month ($80 a year):** 1,000 new links every month, 10,000 tracked clicks, 3 custom domains, a full year of detailed analytics, password-protected links, geo and device targeting, scheduled links, CSV import and the API.
 
-**Ultra, $15 a month:** unlimited links, events and domains, link cloaking, UTM fields in the link editor, and team workspaces with owner, admin and member roles.
+**Ultra, $15 a month:** unlimited links, tracked clicks and domains, link cloaking, UTM fields in the link editor, and team workspaces with owner, admin and member roles.
 
 Compared with Short.io, the main difference is how links are counted. Pro gives you 1,000 new links every month, where Short.io Hobby gives 2,500 in total. Password protection costs $8 on iShortn and $18 on Short.io, and a team costs $15 instead of $48.
 
@@ -90,7 +90,7 @@ Compared with Short.io, the main difference is how links are counted. Pro gives 
 
 ## 5. Dub: a free plan with 3 domains
 
-[Dub](https://dub.co/pricing/links) Free includes 25 new links and 1,000 tracked events a month, 3 custom domains, the API and 30 days of analytics, for one user. Pro starts at $30 a month for 1,000 links and 50,000 events a month, 10 domains and a year of history. It's a strong pick for developers. For small teams on a budget, the jump from free to $30 is steep. See [Dub alternatives](/blog/dub-alternatives).
+[Dub](https://dub.co/pricing/links) Free includes 25 new links and 1,000 events a month, 3 custom domains, the API and 30 days of analytics, for one user. Pro starts at $30 a month for 1,000 links and 50,000 events a month, 10 domains and a year of history. It's a strong pick for developers. For small teams on a budget, the jump from free to $30 is steep. See [Dub alternatives](/blog/dub-alternatives).
 
 ## 6. Cutt.ly: a branded domain on Free
 

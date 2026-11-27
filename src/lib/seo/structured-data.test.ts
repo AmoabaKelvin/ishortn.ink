@@ -67,7 +67,7 @@ describe("softwareApplicationSchema", () => {
     expect(softwareApplicationSchema.offers.map((offer) => offer.description)).toEqual([
       `${PLAN_CAPS.free.linksLimit} links a month, ${PLAN_CAPS.free.analyticsRangeLimitDays}-day analytics, ${FREE_QR_CODE_LIMIT} dynamic QR codes that never expire, 1 link-in-bio page`,
       `${PLAN_CAPS.pro.linksLimit?.toLocaleString("en-US")} links a month, 1 year of detailed analytics, ${PLAN_CAPS.pro.domainLimit} custom domains, link-in-bio on your domain, REST API`,
-      "Unlimited links, events and custom domains, team workspaces",
+      "Unlimited links, tracked clicks and custom domains, team workspaces",
     ]);
     for (const offer of softwareApplicationSchema.offers) {
       expect(offer.url).toBe("https://ishortn.ink/pricing");

@@ -46,9 +46,9 @@ Because the code contains the short link, you can also change the destination la
 3. Style it (colors, pixel and corner shapes) and download it.
 4. Click the QR code card any time to see its scans.
 
-On the [free plan](/pricing) you get 5 dynamic QR codes. They don't expire, have no ads and include scan analytics with a 7-day view. Scans count toward the free plan's 1,000 tracked events a month; above that, codes keep redirecting but new scans aren't recorded until the month resets. Pro ($8/month) keeps your full scan history and adds a world map view.
+On the [free plan](/pricing) you get 5 dynamic QR codes. They don't expire, have no ads and include scan analytics with a 7-day view. Scans count toward the free plan's 1,000 tracked clicks a month; above that, codes keep redirecting but new scans aren't recorded until the month resets. Pro ($8/month) keeps 1 year of detailed scan history and adds a world map view.
 
-**Use this method when** the destination isn't your website: a Google Business review link, a WhatsApp chat, an app store page, a YouTube video or a PDF. You can't add Google Analytics to those pages, so the scan count is the only data you'll get.
+**Use this method when** the destination isn't your website: [a Google Business review link](/blog/qr-code-for-google-reviews), a WhatsApp chat, an app store page, a YouTube video or a PDF. You can't add Google Analytics to those pages, so the scan count is the only data you'll get.
 
 ## Method 2: Add UTM parameters and read them in Google Analytics 4
 
@@ -108,7 +108,7 @@ Rules of thumb:
 
 ## Putting it together: a worked example
 
-Say you run a café with two locations and you're launching a winter menu. You want to know whether the table tents or the window posters drive more orders, and which location's customers engage most.
+Say you run a café with two locations and you're launching [a winter menu](/blog/qr-code-for-restaurant-menu). You want to know whether the table tents or the window posters drive more orders, and which location's customers engage most.
 
 1. Create four dynamic QR codes: table tent and window poster for each location.
 2. Point each one at your online menu with its own tags, for example `?utm_source=qr&utm_medium=print&utm_campaign=winter_menu&utm_content=table_tent_east`.

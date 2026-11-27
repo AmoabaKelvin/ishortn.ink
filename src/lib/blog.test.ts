@@ -153,6 +153,9 @@ describe("extractFaqs", () => {
     const cancel = faqsOf("cancel-bitly-subscription");
     expect(cancel.length).toBe(5);
     expect(cancel[0]!.question).toBe("Do Bitly links stop working if I cancel?");
+    const googleReviews = faqsOf("qr-code-for-google-reviews");
+    expect(googleReviews.length).toBe(7);
+    expect(googleReviews[0]!.question).toBe("How do I create a QR code for a Google review?");
   });
 });
 

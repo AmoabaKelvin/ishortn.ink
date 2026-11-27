@@ -29,7 +29,7 @@ We make iShortn, so weigh our view accordingly. Every competitor limit below com
 | | iShortn | Short.io | TinyURL | Rebrandly | Dub | Bitly |
 | --- | --- | --- | --- | --- | --- | --- |
 | New links | 30 a month | 1,000 in total | 30 a month with an account | 10 a month | 25 a month | 5 a month |
-| Click analytics | Location, device, browser, referrer; 7 days | 50,000 tracked clicks a month | None | Detailed data on 100 clicks a month | 1,000 tracked events a month; 30 days | None |
+| Click analytics | Location, device, browser, referrer; 7 days | 50,000 tracked clicks a month | None | Detailed data on 100 clicks a month | 1,000 events a month; 30 days | None |
 | Edit a link's destination | Yes | Yes | No | No | Yes | No |
 | Custom domain | Pro ($8/month) | 5 free | Pro | 1 free (your own or a free `.bio` domain) | 3 free | Growth ($29/month billed annually) |
 | QR codes | 5 dynamic | Yes | One per link | 10 a month, watermarked | Yes | 2 a month |
@@ -39,7 +39,7 @@ We make iShortn, so weigh our view accordingly. Every competitor limit below com
 
 ### iShortn
 
-iShortn puts click analytics on the free plan instead of behind a paywall. You get 30 new links a month on the `isht.app` domain, 1,000 tracked events a month and 7 days of history, broken down by location, device, browser and referrer. You can change where a link points at any time, set an expiry date or click limit, and there's no ad page in front of your links.
+iShortn puts click analytics on the free plan instead of behind a paywall. You get 30 new links a month on the `isht.app` domain, 1,000 tracked clicks a month and 7 days of history, broken down by location, device, browser and referrer. You can change where a link points at any time, set an expiry date or click limit, and there's no ad page in front of your links.
 
 The free plan also includes 5 dynamic QR codes with colour and style options. They never expire, and you can change the destination after printing. Each QR code uses one of your 30 monthly links.
 
@@ -77,7 +77,7 @@ If you have a server, you can run a shortener with no plan limits at all. [YOURL
 
 ### What about Dub?
 
-Dub is a common pick for a free custom domain. Its main [pricing page](https://dub.co/pricing) now leads with partner-program plans from $90 a month, and its plans for short links sit on a separate [links pricing page](https://dub.co/pricing/links). Dub Free allows 25 new links and 1,000 tracked events a month, 3 custom domains, 30 days of analytics, 1 user and API access, and you can edit a link's destination ([Dub help center](https://dub.co/help/article/how-to-create-link)). Pro is $30 a month, or $27 a month billed yearly, for 1,000 new links and 50,000 tracked events a month, 10 custom domains, a year of analytics and 3 users. Our [Dub alternatives](/blog/dub-alternatives) guide has more.
+Dub is a common pick for a free custom domain. Its main [pricing page](https://dub.co/pricing) now leads with partner-program plans from $90 a month, and its plans for short links sit on a separate [links pricing page](https://dub.co/pricing/links). Dub Free allows 25 new links and 1,000 events a month, 3 custom domains, 30 days of analytics, 1 user and API access, and you can edit a link's destination ([Dub help center](https://dub.co/help/article/how-to-create-link)). Pro is $30 a month, or $27 a month billed yearly, for 1,000 new links and 50,000 events a month, 10 custom domains, a year of analytics and 3 users. Our [Dub alternatives](/blog/dub-alternatives) guide has more.
 
 ## Free URL shorteners with QR codes
 
@@ -107,7 +107,7 @@ If you want to create links from code, TinyURL, Short.io, Rebrandly and Dub incl
 | TinyURL | Pro, $9/month billed annually | Click analytics, 125 links a month, 3 branded domains |
 | Bitly | Core, $10/month billed annually | 100 links a month, 30 days of click history; custom domains need Growth |
 | Rebrandly | Essentials, $11/month billed annually | 250 links a month, detailed data on 10,000 clicks, 2 domains |
-| Dub | Pro, $30/month or $27/month billed yearly | 1,000 links a month, 50,000 tracked events, 1 year of analytics, 10 custom domains, 3 users |
+| Dub | Pro, $30/month or $27/month billed yearly | 1,000 links a month, 50,000 events, 1 year of analytics, 10 custom domains, 3 users |
 
 For more on paid plans, see [the cheapest URL shorteners with click tracking](/blog/cheapest-url-shortener-with-click-tracking).
 

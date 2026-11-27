@@ -21,6 +21,7 @@ The first row must be a header row. Column names match in any case; other column
 | `url` | Yes | The destination URL. |
 | `alias` | No | A custom alias. Follows the [alias rules](/docs/short-links#aliases). Leave empty for a generated alias. |
 | `domain` | No | A [platform domain](/docs/platform-domains) or an active [custom domain](/docs/custom-domains) in the workspace. Defaults to `isht.app`. |
+| `title` | No | The link's name, shown in the dashboard. A `name` column works too. |
 | `note` | No | A private note on the link. |
 
 ```csv title="links.csv"
@@ -37,7 +38,7 @@ Upload a link export from Bitly as it is: the file Bitly gives you from **Links*
 - Each row's custom back-half (or Bitly's code, when the row has none) becomes the alias, the title becomes the link name, and the note records the original Bitly link.
 - Rows marked `Deleted` are skipped and don't count toward your limit.
 - **Branded domains:** connect the domain in [Domains](/docs/custom-domains) and wait until it shows **Active** before importing. Links on it keep their exact address, so printed links and QR codes keep working once the domain's DNS points to iShortn. Rows on a domain that isn't connected fail with `<domain> isn't connected to this workspace.`
-- **Original codes:** with **Also keep Bitly's original codes working** checked (the default), a custom link like `go.example.com/spring-menu` also gets its Bitly code, such as `go.example.com/3XCetqn`, as a second link to the same destination. Each code counts as one link (on Pro, from the custom-domain import allowance below while it lasts), and codes only take allowance left after every row's own link.
+- **Original codes:** with **Also keep Bitly's original codes working** checked (it's checked automatically when the file is a Bitly export), a custom link like `go.example.com/spring-menu` also gets its Bitly code, such as `go.example.com/3XCetqn`, as a second link to the same destination. Each code counts as one link (on Pro, from the custom-domain import allowance below while it lasts), and codes only take allowance left after every row's own link.
 - **bit.ly links** can't move: `bit.ly`, `j.mp` and `bitly.is` belong to Bitly. These rows are created on your default domain, keeping the custom back-half when it's free, and the summary lists the new address for each.
 
 Importing the same file again is safe: links created by an earlier run are counted as already imported, so after fixing a domain you can re-upload the whole file.

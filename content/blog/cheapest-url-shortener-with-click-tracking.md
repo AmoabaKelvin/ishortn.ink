@@ -19,7 +19,7 @@ We make iShortn, one of the tools below. Every competitor number comes from that
 | Tool and plan | Price | New links | Click tracking | Click history | Custom domains |
 |---|---|---|---|---|---|
 | Short.io Hobby | $5/mo (17% off yearly) | 2,500 in total | 100,000 clicks/mo | Not listed | 7 |
-| iShortn Pro | $8/mo, or $80/yr ($6.67/mo) | 1,000 a month | 10,000 events/mo (clicks, scans, bio views) | Unlimited (detailed data for 1 year) | 3 |
+| iShortn Pro | $8/mo, or $80/yr ($6.67/mo) | 1,000 a month | 10,000 tracked clicks/mo (including scans and bio views) | Unlimited (detailed data for 1 year) | 3 |
 | TinyURL Pro | $9/mo billed yearly ($108/yr) | 125 a month, then $1.50 per 10 more | Unlimited | 2 years | 3 |
 | Bitly Core | $10/mo, yearly billing only ($120/yr) | 100 a month | Yes | 30 days | None (needs Growth, $29/mo billed yearly) |
 | Rebrandly Essentials | $11/mo billed yearly | 250 a month | Detailed data on 10,000 clicks/mo | Not listed | 2 |
@@ -86,7 +86,7 @@ A link you can't edit costs you money later if the page moves. Short.io lists de
 
 ## Where iShortn fits
 
-iShortn is a link shortener with click analytics, custom domains, dynamic QR codes and link-in-bio pages. Pro is $8 a month and includes 1,000 new links and 10,000 tracked events (clicks, QR scans and bio page views) a month, 3 custom domains, password-protected links, geo and device targeting, and API access.
+iShortn is a link shortener with click analytics, custom domains, dynamic QR codes and link-in-bio pages. Pro is $8 a month and includes 1,000 new links and 10,000 tracked clicks (including QR scans and bio page views) a month, 3 custom domains, password-protected links, geo and device targeting, and API access.
 
 It's not the cheapest option in every case. Short.io Hobby costs less, Short.io's free plan tracks far more clicks than ours, and Dub Pro tracks more events, at almost four times the price. If you mostly need a free custom domain, Short.io or Dub will suit you better. See [Short.io vs iShortn](/compare/short-io) and [TinyURL vs iShortn](/compare/tinyurl) for the details.
 
@@ -108,4 +108,4 @@ Bitly Core costs $10 a month, billed yearly only, and keeps 30 days of click dat
 
 ## Try iShortn for free
 
-[Create a free iShortn account](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=cheapest-url-shortener-with-click-tracking) and track your first 30 links a month with no card. When you need your own domain and full history, [Pro is $8 a month](/pricing).
+[Create a free iShortn account](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=cheapest-url-shortener-with-click-tracking) and track your first 30 links a month with no card. When you need your own domain and 1 year of detailed click history, [Pro is $8 a month](/pricing).

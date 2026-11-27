@@ -1,0 +1,48 @@
+{
+  "event_id": "evt_01dev000000000000000000001",
+  "event_type": "subscription.created",
+  "occurred_at": "__NOW_ISO__",
+  "notification_id": "ntf_01dev000000000000000000001",
+  "data": {
+    "id": "sub_01dev000000000000000000000",
+    "status": "active",
+    "customer_id": "ctm_01dev000000000000000000000",
+    "address_id": "add_01dev000000000000000000000",
+    "business_id": null,
+    "currency_code": "USD",
+    "collection_mode": "automatic",
+    "created_at": "2026-01-01T00:00:00.000Z",
+    "updated_at": "__NOW_ISO__",
+    "started_at": "2026-01-01T00:00:00.000Z",
+    "first_billed_at": "2026-01-01T00:00:00.000Z",
+    "next_billed_at": "2027-02-01T00:00:00.000Z",
+    "paused_at": null,
+    "canceled_at": null,
+    "current_billing_period": {
+      "starts_at": "2027-01-01T00:00:00.000Z",
+      "ends_at": "2027-02-01T00:00:00.000Z"
+    },
+    "billing_cycle": {
+      "interval": "month",
+      "frequency": 1
+    },
+    "scheduled_change": null,
+    "items": [
+      {
+        "status": "active",
+        "quantity": 1,
+        "recurring": true,
+        "price": {
+          "id": "__PADDLE_PRICE_PRO_MONTHLY__",
+          "product_id": "pro_01dev000000000000000000000",
+          "description": "iShortn Pro monthly"
+        }
+      }
+    ],
+    "custom_data": {
+      "user_id": "__USER_ID__",
+      "plan": "pro",
+      "interval": "monthly"
+    }
+  }
+}

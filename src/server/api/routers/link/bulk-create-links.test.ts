@@ -240,6 +240,28 @@ describe("bulkCreateLinks", () => {
     expect(countUpdates).toEqual([{ monthlyLinkCount: 5 }]);
   });
 
+  test("keeps the title column of a plain CSV as the link name", async () => {
+    const { ctx, inserted } = fakeContext(0, { plan: "pro" });
+    const result = await bulkCreateLinks(
+      ctx,
+      [
+        "url,alias,title",
+        "https://a.example,spring,Spring sale",
+        "https://b.example,menu,Dinner menu",
+        "https://c.example,contact,",
+      ].join("\n"),
+      allowUrl,
+      { keepBitlyCodes: false },
+    );
+
+    expect(result).toMatchObject({ created: 3, failed: 0, notices: [] });
+    expect(inserted.map((row) => [row.alias, row.name])).toEqual([
+      ["spring", "Spring sale"],
+      ["menu", "Dinner menu"],
+      ["contact", undefined],
+    ]);
+  });
+
   test("creates only the rows within the remaining free allowance", async () => {
     const { ctx, inserted, countUpdates } = fakeContext(28);
     const checked: string[] = [];

@@ -10,6 +10,7 @@ import {
   linkVisitDailySummary,
   teamMember,
 } from "@/server/db/schema";
+import { getTargetingTypesByLinkId } from "@/server/lib/link-targeting";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import {
   getAccessibleFolderIds,
@@ -211,20 +212,29 @@ export const getFolder = async (ctx: WorkspaceTRPCContext, input: GetFolderInput
     .orderBy(desc(link.createdAt));
 
   // Fetch tags for each link
-  const linksWithTags = await Promise.all(
-    folderLinks.map(async (linkItem) => {
-      const tagRecords = await getTagsForLink(ctx, linkItem.id);
-      return {
-        ...linkItem,
-        tags: tagRecords.map((tagRecord) => tagRecord.name),
-        folder: { id: folderData.id, name: folderData.name },
-      };
-    }),
-  );
+  const [linksWithTags, targetingTypes] = await Promise.all([
+    Promise.all(
+      folderLinks.map(async (linkItem) => {
+        const tagRecords = await getTagsForLink(ctx, linkItem.id);
+        return {
+          ...linkItem,
+          tags: tagRecords.map((tagRecord) => tagRecord.name),
+          folder: { id: folderData.id, name: folderData.name },
+        };
+      }),
+    ),
+    getTargetingTypesByLinkId(
+      ctx.db,
+      folderLinks.map((linkItem) => linkItem.id),
+    ),
+  ]);
 
   return {
     ...folderData,
-    links: linksWithTags,
+    links: linksWithTags.map((linkItem) => ({
+      ...linkItem,
+      targetingTypes: targetingTypes.get(linkItem.id) ?? [],
+    })),
   };
 };
 

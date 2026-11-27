@@ -61,6 +61,29 @@ describe("PlanGraceEmail", () => {
     );
   });
 
+  test("the Free plan summary gets a preheader and intro that introduce it", async () => {
+    const free = {
+      items: ["30 new links a month", "7-day analytics window"],
+      itemsAreFreePlan: true,
+    };
+    const started = await renderEmail(free);
+    expect(started).toContain(
+      "Nothing is deleted. Here is what the Free plan includes after November 27, 2026.",
+    );
+    expect(started).not.toContain("these features can&#x27;t be added or changed");
+
+    const ended = await renderEmail({ ...free, kind: "ended" });
+    expect(ended).toContain("Nothing is deleted. Here is what the Free plan includes from now on.");
+    expect(ended).toContain(
+      "your account is on the Free plan now. Here is what the Free plan includes:",
+    );
+    expect(ended).not.toContain("These features can&#x27;t be added or changed any more");
+
+    // A failed payment keeps its card-update preheader.
+    const failed = await renderEmail({ ...free, updatePaymentUrl: UPDATE_URL });
+    expect(failed).toContain("Update your card by November 27, 2026 to keep Pro.");
+  });
+
   test("a team grace keeps naming the team", () => {
     const team = { ...base, reason: "team" as const, teamName: "Acme" };
     expect(planGraceSubject(team)).toBe(

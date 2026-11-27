@@ -21,7 +21,7 @@ We make iShortn, so treat our pick with that in mind. Every competitor price and
 | TinyURL | 30 links a month with an account, no click stats | Pro, $9/month billed annually ($11 monthly) | Pro (3 branded domains) |
 | Short.io | 1,000 links in total, 50,000 tracked clicks a month | Hobby, $5/month | Free (5 domains) |
 | Rebrandly | 10 links a month, detailed data on 100 clicks a month | Essentials, $11/month billed annually ($16 monthly) | Free gets 1 custom domain (your own or a free `.bio` domain) |
-| Dub | 25 links a month, 1,000 tracked events a month, 30-day analytics | Pro, $30/month ($27/month billed yearly) | Free (3 domains) |
+| Dub | 25 links a month, 1,000 events a month, 30-day analytics | Pro, $30/month ($27/month billed yearly) | Free (3 domains) |
 | YOURLS, Kutt, Shlink | Free software, you pay for the server | None | Any domain you own |
 | Bitly, for reference | 5 links and 2 QR codes a month, no click stats, ad page | Core, $10/month, annual only | Growth, $29/month billed annually |
 
@@ -45,9 +45,9 @@ Our post on [Bitly's free plan limits](/blog/bitly-free-plan-limits) covers each
 
 [iShortn](/) is a URL shortener with click analytics, custom domains, QR codes you can edit, bio pages and an API. It's the one we build.
 
-The free plan gives you 30 new links a month on our `isht.app` domain, 1,000 tracked events a month and 7 days of analytics with location, device, browser and referrer. You can change a link's destination at any time, and there's no ad page in front of your links. You also get 5 dynamic QR codes that never expire. Each QR code uses one of your 30 monthly links, the same way Bitly counts them.
+The free plan gives you 30 new links a month on our `isht.app` domain, 1,000 tracked clicks a month and 7 days of analytics with location, device, browser and referrer. You can change a link's destination at any time, and there's no ad page in front of your links. You also get 5 dynamic QR codes that never expire. Each QR code uses one of your 30 monthly links, the same way Bitly counts them.
 
-Pro is $8 a month or $80 a year. It adds 1,000 links and 10,000 tracked events a month, a full year of detailed analytics, 3 custom domains, password-protected links, geo and device targeting, CSV import and the REST API. Ultra is $15 a month for unlimited links, events and domains, plus team workspaces. The [pricing page](/pricing) lists every limit.
+Pro is $8 a month or $80 a year. It adds 1,000 links and 10,000 tracked clicks a month, a full year of detailed analytics, 3 custom domains, password-protected links, geo and device targeting, CSV import and the REST API. Ultra is $15 a month for unlimited links, tracked clicks and domains, plus team workspaces. The [pricing page](/pricing) lists every limit.
 
 Two things help when you report to someone else or your budget changes. Any link or QR code can have a read-only stats page that you send to a client or manager, and they don't need an account. On Free that page shows the last 7 days. And if you pay monthly, you can pause billing for 1 to 3 months instead of cancelling. Your links keep redirecting while it's paused.
 
@@ -79,7 +79,7 @@ It suits marketing teams that care most about branded domains. See [iShortn vs R
 
 ### 5. Dub
 
-Dub's code is public on GitHub, and it's popular with developers. Its [pricing page](https://dub.co/pricing) is now built around affiliate and partner programs. It lists Business at $90 a month (10,000 new links and 250,000 tracked events a month, 100 custom domains, 10 users), Advanced at $300 a month, and Enterprise with SAML SSO and audit logs. Paid plans have a 14-day trial. Dub also lists plans for short links only on a separate [links pricing page](https://dub.co/pricing/links). Free allows 25 new links and 1,000 tracked events a month, 3 custom domains, 30 days of analytics, 1 user and API access. Pro is $30 a month, or $27 a month billed yearly, for 1,000 new links and 50,000 tracked events a month, 10 custom domains, a year of analytics and 3 users. The Pro box on that page opens on the 5,000-link tier, which is $60 a month, so look for the 1,000-link option. Business is $90 a month, or $81 billed yearly.
+Dub's code is public on GitHub, and it's popular with developers. Its [pricing page](https://dub.co/pricing) is now built around affiliate and partner programs. It lists Business at $90 a month (10,000 new links and 250,000 events a month, 100 custom domains, 10 users), Advanced at $300 a month, and Enterprise with SAML SSO and audit logs. Paid plans have a 14-day trial. Dub also lists plans for short links only on a separate [links pricing page](https://dub.co/pricing/links). Free allows 25 new links and 1,000 events a month, 3 custom domains, 30 days of analytics, 1 user and API access. Pro is $30 a month, or $27 a month billed yearly, for 1,000 new links and 50,000 events a month, 10 custom domains, a year of analytics and 3 users. The Pro box on that page opens on the 5,000-link tier, which is $60 a month, so look for the 1,000-link option. Business is $90 a month, or $81 billed yearly.
 
 It makes sense for software companies that want link tracking tied to referral or affiliate programs. If you only need short links, compare its links plans with the others here before you commit. See [iShortn vs Dub](/compare/dub) and [Dub alternatives](/blog/dub-alternatives).
 
@@ -98,11 +98,11 @@ If the free plan is the only thing you care about, this is what each tool gives 
 | Tool | New links | Click stats | QR codes | Edit destination |
 | --- | --- | --- | --- | --- |
 | Bitly | 5 a month | None | 2 a month | No |
-| iShortn | 30 a month | Location, device, referrer; 7 days, 1,000 events a month | 5 dynamic codes | Yes |
+| iShortn | 30 a month | Location, device, referrer; 7 days, 1,000 tracked clicks a month | 5 dynamic codes | Yes |
 | TinyURL | 30 a month with an account | None | One per link | No |
 | Short.io | 1,000 in total | 50,000 tracked clicks a month | Yes | Yes |
 | Rebrandly | 10 a month | Detailed data on 100 clicks a month | 10 a month, watermarked | No |
-| Dub | 25 a month | 1,000 tracked events a month; 30 days | Yes | Yes |
+| Dub | 25 a month | 1,000 events a month; 30 days | Yes | Yes |
 
 Bitly also shows an ad page before a free link opens.
 
@@ -114,7 +114,7 @@ Bitly's cheapest way to see clicks is Core at $120 a year. Here's what tracking 
 
 | Tool | Cheapest plan with click analytics | What you get |
 | --- | --- | --- |
-| iShortn | Free, or Pro at $8/month | Free: 7 days of history. Pro: full history, 3 custom domains |
+| iShortn | Free, or Pro at $8/month | Free: 7 days of history. Pro: 1 year of detailed history, 3 custom domains |
 | Short.io | Free, or Hobby at $5/month | Free: 50,000 tracked clicks a month. Hobby adds country targeting |
 | TinyURL | Pro, $9/month billed annually | 125 links a month, 3 branded domains |
 | Bitly | Core, $10/month billed annually | 100 links a month, 30 days of history |

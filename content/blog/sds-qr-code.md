@@ -103,7 +103,7 @@ Most phone cameras show the web address before they open it. A safety officer or
 4. **When a revision is published, edit the destination.** Every printed code opens the new file straight away. Destination changes aren't capped on any plan.
 5. **Leave password protection and expiry off** for SDS links, since both would put a barrier in front of the sheet.
 
-Scan analytics show scans over time, countries, cities and devices. [Pro](/pricing) is $8 a month or $80 a year, with 3 custom domains, unlimited QR codes and full scan history. The free plan includes 5 dynamic QR codes on an iShortn domain, enough to test a code on a sample label.
+Scan analytics show scans over time, countries, cities and devices. [Pro](/pricing) is $8 a month or $80 a year, with 3 custom domains, unlimited QR codes and 1 year of detailed scan history. The free plan includes 5 dynamic QR codes on an iShortn domain, enough to test a code on a sample label.
 
 If you cancel Pro, links and codes already on your domain keep redirecting, and you can export your links as CSV or JSON at any time.
 

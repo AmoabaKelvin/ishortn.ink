@@ -26,7 +26,7 @@ import { api } from "@/trpc/react";
 
 import { ResumeSubscriptionButton } from "../../settings/billing/resume-subscription-button";
 import { DowngradeFeedbackModal } from "./downgrade-feedback-modal";
-import { buildPlanChangeCopy, PlanChangeConfirmDialog } from "./plan-change-confirm-dialog";
+import { PlanChangeConfirmDialog } from "./plan-change-confirm-dialog";
 
 import type { BillingInterval, Plan, SubscriptionMode } from "@/lib/billing/plans";
 import type { Promo } from "@/lib/billing/promo";
@@ -224,10 +224,6 @@ export function PricingCards({
     });
   }, [attribution, autoCheckout, createCheckoutOrUpdate, interval, utm]);
 
-  const confirmCopy = pendingChange
-    ? buildPlanChangeCopy(pendingChange.kind, pendingChange.plan.id, interval)
-    : null;
-
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -275,8 +271,8 @@ export function PricingCards({
 
       {fromEventsCap && (
         <p className="mx-auto max-w-2xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center text-[13px] text-amber-700 dark:border-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
-          Pro records {PRO_EVENTS_LIMIT.toLocaleString()} visits a month; Ultra has no limit. Visits
-          from before the upgrade are not recovered.
+          Pro includes {PRO_EVENTS_LIMIT.toLocaleString()} tracked clicks a month; Ultra has no
+          limit. Clicks from before the upgrade are not recovered.
         </p>
       )}
 
@@ -511,14 +507,13 @@ export function PricingCards({
         />
       )}
 
-      {pendingChange && confirmCopy && (
+      {pendingChange && (
         <PlanChangeConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
-          title={confirmCopy.title}
-          description={confirmCopy.description}
-          note={confirmCopy.note}
-          confirmLabel={confirmCopy.confirmLabel}
+          kind={pendingChange.kind}
+          targetPlan={pendingChange.plan.id}
+          interval={interval}
           isLoading={createCheckoutOrUpdateMutation.isLoading}
           onConfirm={() => runUpgrade(pendingChange.plan)}
         />
