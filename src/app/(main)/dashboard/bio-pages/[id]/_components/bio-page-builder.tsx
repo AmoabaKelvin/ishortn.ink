@@ -3,6 +3,7 @@
 import {
   IconAlignLeft,
   IconArrowLeft,
+  IconBrandWhatsapp,
   IconChevronDown,
   IconExternalLink,
   IconHeading,
@@ -64,18 +65,19 @@ import {
 } from "./utils";
 
 import type { Plan } from "@/lib/billing/plans";
-import type { BioBlockType } from "@/server/db/schema";
+import type { BioEditorBlockType } from "@/server/api/routers/bio-page/bio-page.input";
 import type { RouterOutputs } from "@/trpc/shared";
 
 type BioPageData = RouterOutputs["bioPage"]["get"];
 type EditorBlock = BioPageData["blocks"][number];
 
-const ADD_OPTIONS: { type: BioBlockType; label: string; icon: typeof IconLink }[] = [
+const ADD_OPTIONS: { type: BioEditorBlockType; label: string; icon: typeof IconLink }[] = [
   { type: "link", label: "Link", icon: IconLink },
   { type: "heading", label: "Heading", icon: IconHeading },
   { type: "text", label: "Text", icon: IconAlignLeft },
   { type: "social", label: "Social icons", icon: IconWorld },
   { type: "email", label: "Email button", icon: IconMail },
+  { type: "whatsapp", label: "WhatsApp button", icon: IconBrandWhatsapp },
   { type: "divider", label: "Divider", icon: IconLine },
 ];
 
@@ -83,6 +85,8 @@ function toRenderBlock(b: EditorBlock): BioRenderBlock {
   switch (b.type) {
     case "link":
       return { id: b.id, type: "link", title: b.title, href: b.shortUrl };
+    case "whatsapp":
+      return { id: b.id, type: "whatsapp", title: b.title, href: b.shortUrl };
     case "email":
       return { id: b.id, type: "email", title: b.title, href: b.url ? `mailto:${b.url}` : null };
     case "heading":
@@ -124,7 +128,7 @@ export function BioPageBuilder({
   const page = data ?? initialData;
 
   const [settings, setSettings] = useState<BioSettingsDraft>(() => toSettingsDraft(page));
-  const [adding, setAdding] = useState<BioBlockType | null>(null);
+  const [adding, setAdding] = useState<BioEditorBlockType | null>(null);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   // Fixed at mount: only used to label scheduled blocks in the preview.
   const [now] = useState(Date.now);
@@ -161,7 +165,10 @@ export function BioPageBuilder({
   }, [dirty]);
 
   const linkBlockLimit = getBioLinkBlockLimit(plan);
-  const linkBlockCount = page.blocks.filter((b) => b.type === "link").length;
+  // WhatsApp blocks are link blocks underneath and share the cap.
+  const linkBlockCount = page.blocks.filter(
+    (b) => b.type === "link" || b.type === "whatsapp",
+  ).length;
   const atLinkBlockLimit = linkBlockLimit !== undefined && linkBlockCount >= linkBlockLimit;
 
   const refresh = () => utils.bioPage.get.invalidate({ id: pageId });
@@ -222,7 +229,7 @@ export function BioPageBuilder({
     });
   }
 
-  function handleAdd(type: BioBlockType) {
+  function handleAdd(type: BioEditorBlockType) {
     if (type === "divider") {
       addBlock.mutate({ bioPageId: pageId, type: "divider" });
     } else {
@@ -329,7 +336,9 @@ export function BioPageBuilder({
                   {ADD_OPTIONS.map((opt) => (
                     <DropdownMenuItem
                       key={opt.type}
-                      disabled={opt.type === "link" && atLinkBlockLimit}
+                      disabled={
+                        (opt.type === "link" || opt.type === "whatsapp") && atLinkBlockLimit
+                      }
                       onSelect={() => handleAdd(opt.type)}
                     >
                       <opt.icon
@@ -349,8 +358,8 @@ export function BioPageBuilder({
                       Link block limit reached
                     </p>
                     <p className="mt-0.5 text-[12px] text-amber-700 dark:text-amber-400">
-                      Free bio pages can have up to {linkBlockLimit} link blocks. Upgrade to Pro for
-                      unlimited link blocks.
+                      Free bio pages can have up to {linkBlockLimit} link and WhatsApp blocks.
+                      Upgrade to Pro for unlimited blocks.
                     </p>
                   </div>
                   <UpgradeCta
