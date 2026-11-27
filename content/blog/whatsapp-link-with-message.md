@@ -110,7 +110,7 @@ If you use the WhatsApp Business app, it already has a short link and a QR code 
 
 WhatsApp doesn't tell you how many people tapped your link or scanned your code. You see the chats that arrive, but not the people who opened the chat and left without sending.
 
-Shortening the wa.me link with iShortn adds that count. You get clicks by day, country, device and referrer. The free plan shows the last 7 days of analytics and records up to 1,000 events a month. More on reading those numbers in [how to track link clicks](/blog/how-to-track-link-clicks).
+Shortening the wa.me link with iShortn adds that count. You get clicks by day, country, device and referrer. The free plan shows the last 7 days of analytics and records up to 1,000 tracked clicks a month. More on reading those numbers in [how to track link clicks](/blog/how-to-track-link-clicks).
 
 The bigger reason to shorten before you print is that a short link can be edited. A raw wa.me code has your number and message built into the pattern. If a staff member leaves with the shop phone, or you change numbers, every printed menu still opens the old chat. If the code holds a short link, you change where it points and the printed code keeps working. That's how a dynamic QR code works, and it's why [QR codes stop working](/blog/qr-code-stopped-working) when the link inside them dies.
 

@@ -204,10 +204,10 @@ describe("promo paused notice", () => {
       createElement(PromoPausedNoticeEmail, PromoPausedNoticeEmail.PreviewProps),
     );
 
-    expect(html).toContain("1,284 visits");
+    expect(html).toContain("1,284 clicks");
     expect(html).toContain("paused since <!-- -->November 20");
     expect(html).toContain("Counting resumes on its own on <!-- -->December 1");
-    expect(html).toContain("Pro includes 10,000 analytics events a month");
+    expect(html).toContain("Pro includes 10,000 tracked clicks a month");
     expect(html).toContain(
       "Black Friday: Pro is 20% off your first year until Tuesday 1 December.",
     );
@@ -229,7 +229,7 @@ describe("promo paused notice", () => {
       }),
     );
 
-    expect(html).toContain("Ultra has no monthly event cap");
+    expect(html).toContain("Ultra has no monthly cap on tracked clicks");
     expect(html).toContain("Black Friday: Ultra is 20% off your first year");
     expect(html).toContain("Upgrade to Ultra");
     expect(html).toContain('href="https://ishortn.ink/e-paused-ultra"');

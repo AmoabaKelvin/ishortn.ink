@@ -10,7 +10,7 @@ const base = {
 };
 
 describe("sidebarUpgradeReason", () => {
-  test("leads with visits from 60% of the monthly cap", () => {
+  test("leads with tracked clicks from 60% of the monthly cap", () => {
     expect(sidebarUpgradeReason({ ...base, events: { count: 599, limit: 1000 } }).source).toBe(
       "sidebar_free",
     );
@@ -21,13 +21,13 @@ describe("sidebarUpgradeReason", () => {
         qrCodes: { count: 5, limit: 5 },
         signals: { hiddenClicks: 40, workDomain: "acme.com" },
       }),
-    ).toEqual({ source: "sidebar_visits_cap", label: "600 of 1,000 visits used" });
+    ).toEqual({ source: "sidebar_visits_cap", label: "600/1,000 tracked clicks used" });
   });
 
   test("keeps the paused source and caps the count at the limit while tracking is paused", () => {
     expect(visitsUpgradeReason({ count: 1200, limit: 1000, paused: { dropped: 200 } })).toEqual({
       source: "sidebar_events_paused",
-      label: "1,000 of 1,000 visits used",
+      label: "1,000/1,000 tracked clicks used",
     });
   });
 

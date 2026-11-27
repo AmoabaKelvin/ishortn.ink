@@ -156,7 +156,7 @@ The full steps are in [Move your links from Bitly](/docs/migrate-from-bitly) and
 
 iShortn is for people who have outgrown a basic shortener and don't want an enterprise contract. Every plan includes click analytics by location, device, browser and referrer, plus QR codes you can edit. Pro adds custom domains, password protection, geo and device targeting and the API. Ultra adds team workspaces.
 
-The free plan has 30 links a month, 1,000 tracked events and 7 days of analytics. The [pricing page](/pricing) lists every limit.
+The free plan has 30 links a month, 1,000 tracked clicks and 7 days of analytics. The [pricing page](/pricing) lists every limit.
 
 ## Comparing specific platforms
 

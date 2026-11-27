@@ -324,14 +324,14 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
                 <div>
                   <dt className="inline font-medium text-neutral-900">Free: </dt>
                   <dd className={cn(bodyClass, "inline")}>
-                    30 links/month, 1,000 tracked events, 7-day analytics, 5 dynamic QR codes.
+                    30 links/month, 1,000 tracked clicks, 7-day analytics, 5 dynamic QR codes.
                     {isLinkInBio && ` ${freeBioPlanLine}`}
                   </dd>
                 </div>
                 <div>
                   <dt className="inline font-medium text-neutral-900">Pro $8/mo: </dt>
                   <dd className={cn(bodyClass, "inline")}>
-                    1,000 links/month, 10,000 tracked events, 1 year of detailed analytics, 3 custom
+                    1,000 links/month, 10,000 tracked clicks, 1 year of detailed analytics, 3 custom
                     domains, branded + dynamic QR codes, REST API.
                     {isLinkInBio && ` ${proBioPlanLine}`}
                   </dd>

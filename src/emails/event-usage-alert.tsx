@@ -39,15 +39,15 @@ export const EventUsageAlertEmail = ({
   const upgradeLimit = PLAN_CAPS[upgrade.plan].eventsLimit;
   const upgradeOffer =
     upgradeLimit === undefined
-      ? `The ${PLAN_NAMES[upgrade.plan]} plan has no monthly event cap.`
-      : `The ${PLAN_NAMES[upgrade.plan]} plan includes ${upgradeLimit.toLocaleString()} analytics events a month.`;
+      ? `The ${PLAN_NAMES[upgrade.plan]} plan has no monthly cap on tracked clicks.`
+      : `The ${PLAN_NAMES[upgrade.plan]} plan includes ${upgradeLimit.toLocaleString()} tracked clicks a month.`;
 
   return (
     <EmailLayout
       preview={
         capReached
           ? "Analytics recording is paused until your monthly cap resets"
-          : `You've used ${threshold}% of your monthly analytics events`
+          : `You've used ${threshold}% of your monthly tracked clicks`
       }
       notificationSettingsUrl={notificationSettingsUrl}
     >
@@ -56,9 +56,9 @@ export const EventUsageAlertEmail = ({
       {capReached ? (
         <>
           <Text style={text}>
-            You&apos;ve used all {limit.toLocaleString()} analytics events included in the{" "}
-            {planName} plan this month. Your links keep redirecting as normal, but new visits
-            aren&apos;t recorded until your cap resets on {resetDate}.
+            You&apos;ve used all {limit.toLocaleString()} tracked clicks included in the {planName}{" "}
+            plan this month. Your links keep redirecting as normal, but new clicks aren&apos;t
+            recorded until your cap resets on {resetDate}.
           </Text>
           <Text style={text}>{upgradeOffer} Upgrading resumes recording straight away.</Text>
         </>
@@ -66,11 +66,11 @@ export const EventUsageAlertEmail = ({
         <>
           <Text style={text}>
             Heads up: you&apos;ve used {currentCount.toLocaleString()} of the{" "}
-            {limit.toLocaleString()} analytics events included in the {planName} plan this month (
+            {limit.toLocaleString()} tracked clicks included in the {planName} plan this month (
             {threshold}%).
           </Text>
           <Text style={text}>
-            Your links keep redirecting either way, but once you reach the cap new visits
+            Your links keep redirecting either way, but once you reach the cap new clicks
             aren&apos;t recorded until it resets on {resetDate}. {upgradeOffer}
           </Text>
         </>

@@ -32,7 +32,7 @@ function EventMeter({ eventUsage }: { eventUsage: EventUsage }) {
   return (
     <div className="mt-3">
       <div className="flex items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
-        <span>Events</span>
+        <span>Tracked clicks</span>
         <span className="tabular-nums">
           {count.toLocaleString()} / {limit.toLocaleString()}
         </span>
@@ -55,7 +55,7 @@ function EventMeter({ eventUsage }: { eventUsage: EventUsage }) {
               <span className="font-medium tabular-nums">
                 {paused.dropped.toLocaleString()}
               </span>{" "}
-              {paused.dropped === 1 ? "visit" : "visits"} not recorded.
+              {paused.dropped === 1 ? "click" : "clicks"} not recorded.
             </>
           )}
         </p>
@@ -65,7 +65,7 @@ function EventMeter({ eventUsage }: { eventUsage: EventUsage }) {
           <span className="tabular-nums">
             {count.toLocaleString()} of {limit.toLocaleString()}
           </span>{" "}
-          events used{resetsAt ? `, resets ${formatResetDay(resetsAt)}` : ""}.
+          tracked clicks used{resetsAt ? `, resets ${formatResetDay(resetsAt)}` : ""}.
         </p>
       )}
     </div>

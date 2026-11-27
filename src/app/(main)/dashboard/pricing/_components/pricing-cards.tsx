@@ -275,8 +275,8 @@ export function PricingCards({
 
       {fromEventsCap && (
         <p className="mx-auto max-w-2xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center text-[13px] text-amber-700 dark:border-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
-          Pro records {PRO_EVENTS_LIMIT.toLocaleString()} visits a month; Ultra has no limit. Visits
-          from before the upgrade are not recovered.
+          Pro includes {PRO_EVENTS_LIMIT.toLocaleString()} tracked clicks a month; Ultra has no
+          limit. Clicks from before the upgrade are not recovered.
         </p>
       )}
 
