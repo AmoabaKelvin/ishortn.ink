@@ -1,6 +1,7 @@
 import { env } from "@/env.mjs";
 import { logger } from "@/lib/logger";
 
+import { renderEmail } from "./render-email";
 import { getResend } from "./resend-client";
 import { isEmailSuppressed } from "./suppression";
 
@@ -65,13 +66,21 @@ export type SendEmailInput = {
 };
 
 /**
- * Sends one email and reports whether Resend accepted it. Resend v3 returns
- * API failures as `{ error }` instead of throwing, so both paths are logged.
+ * Sends one email, with HTML and plain-text parts, and reports whether Resend accepted it.
+ * Resend v3 returns API failures as `{ error }` instead of throwing, so both paths are logged.
  */
 export async function deliverEmail(
   client: EmailClient | null,
   log: EmailLog,
-  { template, recipientId, context, essential, from = EMAIL_FROM, ...payload }: SendEmailInput,
+  {
+    template,
+    recipientId,
+    context,
+    essential,
+    from = EMAIL_FROM,
+    react,
+    ...payload
+  }: SendEmailInput,
   isSuppressed: SuppressionCheck,
 ): Promise<boolean> {
   if (!client) return false;
@@ -92,7 +101,9 @@ export async function deliverEmail(
   }
 
   try {
-    const { error } = await client.emails.send(withReplyTo({ from, ...payload }));
+    const { error } = await client.emails.send(
+      withReplyTo({ from, ...payload, ...(await renderEmail(react, payload.to)) }),
+    );
     if (!error) return true;
     log.error(
       { ...context, template, recipientId, err: { name: error.name, message: error.message } },

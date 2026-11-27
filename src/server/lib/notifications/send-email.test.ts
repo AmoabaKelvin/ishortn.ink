@@ -102,6 +102,15 @@ describe("deliverEmail", () => {
     expect(client.sent[0]).not.toHaveProperty("template");
   });
 
+  test("sends rendered HTML and plain-text parts instead of the React element", async () => {
+    const client = clientReturning({ data: { id: "email_1" }, error: null });
+
+    expect(await deliverEmail(client, recordingLog(), input, notSuppressed)).toBe(true);
+    expect(client.sent[0]?.html).toContain("<p>Hi</p>");
+    expect(client.sent[0]?.text).toBe("Hi");
+    expect(client.sent[0]).not.toHaveProperty("react");
+  });
+
   test("sets reply_to to the monitored inbox from EMAIL_REPLY_TO", async () => {
     const client = clientReturning({ data: { id: "email_1" }, error: null });
 
@@ -204,7 +213,8 @@ describe("every Resend send", () => {
   );
 
   test("finds the senders", () => {
-    expect(senders.length).toBeGreaterThanOrEqual(4);
+    // grace.ts, api-access-sunset.ts and send-email.ts; everything else goes through sendEmail.
+    expect(senders.length).toBeGreaterThanOrEqual(3);
   });
 
   for (const file of senders) {

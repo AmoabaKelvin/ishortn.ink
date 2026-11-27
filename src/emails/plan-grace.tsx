@@ -1,4 +1,4 @@
-import { Section, Text } from "@react-email/components";
+import { Text } from "@react-email/components";
 
 import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 import { displayName } from "@/lib/utils/user-name";
@@ -7,11 +7,11 @@ import {
   CodeBlock,
   EmailButton,
   EmailLayout,
-  panel,
   panelItem,
   Signoff,
   smallText,
   text,
+  Well,
 } from "./_components/layout";
 
 export type PlanGraceEmailProps = {
@@ -100,13 +100,13 @@ export const PlanGraceEmail = (props: PlanGraceEmailProps) => {
       <Text style={text}>{intro(props)}</Text>
 
       {items.length > 0 && (
-        <Section style={panel}>
+        <Well>
           {items.map((item) => (
             <Text key={item} style={panelItem}>
               {item}
             </Text>
           ))}
-        </Section>
+        </Well>
       )}
 
       <Text style={text}>

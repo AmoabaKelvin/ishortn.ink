@@ -3,6 +3,7 @@ import { formatSunsetDate } from "@/lib/billing/api-access";
 import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 import { logger } from "@/lib/logger";
 
+import { renderEmail } from "./render-email";
 import { getResend } from "./resend-client";
 import { EMAIL_FROM, withReplyTo } from "./send-email";
 
@@ -21,7 +22,13 @@ export type ApiSunsetRecipient = {
 /** Resend's batch endpoint takes up to 100 emails per call. */
 export const API_SUNSET_EMAIL_BATCH_SIZE = 100;
 
-function toEmail(recipient: ApiSunsetRecipient) {
+async function toEmail(recipient: ApiSunsetRecipient) {
+  const react = ApiAccessSunsetEmail({
+    userName: recipient.name,
+    sunsetDate: formatSunsetDate(recipient.sunsetAt),
+    upgradeUrl: emailLinkUrl(EMAIL_LINKS.apiAccessSunset.pricing),
+    kind: recipient.kind,
+  });
   return withReplyTo({
     from: EMAIL_FROM,
     to: recipient.email,
@@ -29,12 +36,7 @@ function toEmail(recipient: ApiSunsetRecipient) {
       recipient.kind === "reminder"
         ? "Your iShortn API key stops working tomorrow"
         : "iShortn API access is moving to Pro",
-    react: ApiAccessSunsetEmail({
-      userName: recipient.name,
-      sunsetDate: formatSunsetDate(recipient.sunsetAt),
-      upgradeUrl: emailLinkUrl(EMAIL_LINKS.apiAccessSunset.pricing),
-      kind: recipient.kind,
-    }),
+    ...(await renderEmail(react, recipient.email)),
   });
 }
 
@@ -53,7 +55,7 @@ export async function sendApiSunsetEmails(recipients: ApiSunsetRecipient[]): Pro
   }
 
   try {
-    const { error } = await client.batch.send(recipients.map(toEmail));
+    const { error } = await client.batch.send(await Promise.all(recipients.map(toEmail)));
     if (!error) return recipients.map((recipient) => recipient.userId);
     log.warn(
       { err: error, count: recipients.length },
@@ -66,7 +68,7 @@ export async function sendApiSunsetEmails(recipients: ApiSunsetRecipient[]): Pro
   const sent: string[] = [];
   for (const recipient of recipients) {
     try {
-      const { error } = await client.emails.send(toEmail(recipient));
+      const { error } = await client.emails.send(await toEmail(recipient));
       if (error) {
         log.error({ err: error, userId: recipient.userId }, "sunset email rejected");
       } else {
