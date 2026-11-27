@@ -4,21 +4,37 @@ import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { link, linkCreationFailure } from "@/server/db/schema";
 import { parseScrapedPage } from "@/server/lib/metadata";
 
-import { createLink } from "./link.service";
+import { createLink, shortenLinkWithAutoAlias } from "./link.service";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type { LinkCreationFailure } from "@/server/lib/link-creation/failures";
+import type { MySqlTable } from "drizzle-orm/mysql-core";
 
 type InsertedLink = { url: string; name: string; alias: string; domain: string };
 
-// In-memory stand-in for the queries createLink makes on a free personal
-// workspace: the plan lookup, the reserved-alias check for the generated alias
-// (none reserved), the link insert, failure records, the monthly count update
-// and the first-link check (no other links). `failInsert` makes the link insert
-// throw like a database outage would.
-function fakeContext({ failInsert = false } = {}) {
+type FakeContextOptions = {
+  failInsert?: boolean;
+  /** Rows the first-link check finds: the workspace's other short links. */
+  otherLinks?: { id: number }[];
+  failFirstLinkCheck?: boolean;
+  team?: boolean;
+};
+
+// In-memory stand-in for the queries createLink and shortenLinkWithAutoAlias make:
+// the plan and default-domain lookups (free plan, no saved domain), the
+// reserved-alias check for the generated alias (none reserved), the link insert,
+// failure records, the monthly count update and the first-link check.
+// `failInsert` and `failFirstLinkCheck` make that query throw like a database
+// outage would; `team` makes it an Ultra team workspace.
+function fakeContext({
+  failInsert = false,
+  otherLinks = [],
+  failFirstLinkCheck = false,
+  team = false,
+}: FakeContextOptions = {}) {
   const inserted: InsertedLink[] = [];
   const recordedFailures: LinkCreationFailure[] = [];
+  const firstLinkChecks: number[] = [];
   const db = {
     query: {
       user: {
@@ -30,8 +46,20 @@ function fakeContext({ failInsert = false } = {}) {
           subscriptions: null,
         }),
       },
+      team: { findFirst: async () => ({ id: 3, defaultDomain: null }) },
     },
-    select: () => ({ from: () => ({ where: () => ({ limit: async () => [] }) }) }),
+    select: () => ({
+      from: (table: MySqlTable) => ({
+        where: () => ({
+          limit: async () => {
+            if (table !== link) return [];
+            firstLinkChecks.push(1);
+            if (failFirstLinkCheck) throw new Error("connect ECONNREFUSED");
+            return otherLinks;
+          },
+        }),
+      }),
+    }),
     insert: (table: typeof link | typeof linkCreationFailure) => ({
       values: async (values: InsertedLink | LinkCreationFailure[]) => {
         if (table === linkCreationFailure && Array.isArray(values)) {
@@ -50,21 +78,20 @@ function fakeContext({ failInsert = false } = {}) {
     // The link insert runs in a transaction; the stub hands the callback itself as `tx`.
     transaction: async <T>(run: (tx: typeof db) => Promise<T>) => run(db),
   };
-  // SAFETY: createLink without tags, geo rules, campaign or image only reaches
+  const workspace = team
+    ? { type: "team", userId: "user_1", teamId: 3, teamSlug: "acme", role: "owner", plan: "ultra" }
+    : {
+        type: "personal",
+        userId: "user_1",
+        teamId: null,
+        teamSlug: null,
+        role: "owner",
+        plan: "free",
+      };
+  // SAFETY: link creation without tags, geo rules, campaign or image only reaches
   // the db methods stubbed above, plus ctx.workspace and ctx.auth.userId.
-  const ctx = {
-    db,
-    auth: { userId: "user_1" },
-    workspace: {
-      type: "personal",
-      userId: "user_1",
-      teamId: null,
-      teamSlug: null,
-      role: "owner",
-      plan: "free",
-    },
-  } as WorkspaceTRPCContext;
-  return { ctx, inserted, recordedFailures };
+  const ctx = { db, auth: { userId: "user_1" }, workspace } as WorkspaceTRPCContext;
+  return { ctx, inserted, recordedFailures, firstLinkChecks };
 }
 
 // Safety layers that pass the URL without network or database calls.
@@ -74,6 +101,7 @@ const allowUrl = {
   rememberVerdict: () => {},
   scrape: async (url: string) => parseScrapedPage("<title>Page</title>", url, 200, new Headers()),
   detect: async (url: string) => ({ url, phishing: false }),
+  checkAfterResponse: async () => {},
 };
 const noMetadata = async () => ({ title: "", description: "", image: "", favicon: "" });
 const URL = "https://example.com/page";
@@ -172,5 +200,44 @@ describe("createLink", () => {
     expect(recordedFailures).toEqual([
       { source: "dashboard", step: "validation", code: "FORBIDDEN", serverError: false },
     ]);
+  });
+});
+
+describe("first-link flag", () => {
+  const deps = { ...allowUrl, fetchMetadata: noMetadata };
+
+  test("is false when the free workspace already has another link", async () => {
+    const { ctx, firstLinkChecks } = fakeContext({ otherLinks: [{ id: 3 }] });
+    expect(await createLink(ctx, { url: URL }, deps)).toMatchObject({ isFirstLink: false });
+    expect(await shortenLinkWithAutoAlias(ctx, { url: URL }, deps)).toMatchObject({
+      isFirstLink: false,
+    });
+    expect(firstLinkChecks).toHaveLength(2);
+  });
+
+  test("is true for the quick-create path when no other link exists", async () => {
+    const { ctx, inserted } = fakeContext();
+    const result = await shortenLinkWithAutoAlias(ctx, { url: URL }, deps);
+    expect(result).toEqual({
+      id: 7,
+      alias: inserted[0]!.alias,
+      domain: DEFAULT_PLATFORM_DOMAIN,
+      isFirstLink: true,
+    });
+  });
+
+  test("is false on a paid team workspace without running the lookup", async () => {
+    const { ctx, firstLinkChecks } = fakeContext({ team: true });
+    expect(await createLink(ctx, { url: URL }, deps)).toMatchObject({ isFirstLink: false });
+    expect(await shortenLinkWithAutoAlias(ctx, { url: URL }, deps)).toMatchObject({
+      isFirstLink: false,
+    });
+    expect(firstLinkChecks).toEqual([]);
+  });
+
+  test("is false when the lookup fails, without failing link creation", async () => {
+    const { ctx, inserted } = fakeContext({ failFirstLinkCheck: true });
+    expect(await createLink(ctx, { url: URL }, deps)).toMatchObject({ isFirstLink: false });
+    expect(inserted).toHaveLength(1);
   });
 });

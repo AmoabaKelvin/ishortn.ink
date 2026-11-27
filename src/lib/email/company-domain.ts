@@ -48,8 +48,9 @@ const FREE_MAIL_DOMAINS = new Set([
 const SECOND_LEVEL_SUFFIXES = new Set(["co", "com", "net", "org"]);
 
 /**
- * The domain of a company address, or null for free-mail providers and addresses without one.
- * Used to offer a custom domain built on the user's own company name.
+ * The registrable domain of a company address (jane@eu.acme.com gives acme.com), or null for
+ * free-mail providers and addresses without one. Used to offer a custom domain built on the
+ * user's own company name.
  */
 export function companyEmailDomain(email: string | null | undefined): string | null {
   const domain = email?.split("@")[1]?.trim().toLowerCase();
@@ -59,6 +60,7 @@ export function companyEmailDomain(email: string | null | undefined): string | n
   const labels = domain.split(".");
   const hasSecondLevelSuffix =
     labels.length >= 3 && SECOND_LEVEL_SUFFIXES.has(labels[labels.length - 2]!);
-  const provider = labels[labels.length - (hasSecondLevelSuffix ? 3 : 2)];
-  return provider && FREE_MAIL_PROVIDERS.has(provider) ? null : domain;
+  const registrable = labels.slice(-(hasSecondLevelSuffix ? 3 : 2));
+  const provider = registrable[0];
+  return !provider || FREE_MAIL_PROVIDERS.has(provider) ? null : registrable.join(".");
 }

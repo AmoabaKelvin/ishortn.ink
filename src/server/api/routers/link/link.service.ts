@@ -1267,15 +1267,17 @@ export const retrieveOriginalUrl = async (
 export const shortenLinkWithAutoAlias = (
   ctx: WorkspaceTRPCContext,
   input: QuickLinkShorteningInput,
+  deps: LinkCreationDeps = {},
 ) =>
   trackLinkCreation(ctx.db, "dashboard", ctx.auth.userId, (attempt) =>
-    shortenLinkSteps(ctx, input, attempt),
+    shortenLinkSteps(ctx, input, attempt, deps),
   );
 
 const shortenLinkSteps = async (
   ctx: WorkspaceTRPCContext,
   input: QuickLinkShorteningInput,
   attempt: LinkCreationAttempt,
+  { fetchMetadata = scrapeMetadata, ...safetyDeps }: LinkCreationDeps,
 ) => {
   const { plan, currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
 
@@ -1286,10 +1288,10 @@ const shortenLinkSteps = async (
   const alias = await generateUnreservedAlias(ctx.db, domain);
 
   attempt.step = "safety";
-  const afterCreate = await checkLinkUrl(ctx, input.url);
+  const afterCreate = await checkLinkUrl(ctx, input.url, safetyDeps);
 
   attempt.step = "metadata";
-  const fetchedMetadata = await fetchMetadataFailOpen(scrapeMetadata, input.url);
+  const fetchedMetadata = await fetchMetadataFailOpen(fetchMetadata, input.url);
   const name = fetchedMetadata?.title ?? "Untitled Link";
   const tagNames = input.tags ?? [];
   const ownership = workspaceOwnership(ctx.workspace);

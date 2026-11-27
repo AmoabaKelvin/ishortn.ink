@@ -9,6 +9,12 @@ describe("companyEmailDomain", () => {
     expect(companyEmailDomain("ops@studio.io")).toBe("studio.io");
   });
 
+  test("drops mail subdomains so the offer is built on the company's own domain", () => {
+    expect(companyEmailDomain("jane@eu.acme.com")).toBe("acme.com");
+    expect(companyEmailDomain("jane@mail.acme-tools.co.uk")).toBe("acme-tools.co.uk");
+    expect(companyEmailDomain("a@mail.yahoo.co.uk")).toBeNull();
+  });
+
   test("treats the big free-mail providers and their regional domains as free mail", () => {
     for (const email of [
       "a@gmail.com",
