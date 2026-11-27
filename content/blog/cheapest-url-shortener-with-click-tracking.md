@@ -28,7 +28,7 @@ We make iShortn, one of the tools below. Every competitor number comes from that
 
 Sources: [Short.io pricing](https://short.io/pricing), [iShortn pricing](/pricing), [TinyURL pricing](https://tinyurl.com/app/pricing), [Bitly pricing](https://bitly.com/pages/pricing), [Rebrandly pricing](https://www.rebrandly.com/pricing), [Cutt.ly pricing](https://cutt.ly/pricing), [Dub pricing](https://dub.co/pricing/links).
 
-Short.io is the cheapest on paper, and if 2,500 links in total will last you, it's a good deal. If you share links every week and want the count to reset each month, iShortn Pro is the cheapest plan here that gives you 1,000 new links every month along with full analytics history and your own domain.
+Short.io is the cheapest on paper, and if 2,500 links in total will last you, it's a good deal. If you share links every week and want the count to reset each month, iShortn Pro is the cheapest plan here that gives you 1,000 new links every month along with a full year of detailed analytics and your own domain.
 
 ## Free URL shorteners with click tracking
 
@@ -96,7 +96,7 @@ If your clicks come from a campaign, tag the destination first with our free [UT
 
 ### What is the cheapest URL shortener with analytics?
 
-Short.io Hobby at $5 a month is the cheapest paid plan with click tracking, but it caps you at 2,500 links in total. iShortn Pro at $8 a month ($6.67 yearly) is the cheapest plan here with 1,000 new links every month and unlimited analytics history.
+Short.io Hobby at $5 a month is the cheapest paid plan with click tracking, but it caps you at 2,500 links in total. iShortn Pro at $8 a month ($6.67 yearly) is the cheapest plan here with 1,000 new links every month and a full year of detailed analytics.
 
 ### Is there a free URL shortener with click tracking?
 
@@ -104,7 +104,7 @@ Yes. iShortn, Short.io, Cutt.ly and Dub all track clicks on their free plans. Bi
 
 ### What is the cheapest alternative to Bitly for link tracking?
 
-Bitly Core costs $10 a month, billed yearly only, and keeps 30 days of click data. Short.io Hobby ($5) and iShortn Pro ($8, with 3 custom domains and unlimited history) both cost less. If you only track a few links, several free plans will do. Our breakdown of [Bitly's free plan limits](/blog/bitly-free-plan-limits) shows what Bitly's free tier still includes.
+Bitly Core costs $10 a month, billed yearly only, and keeps 30 days of click data. Short.io Hobby ($5) and iShortn Pro ($8, with 3 custom domains and a full year of detailed analytics) both cost less. If you only track a few links, several free plans will do. Our breakdown of [Bitly's free plan limits](/blog/bitly-free-plan-limits) shows what Bitly's free tier still includes.
 
 ## Try iShortn for free
 

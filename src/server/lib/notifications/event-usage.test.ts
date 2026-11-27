@@ -6,11 +6,12 @@ import { createElement } from "react";
 import EventUsageAlertEmail from "@/emails/event-usage-alert";
 import { PLAN_CAPS, type Plan } from "@/lib/billing/plans";
 import { ACTIVE_PROMO, type Promo } from "@/lib/billing/promo";
+import { ALL_EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 
 import { eventUsagePromo, eventUsageUpgrade } from "./event-usage";
 
 const renderAlert = async (plan: Plan, threshold: number, promo: Promo | null = null) => {
-  const upgrade = eventUsageUpgrade(plan, threshold, promo);
+  const upgrade = eventUsageUpgrade(plan, threshold);
   if (!upgrade) throw new Error(`no upgrade for ${plan}`);
   const limit = PLAN_CAPS[plan].eventsLimit ?? 0;
   const html = await render(
@@ -24,21 +25,26 @@ const renderAlert = async (plan: Plan, threshold: number, promo: Promo | null = 
       promo,
     }),
   );
-  const href = html.match(/href="([^"]*\/dashboard\/pricing[^"]*)"/)?.[1]?.replaceAll("&amp;", "&");
-  return { html, url: new URL(href ?? "") };
+  // The button is a tracked short link; check where it leads and how it is tagged.
+  const link = ALL_EMAIL_LINKS.find((l) => html.includes(`href="${emailLinkUrl(l)}"`));
+  if (!link) throw new Error("no tracked upgrade link");
+  return { html, link, url: new URL(link.path, "https://ishortn.ink") };
 };
 
 describe("event usage alert email", () => {
   test("a Free user at the cap gets a tracked Upgrade to Pro link", async () => {
-    const { html, url } = await renderAlert("free", 100);
+    const { html, link, url } = await renderAlert("free", 100);
     expect(html).toContain("Upgrade to Pro");
     expect(html).not.toContain("Compare plans");
     expect(url.pathname).toBe("/dashboard/pricing");
     expect(url.searchParams.get("highlight")).toBe("pro");
     expect(url.searchParams.get("source")).toBe("events_email_100");
-    expect(url.searchParams.get("utm_source")).toBe("ishortn");
-    expect(url.searchParams.get("utm_medium")).toBe("email");
-    expect(url.searchParams.get("utm_campaign")).toBe("event-cap");
+    expect(link.utm).toEqual({
+      utm_source: "email",
+      utm_medium: "transactional",
+      utm_campaign: "event_usage",
+      utm_content: "pro_100",
+    });
     expect(url.searchParams.has("plan")).toBe(false);
     expect(html).toContain("new visits aren&#x27;t recorded until your cap resets on");
     expect(html).toContain(
@@ -51,7 +57,6 @@ describe("event usage alert email", () => {
     expect(html).toContain("Upgrade to Ultra");
     expect(url.searchParams.get("highlight")).toBe("ultra");
     expect(url.searchParams.get("source")).toBe("events_email_80");
-    expect(url.searchParams.get("utm_campaign")).toBe("event-cap");
     expect(html).toContain("The Ultra plan has no monthly event cap.");
   });
 
@@ -64,14 +69,13 @@ describe("event usage alert email", () => {
     expect(html).not.toContain("Black Friday");
   });
 
-  test("a Free user inside the promo gets the offer and the promo campaign", async () => {
+  test("a Free user inside the promo gets the offer", async () => {
     const { html, url } = await renderAlert("free", 90, ACTIVE_PROMO);
     expect(html).toContain(
       "Black Friday: Pro is 20% off your first year until Tuesday 1 December.",
     );
     expect(html).toContain("Upgrading resumes tracking straight away.");
     expect(url.searchParams.get("source")).toBe("events_email_90");
-    expect(url.searchParams.get("utm_campaign")).toBe(ACTIVE_PROMO.utmCampaign);
   });
 });
 

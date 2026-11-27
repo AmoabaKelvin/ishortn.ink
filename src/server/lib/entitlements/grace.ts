@@ -25,13 +25,14 @@ import {
 } from "@/lib/billing/entitlements";
 import { getPlanCaps } from "@/lib/billing/plans";
 import { getAppUrl } from "@/lib/constants/domains";
+import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { subscription, team, user } from "@/server/db/schema";
 import { renderEmail } from "@/server/lib/notifications/render-email";
 import { getResend } from "@/server/lib/notifications/resend-client";
-import { EMAIL_FROM } from "@/server/lib/notifications/send-email";
+import { EMAIL_FROM_SYSTEM, withReplyTo } from "@/server/lib/notifications/send-email";
 
 import {
   FAILED_PAYMENT_STATUSES,
@@ -725,7 +726,8 @@ function timeLeft(endsAt: Date, now: Date): string {
 }
 
 // pricing-cards.tsx opens on the plan named in `?plan=`.
-const upgradeUrl = (plan: Plan) => getAppUrl(`/dashboard/pricing?plan=${plan}`);
+const upgradeUrl = (plan: Plan) =>
+  plan === "free" ? getAppUrl("/dashboard/pricing") : emailLinkUrl(EMAIL_LINKS.planGrace[plan]);
 
 function accountSubject(
   kind: GraceEmailKind,
@@ -999,12 +1001,14 @@ export async function sendDueGraceEmails(options: {
     let error: Error | null = null;
     try {
       const emails = await Promise.all(
-        batch.map(async (email) => ({
-          from: EMAIL_FROM,
-          to: email.to,
-          subject: email.subject,
-          ...(await renderEmail(PlanGraceEmail(email.props), email.to)),
-        })),
+        batch.map(async (email) =>
+          withReplyTo({
+            from: EMAIL_FROM_SYSTEM,
+            to: email.to,
+            subject: email.subject,
+            ...(await renderEmail(PlanGraceEmail(email.props), email.to)),
+          }),
+        ),
       );
       ({ error } = await resend.batch.send(emails));
     } catch (err) {

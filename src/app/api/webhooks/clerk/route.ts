@@ -102,7 +102,6 @@ export async function POST(req: Request) {
       recipientId: id,
       to: userInfo.email,
       essential: false,
-      from: env.EMAIL_FROM ?? "Kelvin <developer@ishortn.ink>",
       subject: "Welcome to iShortn",
       react: WelcomeEmail({ userName: userInfo.name }),
       context: { eventId: id, eventType },

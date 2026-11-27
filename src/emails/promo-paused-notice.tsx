@@ -3,6 +3,7 @@ import { Text } from "@react-email/components";
 import { PLAN_NAMES } from "@/lib/billing/entitlements";
 import { PLAN_CAPS } from "@/lib/billing/plans";
 import { ACTIVE_PROMO, promoOfferLine, type Promo } from "@/lib/billing/promo";
+import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 import { displayName } from "@/lib/utils/user-name";
 
 import { EmailButton, EmailLayout, Signoff, text } from "./_components/layout";
@@ -75,7 +76,7 @@ PromoPausedNoticeEmail.PreviewProps = {
   upgrade: {
     plan: "pro",
     label: "Upgrade to Pro",
-    url: "https://ishortn.ink/dashboard/pricing?highlight=pro&source=events_promo_email&utm_source=ishortn&utm_medium=email&utm_campaign=bfcm2026",
+    url: emailLinkUrl(EMAIL_LINKS.promoPaused.pro),
   },
   notificationSettingsUrl: "https://ishortn.ink/dashboard/settings#notifications",
 } satisfies PromoPausedNoticeEmailProps;

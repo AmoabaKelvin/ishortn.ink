@@ -51,7 +51,7 @@ export function buildLlmsTxt({
     `## Plans (prices in USD, from ${SITE}/pricing)
 
 - Free, $${prices.free}: ${fmt(free.linksLimit)} links a month, ${fmt(free.eventsLimit)} tracked events a month, ${free.analyticsRangeLimitDays}-day analytics window, ${freeQrCodeLimit} dynamic QR codes (edit anytime, never expire, no ads), ${plural(free.bioPageLimit, "link-in-bio page")} with up to ${plural(free.bioLinkBlocksPerPageLimit, "link block")}, ${plural(free.campaignLimit, "campaign")}. Short links use isht.app. No custom domains, no API.
-- Pro, $${prices.pro} a month or $${annualPrices.pro} a year: ${fmt(pro.linksLimit)} links a month, ${fmt(pro.eventsLimit)} tracked events, unlimited analytics history, ${plural(pro.domainLimit, "custom domain")}, branded and dynamic QR codes, ${plural(pro.bioPageLimit, "link-in-bio page")} on a custom domain without branding, geo and device targeting, password protection, scheduled links, UTM parameters on links, REST API and MCP server.
+- Pro, $${prices.pro} a month or $${annualPrices.pro} a year: ${fmt(pro.linksLimit)} links a month, ${fmt(pro.eventsLimit)} tracked events, 1 year of detailed analytics, ${plural(pro.domainLimit, "custom domain")}, branded and dynamic QR codes, ${plural(pro.bioPageLimit, "link-in-bio page")} on a custom domain without branding, geo and device targeting, password protection, scheduled links, UTM parameters on links, REST API and MCP server.
 - Ultra, $${prices.ultra} a month or $${annualPrices.ultra} a year: unlimited links, events and custom domains, team workspaces, link cloaking, UTM templates, unlimited bio pages and campaigns, priority support.`,
     `## Facts
 

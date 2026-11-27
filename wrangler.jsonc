@@ -52,6 +52,9 @@
   "vars": {
     // Lifecycle email (weekly summary, upgrade nudge) sender, on its own sending subdomain.
     "EMAIL_FROM_LIFECYCLE": "iShortn <hello@updates.ishortn.ink>",
+    // Monitored inbox that replies to every product email go to. It must accept mail (MX on
+    // mail.ishortn.ink); unset it to fall back to replies reaching the sender address.
+    "EMAIL_REPLY_TO": "kelvin@mail.ishortn.ink",
     // Browser extension redirect URIs allowed by /extension/connect, comma-separated. Matched
     // exactly, trailing slash included. Chrome Web Store build:
     "EXTENSION_REDIRECT_URIS": "https://opkikfbhepmnlnblmjnfjgjeonadekdj.chromiumapp.org/",

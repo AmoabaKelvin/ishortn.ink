@@ -40,7 +40,7 @@ Thirty days of click data is enough to check last week's post. It isn't enough f
 
 | | Own domain from | UTM help | Click history | Editing links | Shared access |
 |---|---|---|---|---|---|
-| **iShortn** | Pro, $8/mo (3 domains) | Free UTM builder; campaign UTM defaults on Pro; UTM fields and templates in the editor on Ultra | 7 days on Free; unlimited on Pro | Every plan | Ultra, $15/mo |
+| **iShortn** | Pro, $8/mo (3 domains) | Free UTM builder; campaign UTM defaults on Pro; UTM fields and templates in the editor on Ultra | 7 days on Free; 1 year on Pro; unlimited on Ultra | Every plan | Ultra, $15/mo |
 | **Bitly** | Growth, $29/mo billed yearly | UTM builder from Core | 30 days (Core), 4 months (Growth), 1 year (Premium) | From Core | Teams, custom pricing |
 | **Short.io** | Free (5 domains) | UTM builder on every plan | Not listed | Every plan | Team, $48/mo |
 | **Rebrandly** | Free (1 domain, 10 links/mo); Essentials, $11/mo billed yearly, has 2 | UTM builder on every plan | Not listed | 10 edits/mo on Essentials | Professional, $32/mo billed yearly |
