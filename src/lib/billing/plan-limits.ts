@@ -5,6 +5,8 @@ export const PLAN_LIMIT_KEYS = [
   "bulk_qr_codes",
   "bio_pages",
   "bio_link_blocks",
+  "bio_embed_blocks",
+  "bio_image_blocks",
   "campaigns",
   "custom_domains",
   "folders",

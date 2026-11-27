@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  bioBlockLimitSource,
   formatMutationError,
   getBlockPreviewNote,
   getSlugError,
@@ -101,5 +102,32 @@ describe("getBlockPreviewNote", () => {
     expect(
       getBlockPreviewNote({ ...base, scheduledUntil: new Date("2026-11-20T11:00:00Z") }, now),
     ).toBe("Ended");
+  });
+
+  test("an image block behind a blocked link is flagged like a link block", () => {
+    expect(getBlockPreviewNote({ ...base, type: "image", blocked: true }, now)).toBe(
+      "Blocked, not shown",
+    );
+  });
+});
+
+describe("bioBlockLimitSource", () => {
+  test("names the gate from the server's message", () => {
+    expect(
+      bioBlockLimitSource(
+        "The free plan allows 1 embed block per bio page. Upgrade to Pro for unlimited embeds.",
+      ),
+    ).toBe("bio_embed_block_limit");
+    expect(bioBlockLimitSource("Image blocks are available on Pro and Ultra plans.")).toBe(
+      "bio_image_blocks",
+    );
+    expect(bioBlockLimitSource("Scheduled blocks are available on the Ultra plan.")).toBe(
+      "bio_scheduled_blocks",
+    );
+    expect(
+      bioBlockLimitSource(
+        "The free plan allows 3 link blocks per bio page. Upgrade to Pro for unlimited link blocks.",
+      ),
+    ).toBe("bio_link_block_limit");
   });
 });

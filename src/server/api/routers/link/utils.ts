@@ -69,7 +69,7 @@ export async function verifyLinkOwnership(ctx: WorkspaceTRPCContext, linkId: num
 
 /**
  * On plans that cap link blocks per bio page (free), bio link blocks are
- * limited by that cap (`lockBioLinkBlockCapacity`) instead, so they neither
+ * limited by that cap (`lockBioBlockCapacity`) instead, so they neither
  * consume nor are blocked by the monthly link quota. Uncapped plans count them
  * like any other link, or they would escape the monthly quota entirely.
  */

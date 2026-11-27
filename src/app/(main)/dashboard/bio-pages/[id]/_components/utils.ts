@@ -104,10 +104,22 @@ export function getBlockPreviewNote(
   now: number,
 ): string | null {
   if (!block.isVisible) return "Hidden";
-  if ((block.type === "link" || block.type === "whatsapp") && block.blocked) {
+  if (
+    (block.type === "link" || block.type === "whatsapp" || block.type === "image") &&
+    block.blocked
+  ) {
     return "Blocked, not shown";
   }
   if (block.scheduledAt && block.scheduledAt.getTime() > now) return "Scheduled";
   if (block.scheduledUntil && block.scheduledUntil.getTime() <= now) return "Ended";
   return null;
+}
+
+// Upgrade source for a plan rejection when adding or editing a block, from the
+// gate named in the server's message.
+export function bioBlockLimitSource(message: string): string {
+  if (/schedul/i.test(message)) return "bio_scheduled_blocks";
+  if (/embed/i.test(message)) return "bio_embed_block_limit";
+  if (/image block/i.test(message)) return "bio_image_blocks";
+  return "bio_link_block_limit";
 }

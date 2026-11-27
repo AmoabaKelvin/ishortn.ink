@@ -10,6 +10,8 @@ import {
   IconLine,
   IconLink,
   IconMail,
+  IconPhoto,
+  IconPlayerPlay,
   IconPlus,
   IconWorld,
 } from "@tabler/icons-react";
@@ -45,10 +47,15 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UpgradeCta } from "@/components/upgrade-cta";
 import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
-import { getBioLinkBlockLimit } from "@/lib/billing/plans";
+import {
+  canUseBioImageBlocks,
+  getBioEmbedBlockLimit,
+  getBioLinkBlockLimit,
+} from "@/lib/billing/plans";
 import { isPlanLimitError, requiredPlanForLimit } from "@/lib/billing/required-plan";
 import { api } from "@/trpc/react";
 
+import { PlanBadge } from "../../../_components/section-toggle";
 import { useUpgradeOffer } from "../../../_components/upgrade-offer";
 import { AnalyticsPanel } from "./analytics-panel";
 import { BlockFormDialog } from "./block-form-dialog";
@@ -56,6 +63,7 @@ import { BlockList } from "./block-list";
 import { PageQrDialog } from "./page-qr-dialog";
 import { SettingsPanel } from "./settings-panel";
 import {
+  bioBlockLimitSource,
   formatMutationError,
   getBlockPreviewNote,
   getSlugError,
@@ -78,10 +86,14 @@ const ADD_OPTIONS: { type: BioEditorBlockType; label: string; icon: typeof IconL
   { type: "social", label: "Social icons", icon: IconWorld },
   { type: "email", label: "Email button", icon: IconMail },
   { type: "whatsapp", label: "WhatsApp button", icon: IconBrandWhatsapp },
+  { type: "embed", label: "Embed", icon: IconPlayerPlay },
+  { type: "image", label: "Image", icon: IconPhoto },
   { type: "divider", label: "Divider", icon: IconLine },
 ];
 
-function toRenderBlock(b: EditorBlock): BioRenderBlock {
+const IMAGE_BLOCKS_MESSAGE = "Image blocks are available on Pro and Ultra plans.";
+
+function toRenderBlock(b: EditorBlock): BioRenderBlock | null {
   switch (b.type) {
     case "link":
       return { id: b.id, type: "link", title: b.title, href: b.shortUrl };
@@ -95,6 +107,27 @@ function toRenderBlock(b: EditorBlock): BioRenderBlock {
       return { id: b.id, type: "text", content: b.content };
     case "social":
       return { id: b.id, type: "social", socials: b.socials ?? [] };
+    case "embed":
+      // Content the server couldn't parse renders nothing, as on the public page.
+      return b.embed
+        ? {
+            id: b.id,
+            type: "embed",
+            title: b.title || b.embed.title || null,
+            provider: b.embed.provider,
+            embedId: b.embed.embedId,
+          }
+        : null;
+    case "image":
+      return {
+        id: b.id,
+        type: "image",
+        src: b.content,
+        alt: b.title,
+        href: b.shortUrl,
+        width: b.imageWidth,
+        height: b.imageHeight,
+      };
     default:
       return { id: b.id, type: "divider" };
   }
@@ -170,6 +203,10 @@ export function BioPageBuilder({
     (b) => b.type === "link" || b.type === "whatsapp",
   ).length;
   const atLinkBlockLimit = linkBlockLimit !== undefined && linkBlockCount >= linkBlockLimit;
+  const embedBlockLimit = getBioEmbedBlockLimit(plan);
+  const embedBlockCount = page.blocks.filter((b) => b.type === "embed").length;
+  const atEmbedBlockLimit = embedBlockLimit !== undefined && embedBlockCount >= embedBlockLimit;
+  const canAddImages = canUseBioImageBlocks(plan);
 
   const refresh = () => utils.bioPage.get.invalidate({ id: pageId });
 
@@ -204,7 +241,7 @@ export function BioPageBuilder({
       if (isPlanLimitError(e)) {
         notifyPlanLimit(
           e.message,
-          /schedul/i.test(e.message) ? "bio_scheduled_blocks" : "bio_link_block_limit",
+          bioBlockLimitSource(e.message),
           requiredPlanForLimit(e.message, plan),
           upgradeOffer,
         );
@@ -232,6 +269,9 @@ export function BioPageBuilder({
   function handleAdd(type: BioEditorBlockType) {
     if (type === "divider") {
       addBlock.mutate({ bioPageId: pageId, type: "divider" });
+    } else if (type === "image" && !canAddImages) {
+      // The server refuses it too; this saves picking and uploading an image first.
+      notifyPlanLimit(IMAGE_BLOCKS_MESSAGE, "bio_image_blocks", "pro", upgradeOffer);
     } else {
       setAdding(type);
     }
@@ -246,10 +286,10 @@ export function BioPageBuilder({
     removeBranding: settings.removeBranding,
     // Unlike the public page, keep hidden, scheduled and blocked blocks but label
     // them, so the preview explains why the live page differs.
-    blocks: page.blocks.map((b) => ({
-      ...toRenderBlock(b),
-      previewNote: getBlockPreviewNote(b, now),
-    })),
+    blocks: page.blocks.flatMap((b) => {
+      const block = toRenderBlock(b);
+      return block ? [{ ...block, previewNote: getBlockPreviewNote(b, now) }] : [];
+    }),
   };
 
   return (
@@ -337,7 +377,8 @@ export function BioPageBuilder({
                     <DropdownMenuItem
                       key={opt.type}
                       disabled={
-                        (opt.type === "link" || opt.type === "whatsapp") && atLinkBlockLimit
+                        ((opt.type === "link" || opt.type === "whatsapp") && atLinkBlockLimit) ||
+                        (opt.type === "embed" && atEmbedBlockLimit)
                       }
                       onSelect={() => handleAdd(opt.type)}
                     >
@@ -346,30 +387,29 @@ export function BioPageBuilder({
                         className="mr-2 text-neutral-500 dark:text-muted-foreground"
                       />
                       {opt.label}
+                      {opt.type === "image" && !canAddImages && (
+                        <span className="ml-auto">
+                          <PlanBadge plan="Pro" />
+                        </span>
+                      )}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
 
               {atLinkBlockLimit && (
-                <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-amber-800 dark:bg-amber-500/10">
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-medium text-amber-700 dark:text-amber-400">
-                      Link block limit reached
-                    </p>
-                    <p className="mt-0.5 text-[12px] text-amber-700 dark:text-amber-400">
-                      Free bio pages can have up to {linkBlockLimit} link and WhatsApp blocks.
-                      Upgrade to Pro for unlimited blocks.
-                    </p>
-                  </div>
-                  <UpgradeCta
-                    requiredPlan="pro"
-                    source="bio_link_block_limit"
-                    className="inline-flex shrink-0 items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-[12px] font-medium text-white transition-colors hover:bg-blue-700"
-                  >
-                    Upgrade
-                  </UpgradeCta>
-                </div>
+                <LimitBanner
+                  title="Link block limit reached"
+                  source="bio_link_block_limit"
+                  body={`Free bio pages can have up to ${linkBlockLimit} link and WhatsApp blocks. Upgrade to Pro for unlimited blocks.`}
+                />
+              )}
+              {atEmbedBlockLimit && (
+                <LimitBanner
+                  title="Embed limit reached"
+                  source="bio_embed_block_limit"
+                  body={`Free bio pages can have ${embedBlockLimit} ${embedBlockLimit === 1 ? "embed" : "embeds"}. Upgrade to Pro for unlimited embeds and image blocks.`}
+                />
               )}
 
               <BlockList
@@ -448,6 +488,24 @@ export function BioPageBuilder({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+function LimitBanner({ title, body, source }: { title: string; body: string; source: string }) {
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-amber-800 dark:bg-amber-500/10">
+      <div className="min-w-0">
+        <p className="text-[13px] font-medium text-amber-700 dark:text-amber-400">{title}</p>
+        <p className="mt-0.5 text-[12px] text-amber-700 dark:text-amber-400">{body}</p>
+      </div>
+      <UpgradeCta
+        requiredPlan="pro"
+        source={source}
+        className="inline-flex shrink-0 items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-[12px] font-medium text-white transition-colors hover:bg-blue-700"
+      >
+        Upgrade
+      </UpgradeCta>
     </div>
   );
 }

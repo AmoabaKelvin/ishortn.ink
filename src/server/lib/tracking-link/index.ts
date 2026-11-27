@@ -31,7 +31,10 @@ import type { UrlSafetyResult } from "@/server/lib/phishing";
 
 type TransactionClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export type TrackingLinkKind = "qr" | "bio";
+// "bio-image" backs a linked image block. Unlike a link block, which a per-page
+// cap limits on Free, it always takes a slot of the monthly link allowance, so
+// image blocks can't be used to create tracked links outside the quota.
+export type TrackingLinkKind = "qr" | "bio" | "bio-image";
 
 export type PreparedTrackingLink = {
   values: typeof link.$inferInsert;
@@ -52,7 +55,10 @@ export async function checkTrackingLinkQuota(
   ctx: WorkspaceTRPCContext,
   kind: TrackingLinkKind,
 ): Promise<Pick<PreparedTrackingLink, "currentCount" | "shouldIncrementCount">> {
-  if (!countsTowardMonthlyLinkQuota(ctx.workspace.plan, { isBioLink: kind === "bio" })) {
+  if (
+    kind !== "bio-image" &&
+    !countsTowardMonthlyLinkQuota(ctx.workspace.plan, { isBioLink: kind === "bio" })
+  ) {
     return { currentCount: 0, shouldIncrementCount: false };
   }
   const { currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
@@ -67,7 +73,8 @@ export async function checkTrackingLinkQuota(
  * a transaction is opened: the link-quota check, URL safety scan, domain
  * authorization, and alias generation. Throws TRPCError("FORBIDDEN") when the
  * workspace's monthly link quota is reached. Bio links skip the quota on plans
- * with a per-page block cap, which callers enforce instead.
+ * with a per-page block cap, which callers enforce instead; image-block links
+ * always count.
  */
 export async function prepareHiddenTrackingLink(
   ctx: WorkspaceTRPCContext,
@@ -104,7 +111,7 @@ export async function prepareHiddenTrackingLink(
       domain,
       name: opts.name,
       isQrCode: opts.kind === "qr",
-      isBioLink: opts.kind === "bio",
+      isBioLink: opts.kind === "bio" || opts.kind === "bio-image",
       userId: ownership.userId ?? ctx.auth.userId,
       teamId: ownership.teamId,
       createdByUserId: ctx.auth.userId,

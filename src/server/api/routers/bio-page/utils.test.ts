@@ -3,12 +3,12 @@ import { describe, expect, test } from "bun:test";
 import { bioBlock, bioPage } from "@/server/db/schema";
 
 import {
-  assertBioLinkBlockCapacity,
+  assertBioBlockCapacity,
   assertSlugAllowed,
   buildBreakdown,
   countryLabel,
   deviceLabel,
-  lockBioLinkBlockCapacity,
+  lockBioBlockCapacity,
   referrerHostLabel,
   RESERVED_BIO_SLUGS,
   sameBioTheme,
@@ -40,18 +40,37 @@ describe("reserved bio slugs", () => {
 
 describe("bio link block cap", () => {
   test("free pages accept link blocks below the cap", () => {
-    expect(() => assertBioLinkBlockCapacity("free", 0)).not.toThrow();
-    expect(() => assertBioLinkBlockCapacity("free", 2)).not.toThrow();
+    expect(() => assertBioBlockCapacity("free", "link", 0)).not.toThrow();
+    expect(() => assertBioBlockCapacity("free", "link", 2)).not.toThrow();
   });
 
   test("free pages reject a 4th link block with an upgrade message", () => {
-    expect(() => assertBioLinkBlockCapacity("free", 3)).toThrow(/3 link blocks per bio page/);
-    expect(() => assertBioLinkBlockCapacity("free", 10)).toThrow(/Upgrade to Pro/);
+    expect(() => assertBioBlockCapacity("free", "link", 3)).toThrow(/3 link blocks per bio page/);
+    expect(() => assertBioBlockCapacity("free", "link", 10)).toThrow(/Upgrade to Pro/);
   });
 
   test("paid plans have no link block cap", () => {
-    expect(() => assertBioLinkBlockCapacity("pro", 500)).not.toThrow();
-    expect(() => assertBioLinkBlockCapacity("ultra", 500)).not.toThrow();
+    expect(() => assertBioBlockCapacity("pro", "link", 500)).not.toThrow();
+    expect(() => assertBioBlockCapacity("ultra", "link", 500)).not.toThrow();
+  });
+});
+
+describe("bio embed block cap", () => {
+  test("free pages accept one embed and reject a second with an upgrade message", () => {
+    expect(() => assertBioBlockCapacity("free", "embed", 0)).not.toThrow();
+    expect(() => assertBioBlockCapacity("free", "embed", 1)).toThrow(
+      "The free plan allows 1 embed block per bio page. Upgrade to Pro for unlimited embeds.",
+    );
+  });
+
+  test("paid plans have no embed cap", () => {
+    expect(() => assertBioBlockCapacity("pro", "embed", 50)).not.toThrow();
+    expect(() => assertBioBlockCapacity("ultra", "embed", 50)).not.toThrow();
+  });
+
+  test("the caps are separate: a full set of link blocks doesn't block an embed", () => {
+    expect(() => assertBioBlockCapacity("free", "link", 3)).toThrow();
+    expect(() => assertBioBlockCapacity("free", "embed", 0)).not.toThrow();
   });
 });
 
@@ -98,7 +117,7 @@ function fakePageStore(initialLinkBlocks: number) {
     };
 
     try {
-      // SAFETY: lockBioLinkBlockCapacity only calls tx.select().from().where(),
+      // SAFETY: lockBioBlockCapacity only calls tx.select().from().where(),
       // awaited directly or through .for("update"), which the fake implements.
       await run(tx as TransactionClient, insertLinkBlock);
       committedLinkBlocks += pendingInserts;
@@ -116,7 +135,7 @@ describe("bio link block cap under concurrent adds", () => {
     const results = await Promise.allSettled(
       Array.from({ length: 5 }, () =>
         store.transaction(async (tx, insertLinkBlock) => {
-          await lockBioLinkBlockCapacity(tx, "free", 1, "user_bio_block_cap_test");
+          await lockBioBlockCapacity(tx, "free", 1, "user_bio_block_cap_test", "link");
           await insertLinkBlock();
         }),
       ),
@@ -130,10 +149,27 @@ describe("bio link block cap under concurrent adds", () => {
   test("paid pages have no cap", async () => {
     const store = fakePageStore(500);
     await store.transaction(async (tx, insertLinkBlock) => {
-      await lockBioLinkBlockCapacity(tx, "pro", 1, "user_bio_block_cap_test");
+      await lockBioBlockCapacity(tx, "pro", 1, "user_bio_block_cap_test", "link");
       await insertLinkBlock();
     });
     expect(store.linkBlocks()).toBe(501);
+  });
+});
+
+describe("bio embed block cap under concurrent adds", () => {
+  test("concurrent embed adds to an empty free page stop at 1", async () => {
+    const store = fakePageStore(0);
+    const results = await Promise.allSettled(
+      Array.from({ length: 3 }, () =>
+        store.transaction(async (tx, insertBlock) => {
+          await lockBioBlockCapacity(tx, "free", 1, "user_bio_block_cap_test", "embed");
+          await insertBlock();
+        }),
+      ),
+    );
+
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(store.linkBlocks()).toBe(1);
   });
 });
 

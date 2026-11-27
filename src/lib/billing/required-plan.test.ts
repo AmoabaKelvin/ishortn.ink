@@ -102,6 +102,17 @@ describe("planLimitKey", () => {
     );
   });
 
+  test("names the bio block caps", () => {
+    expect(
+      planLimitKey(
+        "The free plan allows 1 embed block per bio page. Upgrade to Pro for unlimited embeds.",
+      ),
+    ).toBe("bio_embed_blocks");
+    expect(planLimitKey("Image blocks are available on Pro and Ultra plans.")).toBe(
+      "bio_image_blocks",
+    );
+  });
+
   test("falls back to other for gates it doesn't know", () => {
     expect(planLimitKey("Theme customization is available on Pro and Ultra plans.")).toBe("other");
   });
