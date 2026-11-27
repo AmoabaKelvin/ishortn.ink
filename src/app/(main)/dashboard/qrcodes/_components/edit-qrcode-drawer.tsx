@@ -38,8 +38,9 @@ import { qrcodeUpdateInput } from "@/server/api/routers/qrcode/qrcode.input";
 import { normalizeTagName } from "@/server/api/routers/tag/utils";
 import { api } from "@/trpc/react";
 
-import { savedQrCodeSvgState, staticTypeOf } from "../utils";
+import { savedQrCodeSvgState, staticTypeOf, vcardOf } from "../utils";
 import { EditStaticQRCodeBody } from "./edit-static-qrcode-body";
+import { EditVCardQRCodeBody } from "./edit-vcard-qrcode-body";
 
 import type { RouterOutputs } from "@/trpc/shared";
 import type { z } from "zod";
@@ -505,6 +506,7 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
     () => (staticType ? savedQrCodeSvgState(qr) : null),
     [qr, staticType],
   );
+  const card = vcardOf(qr);
 
   return (
     <AnimatePresence>
@@ -569,7 +571,9 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
               </div>
             </div>
 
-            {staticType && staticState ? (
+            {card ? (
+              <EditVCardQRCodeBody key={qr.id} qr={qr} card={card} onClose={onClose} />
+            ) : staticType && staticState ? (
               <EditStaticQRCodeBody
                 key={qr.id}
                 qr={qr}

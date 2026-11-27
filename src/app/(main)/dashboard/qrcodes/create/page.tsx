@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  IconAddressBook,
   IconDeviceFloppy,
   IconDownload,
   IconLoader2,
@@ -9,6 +10,7 @@ import {
 } from "@tabler/icons-react";
 import { TRPCClientError } from "@trpc/client";
 import { useTransitionRouter } from "next-view-transitions";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
@@ -48,6 +50,7 @@ import {
   staticPayloadSummary,
 } from "@/lib/qr-generator/payload";
 import { generateQRCodeSvg, hasRasterOnlyOptions, toLogoDataUri } from "@/lib/qr-generator/svg";
+import { VCARD_LABEL, vcardSummary } from "@/lib/qr-generator/vcard";
 import { cn } from "@/lib/utils";
 import { INVALID_URL_MESSAGE, normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { api } from "@/trpc/react";
@@ -55,9 +58,11 @@ import { api } from "@/trpc/react";
 import { PromoOfferSuffix, useUpgradeOffer } from "../../_components/upgrade-offer";
 import { StaticPayloadFields } from "../_components/static-payload-fields";
 import UpgradeText from "../_components/upgrade-text";
+import { VCardFields } from "../_components/vcard-fields";
 import {
   checkIfUserCanCreateMoreQRCodes,
   emptyStaticFormValues,
+  emptyVCardFormValues,
   qrCodeFileName,
   qrCodeStyleFrom,
   saveBlob,
@@ -65,10 +70,11 @@ import {
   staticPayloadFrom,
   SVG_EFFECTS_NOTE,
   validateStaticForm,
+  validateVCardForm,
 } from "../utils";
 import QRAdvancedCustomization from "./_components/qr-advanced-customization";
 
-import type { StaticFormValues } from "../utils";
+import type { StaticFormValues, VCardFormValues } from "../utils";
 import type { QRCodeGeneratorState } from "@/lib/qr-generator";
 import type { StaticQrPayload, StaticQrPayloadType } from "@/lib/qr-generator/payload";
 import type {
@@ -77,12 +83,14 @@ import type {
   QRMarkerFrame,
   QRPixelStyle,
 } from "@/lib/qr-generator/types";
+import type { VCardPayload } from "@/lib/qr-generator/vcard";
 import type { AppRouter } from "@/server/api/root";
 
-type QrType = "link" | StaticQrPayloadType;
+type QrType = "link" | "vcard" | StaticQrPayloadType;
 
 const QR_TYPES: { value: QrType; label: string }[] = [
   { value: "link", label: "Link" },
+  { value: "vcard", label: VCARD_LABEL },
   ...Object.entries(STATIC_PAYLOAD_LABELS).map(([value, label]) => ({
     // SAFETY: the keys of STATIC_PAYLOAD_LABELS are exactly the static payload types.
     value: value as StaticQrPayloadType,
@@ -104,6 +112,7 @@ function createErrorMessage(err: Error): string {
 
 function QRCodeCreationPage() {
   const router = useTransitionRouter();
+  const searchParams = useSearchParams();
   const userSubDetails = api.subscriptions.get.useQuery().data;
   const upgradeOffer = useUpgradeOffer();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -112,6 +121,7 @@ function QRCodeCreationPage() {
 
   const qrCodeCreateMutation = api.qrCode.create.useMutation();
   const qrCodeCreateStaticMutation = api.qrCode.createStatic.useMutation();
+  const qrCodeCreateVCardMutation = api.qrCode.createVCard.useMutation();
   const qrCodeSaveImageMutation = api.qrCode.saveImage.useMutation();
   const qrCodeDeleteMutation = api.qrCode.delete.useMutation();
 
@@ -119,11 +129,20 @@ function QRCodeCreationPage() {
   const [destinationUrl, setDestinationUrl] = useState<string>("");
   const [selectedDomain, setSelectedDomain] = useState<string>(DEFAULT_PLATFORM_DOMAIN);
   const [downloadFormat, setDownloadFormat] = useState<"png" | "svg">("png");
-  const [qrType, setQrType] = useState<QrType>("link");
+  // `?type=vcard` (or any other type) opens the form on that type, for links from elsewhere.
+  const [qrType, setQrType] = useState<QrType>(
+    () => QR_TYPES.find((type) => type.value === searchParams.get("type"))?.value ?? "link",
+  );
   const [staticValues, setStaticValues] = useState<StaticFormValues>(emptyStaticFormValues);
+  const [vcardValues, setVCardValues] = useState<VCardFormValues>(emptyVCardFormValues);
   // Field errors show once a save has been tried, then update as the user types.
   const [showStaticErrors, setShowStaticErrors] = useState(false);
-  const isStatic = qrType !== "link";
+  const isStatic = qrType !== "link" && qrType !== "vcard";
+  // Contact cards are hosted pages: Pro and Ultra (teams have Ultra features). Allowed while the
+  // plan loads; the server enforces it.
+  const canUseVCard =
+    !userSubDetails || userSubDetails.plan !== "free" || userSubDetails.isTeamWorkspace;
+  const vcardLocked = qrType === "vcard" && !canUseVCard;
 
   const customDomainsQuery = api.customDomain.list.useQuery();
   const userDomains = customDomainsQuery.data ?? [];
@@ -135,22 +154,30 @@ function QRCodeCreationPage() {
   const destinationLooksValid = normalizedDestination !== null;
 
   const staticResult = useMemo(
-    () => (qrType === "link" ? null : validateStaticForm(qrType, staticValues)),
+    () =>
+      qrType === "link" || qrType === "vcard" ? null : validateStaticForm(qrType, staticValues),
     [qrType, staticValues],
   );
+  const vcardResult = useMemo(() => validateVCardForm(vcardValues), [vcardValues]);
   // The preview encodes what's typed so far, even before every field is valid.
   const previewText = useMemo(() => {
     if (qrType === "link") return destinationUrl || "https://ishortn.ink";
+    // The saved code encodes a new short link on this domain.
+    if (qrType === "vcard") return `https://${selectedDomain}`;
     if (staticResult?.ok) return encodeStaticQrPayload(staticResult.payload);
     // SAFETY: an unvalidated payload has the right shape; encoding only reads its strings.
     return encodeStaticQrPayload(staticPayloadFrom(qrType, staticValues) as StaticQrPayload);
-  }, [qrType, destinationUrl, staticResult, staticValues]);
+  }, [qrType, destinationUrl, selectedDomain, staticResult, staticValues]);
   const previewCaption =
     qrType === "link"
       ? destinationUrl || "Enter a destination URL above"
-      : staticResult?.ok
-        ? staticPayloadSummary(staticResult.payload)
-        : `Fill in the ${STATIC_PAYLOAD_LABELS[qrType]} details above`;
+      : qrType === "vcard"
+        ? vcardResult.ok
+          ? vcardSummary(vcardResult.card)
+          : "Fill in the contact details above"
+        : staticResult?.ok
+          ? staticPayloadSummary(staticResult.payload)
+          : `Fill in the ${STATIC_PAYLOAD_LABELS[qrType]} details above`;
 
   // The ref blocks a second click before the disabled state has rendered.
   const [isSaving, setIsSaving] = useState(false);
@@ -331,8 +358,17 @@ function QRCodeCreationPage() {
     if (savingRef.current) return;
 
     let staticPayload: StaticQrPayload | null = null;
+    let card: VCardPayload | null = null;
     let linkContent = "";
-    if (qrType === "link") {
+    if (qrType === "vcard") {
+      if (vcardLocked) return;
+      if (!vcardResult.ok) {
+        setShowStaticErrors(true);
+        toast.error(vcardResult.message);
+        return;
+      }
+      card = vcardResult.card;
+    } else if (qrType === "link") {
       if (!destinationUrl.trim()) {
         toast.error("Please enter a destination URL");
         return;
@@ -359,8 +395,8 @@ function QRCodeCreationPage() {
     const finalTitle = qrCodeTitle.trim() || "QR Code";
 
     const promise = (async () => {
-      // Step 1: Create the QR record on the server: with a hidden tracking link for Link codes,
-      // or with the encoded content for static ones.
+      // Step 1: Create the QR record on the server: with a hidden tracking link for Link and vCard
+      // codes, or with the encoded content for static ones.
       const fields = {
         title: finalTitle,
         patternStyle: qrState.pixelStyle,
@@ -371,9 +407,13 @@ function QRCodeCreationPage() {
         ? await qrCodeCreateStaticMutation
             .mutateAsync({ ...fields, payload: staticPayload })
             .then(({ id, content }) => ({ id, text: content }))
-        : await qrCodeCreateMutation
-            .mutateAsync({ ...fields, content: linkContent, domain: selectedDomain })
-            .then(({ id, trackingUrl }) => ({ id, text: trackingUrl }));
+        : card
+          ? await qrCodeCreateVCardMutation
+              .mutateAsync({ ...fields, card, domain: selectedDomain })
+              .then(({ id, trackingUrl }) => ({ id, text: trackingUrl }))
+          : await qrCodeCreateMutation
+              .mutateAsync({ ...fields, content: linkContent, domain: selectedDomain })
+              .then(({ id, trackingUrl }) => ({ id, text: trackingUrl }));
 
       try {
         // Step 2: Update the live preview so it matches the final output
@@ -510,7 +550,7 @@ function QRCodeCreationPage() {
               >
                 <TabsList
                   aria-labelledby="qr-type-label"
-                  className="grid h-auto w-full grid-cols-3 gap-0.5 bg-neutral-100 dark:bg-muted sm:grid-cols-6"
+                  className="grid h-auto w-full grid-cols-4 gap-0.5 bg-neutral-100 dark:bg-muted sm:grid-cols-7 md:grid-cols-4 xl:grid-cols-7"
                 >
                   {QR_TYPES.map((type) => (
                     <TabsTrigger
@@ -527,6 +567,12 @@ function QRCodeCreationPage() {
                 <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                   Static code: scans aren't tracked and the content can't be changed after printing.
                   Use Link for a tracked, editable code.
+                </p>
+              )}
+              {qrType === "vcard" && (
+                <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
+                  Dynamic code: opens a contact page people can save to their phone. Scans are
+                  tracked and the card can be edited after printing.
                 </p>
               )}
             </div>
@@ -547,7 +593,31 @@ function QRCodeCreationPage() {
               />
             </div>
 
-            {isStatic ? (
+            {vcardLocked ? (
+              <div className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center dark:border-border dark:bg-accent/50">
+                <IconAddressBook
+                  size={28}
+                  stroke={1.5}
+                  className="mx-auto text-neutral-300 dark:text-muted-foreground"
+                />
+                <p className="mt-2 text-[13px] text-neutral-600 dark:text-neutral-400">
+                  <UpgradeText text="Upgrade to Pro" source="qr_vcard" requiredPlan="pro" /> to
+                  create vCard codes.
+                  <PromoOfferSuffix />
+                </p>
+                <p className="mt-1 text-[12px] text-neutral-400 dark:text-muted-foreground">
+                  Put an editable contact card on business cards and badges. Change a number or
+                  email later without reprinting.
+                </p>
+              </div>
+            ) : qrType === "vcard" ? (
+              <VCardFields
+                values={vcardValues}
+                onChange={(patch) => setVCardValues((prev) => ({ ...prev, ...patch }))}
+                errors={showStaticErrors && !vcardResult.ok ? vcardResult.fieldErrors : {}}
+                idPrefix="qr-create-vcard"
+              />
+            ) : isStatic ? (
               <StaticPayloadFields
                 type={qrType}
                 values={staticValues}
@@ -576,7 +646,8 @@ function QRCodeCreationPage() {
               </div>
             )}
 
-            {!isStatic && destinationLooksValid && (
+            {((qrType === "link" && destinationLooksValid) ||
+              (qrType === "vcard" && !vcardLocked)) && (
               <div className="space-y-1.5">
                 <Label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                   Link domain
@@ -851,7 +922,7 @@ function QRCodeCreationPage() {
           <Button
             className="w-full bg-blue-600 text-[13px] hover:bg-blue-700"
             onClick={handleSaveQRCode}
-            disabled={!canCreateMoreQRCodes || isSaving}
+            disabled={!canCreateMoreQRCodes || vcardLocked || isSaving}
           >
             {isSaving ? (
               <IconLoader2 size={16} stroke={2} className="mr-2 animate-spin" />

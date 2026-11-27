@@ -24,11 +24,49 @@ const WIFI_SECURITY_LABELS = {
   nopass: "None",
 } satisfies Record<WifiSecurity, string>;
 
-const labelClass = "text-[13px] font-medium text-neutral-700 dark:text-neutral-300";
-const inputClass =
+export const labelClass = "text-[13px] font-medium text-neutral-700 dark:text-neutral-300";
+export const inputClass =
   "h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 dark:border-border dark:bg-card";
-const textareaClass =
+export const textareaClass =
   "resize-none border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 dark:border-border dark:bg-card";
+
+type FieldControlProps = { id: string; "aria-invalid": boolean; "aria-describedby"?: string };
+
+/** A labelled control with its error, or else its hint, wired up for screen readers. */
+export function PayloadField({
+  id,
+  label,
+  error,
+  hint,
+  control,
+}: {
+  id: string;
+  label: string;
+  error?: string;
+  hint?: string;
+  control: (props: FieldControlProps) => React.ReactNode;
+}) {
+  const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id} className={labelClass}>
+        {label}
+      </Label>
+      {control({ id, "aria-invalid": Boolean(error), "aria-describedby": describedBy })}
+      {error ? (
+        <p id={`${id}-error`} className="text-[12px] text-red-500">
+          {error}
+        </p>
+      ) : (
+        hint && (
+          <p id={`${id}-hint`} className="text-[12px] text-neutral-400 dark:text-muted-foreground">
+            {hint}
+          </p>
+        )
+      )}
+    </div>
+  );
+}
 
 type StaticPayloadFieldsProps = {
   type: StaticQrPayloadType;
@@ -49,39 +87,17 @@ export function StaticPayloadFields({
   const field = (
     name: keyof StaticFormValues,
     label: string,
-    control: (props: {
-      id: string;
-      "aria-invalid": boolean;
-      "aria-describedby"?: string;
-    }) => React.ReactNode,
+    control: (props: FieldControlProps) => React.ReactNode,
     hint?: string,
-  ) => {
-    const id = `${idPrefix}-${name}`;
-    const error = errors[name];
-    const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
-    return (
-      <div className="space-y-1.5">
-        <Label htmlFor={id} className={labelClass}>
-          {label}
-        </Label>
-        {control({ id, "aria-invalid": Boolean(error), "aria-describedby": describedBy })}
-        {error ? (
-          <p id={`${id}-error`} className="text-[12px] text-red-500">
-            {error}
-          </p>
-        ) : (
-          hint && (
-            <p
-              id={`${id}-hint`}
-              className="text-[12px] text-neutral-400 dark:text-muted-foreground"
-            >
-              {hint}
-            </p>
-          )
-        )}
-      </div>
-    );
-  };
+  ) => (
+    <PayloadField
+      id={`${idPrefix}-${name}`}
+      label={label}
+      error={errors[name]}
+      hint={hint}
+      control={control}
+    />
+  );
 
   switch (type) {
     case "text":

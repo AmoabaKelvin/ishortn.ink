@@ -6,9 +6,10 @@ import { Link } from "next-view-transitions";
 import { useMemo } from "react";
 
 import { STATIC_PAYLOAD_LABELS, staticPayloadSummary } from "@/lib/qr-generator/payload";
+import { VCARD_LABEL, vcardSummary } from "@/lib/qr-generator/vcard";
 import { cn, daysSinceDate } from "@/lib/utils";
 
-import { qrPreviewSrc, staticTypeOf } from "../utils";
+import { qrPreviewSrc, staticTypeOf, vcardOf } from "../utils";
 import { QRCodeActions } from "./qrcode-actions";
 
 import type { RouterOutputs } from "@/trpc/shared";
@@ -33,6 +34,8 @@ export function QRCodeCard({
   const daysSinceCreation = daysSinceDate(new Date(qr.createdAt!));
   // Static codes encode their content directly, so there are no scans to count.
   const staticType = staticTypeOf(qr);
+  const card = vcardOf(qr);
+  const typeLabel = staticType ? STATIC_PAYLOAD_LABELS[staticType] : card ? VCARD_LABEL : null;
   const scans = qr.visitCount ?? 0;
   // Codes made by a CSV import encode a visible link, so the count is all of that link's clicks.
   const countLabel =
@@ -102,9 +105,9 @@ export function QRCodeCard({
               <span className="truncate text-[14px] font-medium text-neutral-900 dark:text-foreground">
                 {qr.title || "Untitled QR Code"}
               </span>
-              {staticType && (
+              {typeLabel && (
                 <span className="shrink-0 rounded-md border border-neutral-200 bg-neutral-50 px-1.5 py-0.5 text-[11px] font-medium text-neutral-500 dark:border-border dark:bg-accent/50 dark:text-neutral-400">
-                  {STATIC_PAYLOAD_LABELS[staticType]}
+                  {typeLabel}
                 </span>
               )}
             </div>
@@ -122,7 +125,10 @@ export function QRCodeCard({
                   href={`/dashboard/qrcodes/${qr.id}`}
                   className="inline-flex items-center gap-1 text-neutral-500 dark:text-neutral-400 underline-offset-2 transition-colors hover:text-neutral-900 hover:underline dark:hover:text-foreground"
                 >
-                  <span className="max-w-[200px] truncate sm:max-w-[300px]">{qr.link.url}</span>
+                  {/* A contact card's link is its hosted page; the card's name says more. */}
+                  <span className="max-w-[200px] truncate sm:max-w-[300px]">
+                    {card ? vcardSummary(card) : qr.link.url}
+                  </span>
                   <IconExternalLink
                     size={12}
                     stroke={1.5}
@@ -131,7 +137,9 @@ export function QRCodeCard({
                 </Link>
               ) : (
                 <span className="max-w-[200px] truncate text-neutral-500 dark:text-neutral-400 sm:max-w-[300px]">
-                  {qr.payloadFields ? staticPayloadSummary(qr.payloadFields) : qr.content}
+                  {qr.payloadFields && qr.payloadFields.type !== "vcard"
+                    ? staticPayloadSummary(qr.payloadFields)
+                    : qr.content}
                 </span>
               )}
             </div>

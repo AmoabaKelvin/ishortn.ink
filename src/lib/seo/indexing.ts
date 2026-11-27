@@ -125,6 +125,8 @@ const INTERSTITIAL_PREFIXES = [
   "/verify-password/",
   "/verified-redirect/",
   "/cloaked/",
+  // Contact card pages (/c/<id>) and their .vcf hold people's details.
+  "/c/",
 ];
 
 /**

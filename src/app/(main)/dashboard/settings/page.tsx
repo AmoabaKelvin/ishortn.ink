@@ -17,6 +17,7 @@ import { NotificationSettings } from "./notifications/notification-settings";
 import { ProfileForm } from "./profile/profile-form";
 import { ApiKeys } from "./tokens/_components/api-keys";
 import { ConnectedBrowsers } from "./tokens/_components/connected-browsers";
+import { TeamApiKeys } from "./tokens/_components/team-api-keys";
 import { AccountTransferSection } from "./transfer/account-transfer-section";
 import { Webhooks } from "./webhooks/webhooks";
 
@@ -36,6 +37,7 @@ async function SettingsPage(props: Props) {
     userDomains,
     subscriptions,
     tokens,
+    teamTokens,
     apiAccess,
     extensionTokens,
     userProfile,
@@ -48,6 +50,7 @@ async function SettingsPage(props: Props) {
     api.customDomain.list.query(),
     api.subscriptions.get.query(),
     api.token.list.query(),
+    api.token.listTeam.query(),
     api.token.access.query(),
     api.token.listExtensions.query(),
     api.user.getProfile.query(),
@@ -87,7 +90,7 @@ async function SettingsPage(props: Props) {
       </div>
 
       <div className="flex gap-10">
-        <SettingsNav />
+        <SettingsNav showTeamApiKeys={!!teamTokens} />
 
         <div className="flex-1 min-w-0 space-y-12 pb-20">
           {/* Profile */}
@@ -166,6 +169,25 @@ async function SettingsPage(props: Props) {
             </div>
           </section>
 
+          {/* Team API Keys */}
+          {teamTokens && workspace.type === "team" && (
+            <section id="team-api-keys" className="scroll-mt-24">
+              <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
+                Team API Keys
+              </h2>
+              <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
+                Keys that act in{" "}
+                <span className="break-all text-neutral-500 dark:text-neutral-400">
+                  {workspace.teamName}
+                </span>{" "}
+                and belong to the team, not to a member
+              </p>
+              <div className="mt-4">
+                <TeamApiKeys teamTokens={teamTokens} />
+              </div>
+            </section>
+          )}
+
           {/* API Keys */}
           <section id="api-keys" className="scroll-mt-24">
             <div className="flex items-baseline gap-2">
@@ -186,7 +208,9 @@ async function SettingsPage(props: Props) {
               </Link>
             </div>
             <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
-              Programmatic access to your account
+              {workspace.type === "team"
+                ? "Personal keys act in your personal workspace"
+                : "Programmatic access to your account"}
             </p>
             <div className="mt-4">
               <ApiKeys tokens={tokens} apiAccess={apiAccess} />

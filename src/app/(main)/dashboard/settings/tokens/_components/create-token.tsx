@@ -26,7 +26,14 @@ import { api } from "@/trpc/react";
 
 import type { CreateTokenInput } from "@/server/api/routers/token/token.input";
 
-export function CreateTokenDialog({ trigger }: { trigger: React.ReactNode }) {
+export function CreateTokenDialog({
+  trigger,
+  team = false,
+}: {
+  trigger: React.ReactNode;
+  /** Creates a key for the current team workspace instead of a personal one. */
+  team?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [key, setKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -38,16 +45,19 @@ export function CreateTokenDialog({ trigger }: { trigger: React.ReactNode }) {
     formState: { errors },
   } = useForm<CreateTokenInput>({ defaultValues: { name: "" } });
 
-  const createTokenMutation = api.token.create.useMutation({
-    onSuccess: async (created) => {
+  const createOptions = {
+    onSuccess: async (created: { token: string }) => {
       setKey(created.token);
       trackEvent(POSTHOG_EVENTS.API_KEY_CREATED);
       await revalidateRoute("/dashboard/settings");
     },
-    onError: (error) => {
+    onError: (error: { message: string }) => {
       toast.error(error.message);
     },
-  });
+  };
+  const createPersonal = api.token.create.useMutation(createOptions);
+  const createTeam = api.token.createTeam.useMutation(createOptions);
+  const createTokenMutation = team ? createTeam : createPersonal;
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
@@ -125,8 +135,9 @@ export function CreateTokenDialog({ trigger }: { trigger: React.ReactNode }) {
                     Store this key securely
                   </p>
                   <p className="mt-0.5 text-[11px] text-amber-700/80 dark:text-amber-400/80">
-                    This key grants access to your account. Never share it or commit it to version
-                    control.
+                    {team
+                      ? "This key grants access to this team workspace. Never share it or commit it to version control."
+                      : "This key grants access to your account. Never share it or commit it to version control."}
                   </p>
                 </div>
               </div>
@@ -145,9 +156,11 @@ export function CreateTokenDialog({ trigger }: { trigger: React.ReactNode }) {
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>Create API Key</DialogTitle>
+              <DialogTitle>{team ? "Create Team API Key" : "Create API Key"}</DialogTitle>
               <DialogDescription>
-                Name the key after the app or script that uses it
+                {team
+                  ? "It acts in this team workspace and stays when members leave"
+                  : "Name the key after the app or script that uses it"}
               </DialogDescription>
             </DialogHeader>
 

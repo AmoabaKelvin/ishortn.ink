@@ -16,6 +16,16 @@ export const qrCodeRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       return services.updateStaticQrCode(ctx, input);
     }),
+  createVCard: contentWriteProcedure
+    .input(inputs.qrcodeVCardInput)
+    .mutation(async ({ ctx, input }) => {
+      return services.createVCardQrCode(ctx, input);
+    }),
+  updateVCard: contentWriteProcedure
+    .input(inputs.qrcodeVCardUpdateInput)
+    .mutation(async ({ ctx, input }) => {
+      return services.updateVCardQrCode(ctx, input);
+    }),
   get: workspaceProcedure.input(inputs.qrcodeIdInput).query(async ({ ctx, input }) => {
     return services.getQrCode(ctx, input.id);
   }),
