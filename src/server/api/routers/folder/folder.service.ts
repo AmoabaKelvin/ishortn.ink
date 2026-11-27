@@ -10,6 +10,7 @@ import {
   linkVisitDailySummary,
   teamMember,
 } from "@/server/db/schema";
+import { getDestinationDownByLinkId } from "@/server/lib/link-health/status";
 import { getTargetingTypesByLinkId } from "@/server/lib/link-targeting";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import {
@@ -212,7 +213,8 @@ export const getFolder = async (ctx: WorkspaceTRPCContext, input: GetFolderInput
     .orderBy(desc(link.createdAt));
 
   // Fetch tags for each link
-  const [linksWithTags, targetingTypes] = await Promise.all([
+  const linkIds = folderLinks.map((linkItem) => linkItem.id);
+  const [linksWithTags, targetingTypes, destinationDown] = await Promise.all([
     Promise.all(
       folderLinks.map(async (linkItem) => {
         const tagRecords = await getTagsForLink(ctx, linkItem.id);
@@ -223,10 +225,8 @@ export const getFolder = async (ctx: WorkspaceTRPCContext, input: GetFolderInput
         };
       }),
     ),
-    getTargetingTypesByLinkId(
-      ctx.db,
-      folderLinks.map((linkItem) => linkItem.id),
-    ),
+    getTargetingTypesByLinkId(ctx.db, linkIds),
+    getDestinationDownByLinkId(ctx.db, ctx.workspace.plan, linkIds),
   ]);
 
   return {
@@ -234,6 +234,7 @@ export const getFolder = async (ctx: WorkspaceTRPCContext, input: GetFolderInput
     links: linksWithTags.map((linkItem) => ({
       ...linkItem,
       targetingTypes: targetingTypes.get(linkItem.id) ?? [],
+      destinationDown: destinationDown.get(linkItem.id) ?? null,
     })),
   };
 };

@@ -13,6 +13,7 @@ import { analyticsRangeEnum } from "@/server/api/routers/link/link.input";
 import { isNotFoundError } from "@/trpc/errors";
 import { api } from "@/trpc/server";
 
+import { DestinationDownNotice } from "../../_components/links/link-card/destination-down-badge";
 import { AnalyticsTracker } from "../_components/analytics-tracker";
 import { ExportClicksButton } from "../_components/export-clicks-button";
 import { LimitedAnalyticsNotice } from "../_components/limited-analytics-notice";
@@ -93,6 +94,7 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
     previous,
     archived,
     hiddenClicks,
+    destinationDown,
     domain,
     range,
     custom,
@@ -119,6 +121,7 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
           <h1 className="break-all text-xl font-semibold leading-tight tracking-tight text-neutral-900 dark:text-foreground md:text-2xl">
             {domain}/{params.alias}
           </h1>
+          {destinationDown && <DestinationDownNotice down={destinationDown} className="mt-1" />}
           {!isProPlan && (
             <LimitedAnalyticsNotice
               hiddenClicks={hiddenClicks}
