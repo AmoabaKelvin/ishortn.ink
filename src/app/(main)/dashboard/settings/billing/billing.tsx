@@ -111,6 +111,8 @@ export default function Billing({ subscriptions, promo, latestCheckout }: Billin
             plan: currentPlan,
             interval: currentInterval,
             provider: subscription.billingProvider,
+            startedAt: subscription.createdAt,
+            periodEndsAt: subscription.renewsAt ?? subscription.endsAt,
           }),
         )
       : null;

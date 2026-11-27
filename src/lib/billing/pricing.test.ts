@@ -155,6 +155,69 @@ describe("subscriptionDiscount", () => {
     expect(subscriptionDiscount(checkout, { ...subscription, interval: "annual" }, now)).toBeNull();
     expect(subscriptionDiscount(checkout, { ...subscription, provider: "paddle" }, now)).toBeNull();
   });
+
+  describe("on Paddle, after plan and interval changes", () => {
+    const paddleCheckout = { ...checkout, provider: "paddle" };
+    const startedAt = new Date("2026-11-25T12:05:00Z");
+    const firstYearEnd = new Date("2027-11-25T12:05:00Z");
+
+    test("a monthly Pro/Ultra switch keeps the discount to the end of the first year", () => {
+      expect(
+        subscriptionDiscount(
+          paddleCheckout,
+          {
+            plan: "ultra",
+            interval: "monthly",
+            provider: "paddle",
+            startedAt,
+            periodEndsAt: new Date("2027-01-25T12:05:00Z"),
+          },
+          now,
+        ),
+      ).toEqual({
+        code: ACTIVE_PROMO.code,
+        percentOff: ACTIVE_PROMO.percentOff,
+        endsAt: firstYearEnd,
+      });
+    });
+
+    test("monthly to annual shows the discounted annual period, then nothing", () => {
+      const periodEndsAt = new Date("2028-03-01T00:00:00Z");
+      const annual = {
+        plan: "pro" as const,
+        interval: "annual" as const,
+        provider: "paddle",
+        startedAt,
+        periodEndsAt,
+      };
+      expect(
+        subscriptionDiscount(paddleCheckout, annual, new Date("2027-03-01T00:00:00Z")),
+      ).toMatchObject({ endsAt: periodEndsAt });
+      expect(
+        subscriptionDiscount(
+          paddleCheckout,
+          { ...annual, periodEndsAt: new Date("2029-03-01T00:00:00Z") },
+          new Date("2028-03-02T00:00:00Z"),
+        ),
+      ).toBeNull();
+    });
+
+    test("after the first year nothing is shown", () => {
+      expect(
+        subscriptionDiscount(
+          paddleCheckout,
+          {
+            plan: "ultra",
+            interval: "monthly",
+            provider: "paddle",
+            startedAt,
+            periodEndsAt: new Date("2027-12-25T12:05:00Z"),
+          },
+          new Date("2027-11-26T00:00:00Z"),
+        ),
+      ).toBeNull();
+    });
+  });
 });
 
 describe("subscribedPriceDisplay", () => {

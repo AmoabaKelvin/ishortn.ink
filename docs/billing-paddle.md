@@ -73,12 +73,47 @@ Do this once per environment (sandbox first, then live). In the Paddle dashboard
      analytics event)
 
    Copy the destination's secret key into `PADDLE_WEBHOOK_SECRET`.
-6. **Discounts** (Catalog → Discounts): promo codes typed at checkout are looked up as active
-   discount codes; create the same codes as on Lemon Squeezy if they should work on Paddle too.
+6. **Discounts** (Catalog → Discounts): see [First-year promo discounts](#first-year-promo-discounts).
 
 Paddle turns on only when the API key, webhook secret, client token and the four sellable prices
 are all set and their prefixes match `PADDLE_ENVIRONMENT`. A mismatch logs
 `Paddle API key or client token does not match PADDLE_ENVIRONMENT; Paddle disabled`.
+
+## First-year promo discounts
+
+A promo such as `BFCM20` ("20% off your first year of Pro or Ultra", `src/lib/billing/promo.ts`)
+covers the first year only: the first 12 monthly payments, or the first annual payment. Paddle
+counts a discount's recurrences per billing period, so one discount with 12 recurrences would
+discount 12 annual payments. Each promo code therefore maps to two Paddle discounts, one per
+interval (`paddleDiscountCode` in `src/lib/billing/first-year-discount.ts`):
+
+| Paddle code      | Type         | Amount            | Recurring                              | Restrict to                  |
+| ---------------- | ------------ | ----------------- | -------------------------------------- | ---------------------------- |
+| `BFCM20`         | Percentage   | the promo percent | yes, maximum 12 recurring intervals    | Pro monthly, Ultra monthly   |
+| `BFCM20ANNUAL`   | Percentage   | the promo percent | no (one-off)                           | Pro annual, Ultra annual     |
+
+Set both to expire when the promo ends. A new checkout looks up the code for its interval and only
+applies it when the discount's recurrence matches the table; a mismatch logs
+`paddle discount recurrence does not match the interval; checkout created without it` and the
+checkout opens without a discount.
+
+Plan and interval changes made in the app set the subscription's discount explicitly
+(`planChangeDiscount`), counting from the first payment (the subscription's `created_at`):
+
+| Change within the first year                       | Discount sent with the change                                                    |
+| -------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Pro ↔ Ultra on monthly, billed now (upgrade)       | New discount for the current month through month 12, `effective_from: immediately` |
+| Ultra → Pro on monthly, billed at renewal          | New discount for the monthly payments left, `effective_from: next_billing_period`  |
+| Monthly → annual                                   | New one-off discount, `effective_from: immediately` (the annual charge)           |
+| Pro → Ultra on annual, billed now                  | New one-off discount on the prorated charge, `effective_from: immediately`        |
+| Ultra → Pro on annual, or annual → monthly         | `discount: null` (the annual payment was the discounted one)                     |
+| Any change after month 12                          | `discount: null`                                                                 |
+
+These per-change discounts are created through the API (`mode: custom`, no code, not usable at
+checkout) with the promo's percent. Subscriptions whose checkout had no promo, or a code other than
+the current `ACTIVE_PROMO`, keep their discount unchanged. The billing card follows the same rules
+(`promoDiscountActive`): monthly shows the discount until the end of the first year, annual for an
+annual period that started in the first year.
 
 ## Local testing
 
@@ -138,9 +173,6 @@ Sandbox cards: `4242 4242 4242 4242` succeeds, `4000 0000 0000 0002` is declined
 
 ## Sandbox test cases
 
-In-app plan changes, cancel, resume, pause and portal links are not routed to Paddle yet; manage
-sandbox subscriptions from the Paddle dashboard (Customers → Subscriptions) for these cases.
-
 Run these against the sandbox before switching any traffic. For each, check the user's
 `Subscription` row (`billingProvider`, `providerSubscriptionId`, `status`, `plan`,
 `billingInterval`, `endsAt`, card fields) and the plan shown in the dashboard.
@@ -162,6 +194,10 @@ Run these against the sandbox before switching any traffic. For each, check the 
 | 13  | Delete the account while Paddle refuses the cancel and the subscription is still live (for example a wrong API key) | Deletion is refused with "We couldn't cancel your subscription…" and nothing is deleted. |
 | 14  | Replay any webhook with a bad signature or a `ts` older than 5 seconds | 401; nothing changes.                                                                                                                                          |
 | 15  | Lemon Squeezy subscriber with `BILLING_PROVIDER=paddle`              | Billing, reconcile and deletion keep using Lemon Squeezy for that row.                                                                                         |
+| 16  | Monthly checkout with the promo                                       | The subscription's discount `ends_at` is the start of month 12; month 13 is billed at full price.                                                             |
+| 17  | Annual checkout with the promo                                        | The subscription's discount is `one-off`; the renewal a year later is billed at full price.                                                                   |
+| 18  | Promo monthly subscriber upgrades to Ultra in month 3 (in the app)    | The prorated charge is discounted and the discount `ends_at` stays at month 12; the billing card still shows the discount.                                   |
+| 19  | Promo monthly subscriber switches to annual in month 5 (in the app)   | The annual charge is discounted once; the discount is `one-off` and the next annual renewal is full price.                                                    |
 
 ## Going live
 
