@@ -51,14 +51,15 @@ export function buildLlmsTxt({
     `## Plans (prices in USD, from ${SITE}/pricing)
 
 - Free, $${prices.free}: ${fmt(free.linksLimit)} links a month, ${fmt(free.eventsLimit)} tracked events a month, ${free.analyticsRangeLimitDays}-day analytics window, ${freeQrCodeLimit} dynamic QR codes (edit anytime, never expire, no ads), ${plural(free.bioPageLimit, "link-in-bio page")} with up to ${plural(free.bioLinkBlocksPerPageLimit, "link block")}, ${plural(free.campaignLimit, "campaign")}. Short links use isht.app. No custom domains, no API.
-- Pro, $${prices.pro} a month or $${annualPrices.pro} a year: ${fmt(pro.linksLimit)} links a month, ${fmt(pro.eventsLimit)} tracked events, unlimited analytics history, ${plural(pro.domainLimit, "custom domain")}, branded and dynamic QR codes, ${plural(pro.bioPageLimit, "link-in-bio page")} on a custom domain without branding, geo and device targeting, password protection, scheduled links, UTM parameters on links, REST API.
+- Pro, $${prices.pro} a month or $${annualPrices.pro} a year: ${fmt(pro.linksLimit)} links a month, ${fmt(pro.eventsLimit)} tracked events, unlimited analytics history, ${plural(pro.domainLimit, "custom domain")}, branded and dynamic QR codes, ${plural(pro.bioPageLimit, "link-in-bio page")} on a custom domain without branding, geo and device targeting, password protection, scheduled links, UTM parameters on links, REST API and MCP server.
 - Ultra, $${prices.ultra} a month or $${annualPrices.ultra} a year: unlimited links, events and custom domains, team workspaces, link cloaking, UTM templates, unlimited bio pages and campaigns, priority support.`,
     `## Facts
 
 - Links keep redirecting when a plan's monthly limit is reached; only new links or new event recording pause until the next month.
 - Analytics show clicks, countries, cities, devices and referrers, with known bots and crawlers filtered out.
 - Bitly links on a custom domain can be imported from Bitly's CSV export and keep their addresses.
-- Every link is scanned for phishing and malware.`,
+- Every link is scanned for phishing and malware.
+- AI assistants (Claude, Cursor, Codex and other MCP clients) can create and manage links, read analytics and make QR codes through the remote MCP server at ${SITE}/mcp (streamable HTTP; the API key goes in an \`Authorization: Bearer\` header; Pro and Ultra).`,
     `## Key pages
 
 - [Pricing](${SITE}/pricing)
@@ -73,6 +74,7 @@ export function buildLlmsTxt({
 - [Plans and limits](${SITE}/docs/plans)
 - [Migrate from Bitly](${SITE}/docs/migrate-from-bitly)
 - [API reference](${SITE}/docs/api)
+- [MCP server setup for Claude, Cursor and Codex](${SITE}/docs/integrations/mcp)
 - [Source code](https://github.com/AmoabaKelvin/ishortn.ink)`,
   ];
   if (guides.length > 0) sections.push(`## Guides\n\n${guides.join("\n")}`);
