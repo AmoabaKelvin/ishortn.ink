@@ -1,6 +1,5 @@
 "use client";
 
-import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -25,8 +24,6 @@ const PLANS: { id: Plan; name: string }[] = [
   { id: "pro", name: "Pro" },
   { id: "ultra", name: "Ultra" },
 ];
-
-const formatDate = (date: Date) => format(new Date(date), "MMM d, yyyy");
 
 const planOrder = { free: 0, pro: 1, ultra: 2 } satisfies Record<Plan, number>;
 
@@ -163,7 +160,8 @@ export function PlanSwitcher({
       {isResumable && (
         <p className="mt-2 text-[12px] text-neutral-500 dark:text-neutral-400">
           {pause
-            ? `${pause.startsAt ? `Pauses on ${formatDate(pause.startsAt)}, resumes` : "Resumes"} ${formatDate(pause.resumesAt)}. Resume it now to change plans.`
+            ? // The status line above already shows the pause dates.
+              "Resume it now to change plans."
             : `Your subscription is ${isPaused ? "paused" : "cancelled"}. Resume it to change plans.`}
         </p>
       )}

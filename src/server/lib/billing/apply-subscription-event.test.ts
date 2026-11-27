@@ -151,19 +151,61 @@ describe.skipIf(!testDatabaseUrl)("applySubscriptionEvent with Paddle (MySQL)", 
   });
 
   test("an update that arrives before created asks for a redelivery", async () => {
-    const early = await applySubscriptionEvent(paddleEvent("updated", "2026-11-27T00:00:05Z"), {
-      log,
-    });
+    const createdAt = new Date();
+    const early = await applySubscriptionEvent(
+      paddleEvent("updated", "2026-11-27T00:00:05Z", { createdAt }),
+      { log },
+    );
     expect(early.result).toBe("not_created_yet");
     expect(await storedSubscription()).toBeUndefined();
 
-    await applySubscriptionEvent(paddleEvent("created", "2026-11-27T00:00:00Z"), { log });
+    await applySubscriptionEvent(paddleEvent("created", "2026-11-27T00:00:00Z", { createdAt }), {
+      log,
+    });
     const redelivered = await applySubscriptionEvent(
-      paddleEvent("updated", "2026-11-27T00:00:05Z", { status: "past_due" }),
+      paddleEvent("updated", "2026-11-27T00:00:05Z", { createdAt, status: "past_due" }),
       { log },
     );
     expect(redelivered.result).toBe("applied");
     expect((await storedSubscription())?.status).toBe("past_due");
+  });
+
+  test("an update for a new subscription waits for created when an older row exists", async () => {
+    await applySubscriptionEvent(paddleEvent("created", "2026-11-01T00:00:00Z"), { log });
+
+    const early = await applySubscriptionEvent(
+      paddleEvent("updated", "2026-11-27T00:00:05Z", {
+        providerSubscriptionId: "sub_01test930new",
+        createdAt: new Date(),
+      }),
+      { log },
+    );
+    expect(early.result).toBe("not_created_yet");
+    expect((await storedSubscription())?.providerSubscriptionId).toBe(PADDLE_SUBSCRIPTION_ID);
+  });
+
+  test("acknowledges an event after the account and its row were deleted", async () => {
+    await applySubscriptionEvent(paddleEvent("created", "2026-11-27T00:00:00Z"), { log });
+    await db.delete(schema.subscription).where(eq(schema.subscription.userId, USER_ID));
+    await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
+
+    const outcome = await applySubscriptionEvent(
+      paddleEvent("expired", "2026-11-27T00:00:05Z", { status: "expired", createdAt: new Date() }),
+      { log },
+    );
+    expect(outcome.result).toBe("no_row_matched");
+    expect(await storedSubscription()).toBeUndefined();
+  });
+
+  test("acknowledges an event with no row once the purchase is old", async () => {
+    const outcome = await applySubscriptionEvent(
+      paddleEvent("expired", "2026-11-27T00:00:05Z", {
+        status: "expired",
+        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      }),
+      { log },
+    );
+    expect(outcome.result).toBe("no_row_matched");
   });
 
   test("an event repeating the stored updated_at is stale", async () => {

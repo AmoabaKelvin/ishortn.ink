@@ -81,6 +81,9 @@ export type ApplySubscriptionEventOptions = {
   sendWelcome?: boolean;
 };
 
+/** How long after a purchase an event may wait for subscription.created to write the row. */
+const CREATED_REDELIVERY_WINDOW_MS = 60 * 60 * 1000;
+
 const eventSubscriptionId = (event: SubscriptionEvent) =>
   event.provider === "paddle" ? event.providerSubscriptionId : event.subscriptionId;
 
@@ -152,11 +155,28 @@ export async function applySubscriptionEvent(
   }
 
   // Paddle delivers a purchase's events concurrently and in no set order, so an update can arrive
-  // before subscription.created has written the row. It is retried rather than dropped, in case it
-  // carries newer state than the created event.
-  if (!existing && kind !== "created" && event.provider === "paddle") {
-    log.info(logContext, "no subscription row yet; asking for a redelivery");
-    return { result: "not_created_yet" };
+  // before subscription.created has written the row (or replaced an older row from another
+  // subscription or provider). It is retried rather than dropped, in case it carries newer state
+  // than the created event, but only shortly after the purchase and while the user exists: after
+  // an account deletion or a lost purchase the row never appears, and a retry could never succeed.
+  const awaitingCreated =
+    event.provider === "paddle" &&
+    kind !== "created" &&
+    (!existing || !sameProvider || storedSubscriptionId(existing) !== subscriptionId);
+  if (awaitingCreated) {
+    const recentPurchase = Date.now() - event.createdAt.getTime() < CREATED_REDELIVERY_WINDOW_MS;
+    const owner = recentPurchase
+      ? await db.query.user.findFirst({ where: eq(user.id, userId), columns: { id: true } })
+      : undefined;
+    if (owner) {
+      log.info(logContext, "subscription not created yet; asking for a redelivery");
+      return { result: "not_created_yet" };
+    }
+    log.info(
+      { ...logContext, reason: recentPurchase ? "user_not_found" : "outside_redelivery_window" },
+      "ignoring event for a subscription with no row",
+    );
+    return { result: "no_row_matched", previous: existing ?? null };
   }
 
   const currentSubscription = and(
