@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { ACTIVE_PROMO } from "@/lib/billing/promo";
 
 import {
+  graceOfferPromo,
   promoBannerHref,
   promoBannerState,
   promoDismissKey,
@@ -81,6 +82,83 @@ describe("upgradeOfferPromo", () => {
     const pro = { ...free, plan: "pro" as const, subscriptionMode: "update" as const };
     for (const subscription of [resume, team, pro]) {
       expect(upgradeOfferPromo({ subscription, isRestricted: false, now: inside })).toBeNull();
+    }
+  });
+});
+
+describe("graceOfferPromo", () => {
+  // A lapsed Pro account in grace: its plan still reads as Pro, but resubscribing is a new checkout.
+  const lapsed = { ...free, plan: "pro" as const };
+  const notice = {
+    type: "account" as const,
+    plan: "pro" as const,
+    reason: "lapsed" as const,
+    action: "upgrade" as const,
+  };
+
+  test("offers the promo to a lapsed account in grace inside the window", () => {
+    expect(
+      graceOfferPromo({ subscription: lapsed, notice, isRestricted: false, now: inside }),
+    ).toBe(ACTIVE_PROMO);
+    const ultra = { ...notice, plan: "ultra" as const };
+    expect(
+      graceOfferPromo({ subscription: lapsed, notice: ultra, isRestricted: false, now: inside }),
+    ).toBe(ACTIVE_PROMO);
+  });
+
+  test("is null outside the window", () => {
+    const after = new Date("2026-12-02T10:00:00Z");
+    expect(
+      graceOfferPromo({ subscription: lapsed, notice, isRestricted: false, now: after }),
+    ).toBeNull();
+  });
+
+  test("is null without a grace notice, so Free accounts keep the strip only", () => {
+    for (const n of [null, undefined]) {
+      expect(
+        graceOfferPromo({ subscription: free, notice: n, isRestricted: false, now: inside }),
+      ).toBeNull();
+    }
+  });
+
+  test("is null for a failed payment, which is fixed on the existing subscription", () => {
+    const pastDue = { ...notice, action: "update_payment" as const };
+    const updateMode = { ...lapsed, subscriptionMode: "update" as const };
+    expect(
+      graceOfferPromo({
+        subscription: updateMode,
+        notice: pastDue,
+        isRestricted: false,
+        now: inside,
+      }),
+    ).toBeNull();
+  });
+
+  test("is null when the account still has a subscription to change or resume", () => {
+    for (const subscriptionMode of ["update", "resume"] as const) {
+      expect(
+        graceOfferPromo({
+          subscription: { ...lapsed, subscriptionMode },
+          notice,
+          isRestricted: false,
+          now: inside,
+        }),
+      ).toBeNull();
+    }
+  });
+
+  test("is null for over-plan graces, team notices, team workspaces and restricted accounts", () => {
+    const overPlan = { ...notice, reason: "over_plan" as const };
+    const team = { type: "team" as const };
+    const cases = [
+      { subscription: free, notice: overPlan, isRestricted: false },
+      { subscription: lapsed, notice: team, isRestricted: false },
+      { subscription: { ...lapsed, isTeamWorkspace: true }, notice, isRestricted: false },
+      { subscription: lapsed, notice, isRestricted: true },
+      { subscription: null, notice, isRestricted: false },
+    ];
+    for (const input of cases) {
+      expect(graceOfferPromo({ ...input, now: inside })).toBeNull();
     }
   });
 });

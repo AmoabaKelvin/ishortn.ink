@@ -47,6 +47,8 @@ type StubCalls = {
   createCustomer: string[];
   findActiveDiscountByCode: string[];
   createTransaction: CreateTransactionInput[];
+  listOpenTransactions: string[];
+  cancelTransaction: string[];
 };
 
 function stubPaddle(options: {
@@ -56,12 +58,15 @@ function stubPaddle(options: {
   /** Answers every code lookup with exactly this discount. */
   discount?: PaddleDiscount;
   transactions?: (PaddleTransaction | Error)[];
+  openTransactions?: PaddleTransaction[] | Error;
 }) {
   const calls: StubCalls = {
     findCustomerByEmail: [],
     createCustomer: [],
     findActiveDiscountByCode: [],
     createTransaction: [],
+    listOpenTransactions: [],
+    cancelTransaction: [],
   };
   const transactions = options.transactions ?? [
     {
@@ -94,6 +99,15 @@ function stubPaddle(options: {
       const next = transactions[calls.createTransaction.length - 1]!;
       if (next instanceof Error) throw next;
       return next;
+    },
+    listOpenTransactions: async (customerId: string) => {
+      calls.listOpenTransactions.push(customerId);
+      if (options.openTransactions instanceof Error) throw options.openTransactions;
+      return options.openTransactions ?? [];
+    },
+    cancelTransaction: async (id: string) => {
+      calls.cancelTransaction.push(id);
+      return { id, status: "canceled", checkout: null };
     },
   };
   return { calls, client };
@@ -260,6 +274,46 @@ describe("createPaddleCheckout", () => {
       "Our payment provider is unavailable right now.",
     );
     expect(calls.createTransaction).toHaveLength(1);
+  });
+
+  test("cancels the customer's earlier unpaid checkouts before creating a new one", async () => {
+    const { calls, client } = stubPaddle({
+      existingCustomerId: "ctm_found",
+      openTransactions: [
+        { id: "txn_old_ready", status: "ready", subscription_id: null, checkout: null },
+        { id: "txn_old_draft", status: "draft", checkout: null },
+        // A payment-method update for an existing subscription stays open.
+        { id: "txn_pm_update", status: "ready", subscription_id: "sub_1", checkout: null },
+      ],
+    });
+
+    const result = await createPaddleCheckout(client, baseInput);
+
+    expect(result.url).toBe("https://ishortn.test/checkout?_ptxn=txn_1");
+    expect(calls.listOpenTransactions).toEqual(["ctm_found"]);
+    expect(calls.cancelTransaction).toEqual(["txn_old_ready", "txn_old_draft"]);
+    expect(calls.createTransaction).toHaveLength(1);
+  });
+
+  test("a failure cancelling earlier checkouts doesn't block the new one", async () => {
+    const { calls, client } = stubPaddle({
+      existingCustomerId: "ctm_found",
+      openTransactions: new Error("network"),
+    });
+
+    const result = await createPaddleCheckout(client, baseInput);
+
+    expect(result.url).toBe("https://ishortn.test/checkout?_ptxn=txn_1");
+    expect(calls.createTransaction).toHaveLength(1);
+  });
+
+  test("without a customer there are no earlier checkouts to cancel", async () => {
+    const { calls, client } = stubPaddle({});
+
+    await createPaddleCheckout(client, { ...baseInput, email: null });
+
+    expect(calls.listOpenTransactions).toEqual([]);
+    expect(calls.createTransaction[0]?.customerId).toBeUndefined();
   });
 
   test("a transaction without a checkout url fails with the provider error", async () => {

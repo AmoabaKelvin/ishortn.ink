@@ -4,6 +4,7 @@ import { Funnel_Sans } from "next/font/google";
 
 import { ChangelogBanner } from "@/components/changelog/changelog-banner";
 import { purgeDateFor } from "@/lib/account-deletion/constants";
+import { subscriptionInterval } from "@/lib/billing/plans";
 import { paddlePriceId } from "@/lib/paddle/config";
 import { cn } from "@/lib/utils";
 import { displayName } from "@/lib/utils/user-name";
@@ -19,7 +20,11 @@ import { DashboardNav } from "./_components/navigation/header";
 import { SidebarWrapper } from "./_components/navigation/sidebar-wrapper";
 import { PlanGraceBanner } from "./_components/plan-grace-banner";
 import { PromoBanner } from "./_components/promo-banner";
-import { promoBannerState, upgradeOfferPromo } from "./_components/promo-banner-state";
+import {
+  graceOfferPromo,
+  promoBannerState,
+  upgradeOfferPromo,
+} from "./_components/promo-banner-state";
 import { RestoreAccountButton } from "./_components/restore-account-button";
 import { SignOutButton } from "./_components/sign-out-button";
 import { trackingPausedBannerState } from "./_components/tracking-paused";
@@ -157,6 +162,7 @@ export default async function DashboardLayout({ children }: Props) {
     otherBannerShown: isRestricted || emailBounced || !!trackingPaused || !!graceNotice,
   });
   const upgradeOffer = upgradeOfferPromo({ subscription, isRestricted });
+  const graceOffer = graceOfferPromo({ subscription, notice: graceNotice, isRestricted });
   // Dismissal is read on the client (annual-switch-card.tsx).
   const annualOffer = annualSwitchOffer({
     subscription: subscription?.subscriptions ?? null,
@@ -202,7 +208,11 @@ export default async function DashboardLayout({ children }: Props) {
               <AnnualSwitchCard offer={annualOffer} source="dashboard" className="mt-6" />
             )}
             <div className="mt-7 py-4">
-              <PlanGraceBanner initialNotice={graceNotice} />
+              <PlanGraceBanner
+                initialNotice={graceNotice}
+                promo={graceOffer}
+                interval={subscriptionInterval(subscription?.subscriptions)}
+              />
               {children}
             </div>
           </div>
