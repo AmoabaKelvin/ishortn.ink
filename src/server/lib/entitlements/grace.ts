@@ -1,5 +1,6 @@
 import { and, eq, gt, inArray, isNotNull, isNull, lt, lte, or } from "drizzle-orm";
 
+import { planGraceSubject } from "@/emails/_components/plan-grace-subject";
 import {
   describeOverPlanFeature,
   dueGraceEmail,
@@ -729,34 +730,12 @@ function timeLeft(endsAt: Date, now: Date): string {
 const upgradeUrl = (plan: Plan) =>
   plan === "free" ? getAppUrl("/dashboard/pricing") : emailLinkUrl(EMAIL_LINKS.planGrace[plan]);
 
-function accountSubject(
-  kind: GraceEmailKind,
-  reason: GraceReason,
-  planName: string,
-  endsOn: string,
-  paymentFailed: boolean,
-) {
-  if (kind === "ended") return "Your iShortn account is on the Free plan now";
-  if (paymentFailed && kind === "started") {
-    return `Your iShortn ${planName} payment didn't go through`;
-  }
-  if (reason === "lapsed") {
-    return kind === "started"
-      ? `Your iShortn ${planName} access continues until ${endsOn}`
-      : `Your iShortn ${planName} access ends on ${endsOn}`;
-  }
-  return kind === "started"
-    ? `Some of your iShortn features need ${planName} after ${endsOn}`
-    : `Reminder: some of your iShortn features need ${planName} from ${endsOn}`;
-}
-
 /**
  * The team grace email to its owner. When the owner's Ultra payment failed it
  * links to the update-payment-method page instead of pricing.
  */
 export function teamGraceEmail(options: {
   teamName: string;
-  ownerName: string | null;
   ownerSubscription: Subscription | null;
   endsAt: Date;
   kind: GraceEmailKind;
@@ -765,25 +744,18 @@ export function teamGraceEmail(options: {
   const { teamName, endsAt, kind, now } = options;
   const endsOn = formatDay(endsAt);
   const paymentFailed = teamGraceAction(options.ownerSubscription) === "update_payment";
-  let subject: string;
-  if (kind !== "started") subject = `${teamName} becomes read-only on ${endsOn}`;
-  else if (paymentFailed) subject = "Your iShortn Ultra payment didn't go through";
-  else subject = `${teamName} needs Ultra to stay editable after ${endsOn}`;
-  return {
-    subject,
-    props: {
-      recipientName: options.ownerName,
-      kind,
-      reason: "team",
-      planName: "Ultra",
-      endsOn,
-      timeLeft: timeLeft(endsAt, now),
-      teamName,
-      items: [],
-      upgradeUrl: upgradeUrl("ultra"),
-      updatePaymentUrl: paymentFailed ? getAppUrl(updatePaymentPath("email")) : undefined,
-    } satisfies PlanGraceEmailProps,
+  const props: PlanGraceEmailProps = {
+    kind,
+    reason: "team",
+    planName: "Ultra",
+    endsOn,
+    timeLeft: timeLeft(endsAt, now),
+    teamName,
+    items: [],
+    upgradeUrl: upgradeUrl("ultra"),
+    updatePaymentUrl: paymentFailed ? getAppUrl(updatePaymentPath("email")) : undefined,
   };
+  return { subject: planGraceSubject(props), props };
 }
 
 /** Free-plan limits listed when a lapsed account uses no feature above Free. */
@@ -803,7 +775,6 @@ function freePlanSummary(): string[] {
  * list: the account no longer uses anything the grace covers.
  */
 export function accountGraceEmail(options: {
-  name: string | null;
   subscription: Subscription | null;
   usage: PlanUsage;
   gracePlan: Plan;
@@ -821,20 +792,17 @@ export function accountGraceEmail(options: {
   const planName = PLAN_NAMES[gracePlan];
   const endsOn = formatDay(endsAt);
   const paymentFailed = graceAction(reason, subscription, gracePlan) === "update_payment";
-  return {
-    subject: accountSubject(kind, reason, planName, endsOn, paymentFailed),
-    props: {
-      recipientName: options.name,
-      kind,
-      reason,
-      planName,
-      endsOn,
-      timeLeft: timeLeft(endsAt, now),
-      items: items.length > 0 || reason !== "lapsed" ? items : freePlanSummary(),
-      upgradeUrl: upgradeUrl(gracePlan),
-      updatePaymentUrl: paymentFailed ? getAppUrl(updatePaymentPath("email")) : undefined,
-    } satisfies PlanGraceEmailProps,
+  const props: PlanGraceEmailProps = {
+    kind,
+    reason,
+    planName,
+    endsOn,
+    timeLeft: timeLeft(endsAt, now),
+    items: items.length > 0 || reason !== "lapsed" ? items : freePlanSummary(),
+    upgradeUrl: upgradeUrl(gracePlan),
+    updatePaymentUrl: paymentFailed ? getAppUrl(updatePaymentPath("email")) : undefined,
   };
+  return { subject: planGraceSubject(props), props };
 }
 
 /**
@@ -875,7 +843,6 @@ export async function sendDueGraceEmails(options: {
   for (const { account, email, endsAt, gracePlan, reason, kind } of due) {
     const stage = GRACE_EMAIL_STAGE[kind];
     const message = accountGraceEmail({
-      name: account.name,
       subscription: account.subscriptions,
       usage: usage.get(account.id) ?? EMPTY_USAGE,
       gracePlan,
@@ -923,7 +890,6 @@ export async function sendDueGraceEmails(options: {
         endsAt: team.ownerPlanGraceEndsAt,
         stage: team.ownerPlanGraceEmailStage,
         ownerEmail: user.email,
-        ownerName: user.name,
         ownerSubscription: subscription,
       })
       .from(team)
@@ -948,7 +914,6 @@ export async function sendDueGraceEmails(options: {
       const stage = GRACE_EMAIL_STAGE[kind];
       const { subject, props } = teamGraceEmail({
         teamName: row.name,
-        ownerName: row.ownerName,
         ownerSubscription: row.ownerSubscription,
         endsAt: row.endsAt,
         kind,

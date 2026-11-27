@@ -1,6 +1,6 @@
 import { promoBannerState } from "@/app/(main)/dashboard/_components/promo-banner-state";
 import { eventsUpgradeTarget } from "@/app/(main)/dashboard/_components/tracking-paused";
-import EventUsageAlertEmail from "@/emails/event-usage-alert";
+import EventUsageAlertEmail, { eventUsageSubject } from "@/emails/event-usage-alert";
 import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 
 import { EMAIL_FROM_SYSTEM, sendEmail } from "./send-email";
@@ -12,7 +12,6 @@ import type { Promo } from "@/lib/billing/promo";
 export type SendEventUsageEmailInput = {
   userId: string;
   email: string;
-  name?: string | null;
   threshold: number;
   limit: number;
   currentCount: number;
@@ -23,10 +22,20 @@ export type SendEventUsageEmailInput = {
   resetsAt: Date;
 };
 
-export function eventUsageSubject(threshold: number): string {
-  return threshold >= 100
-    ? "You've reached your monthly analytics cap"
-    : `You're ${threshold}% through your monthly analytics cap`;
+/**
+ * Whether the month's count reaches `limit` before `resetsAt` at its pace since the month began.
+ * The month is the one ending at `resetsAt` (see nextEventCountReset).
+ */
+export function onPaceToReachLimit(
+  currentCount: number,
+  limit: number,
+  resetsAt: Date,
+  now = new Date(),
+): boolean {
+  const start = new Date(resetsAt.getFullYear(), resetsAt.getMonth() - 1, 1).getTime();
+  const elapsed = now.getTime() - start;
+  if (elapsed <= 0 || currentCount <= 0) return false;
+  return (currentCount / elapsed) * (resetsAt.getTime() - start) >= limit;
 }
 
 /** The running promo when this account's upgrade is a new Free-plan checkout, else null. */
@@ -57,7 +66,6 @@ export function eventUsageUpgrade(plan: Plan, threshold: number) {
 export async function sendEventUsageEmail({
   userId,
   email,
-  name,
   threshold,
   limit,
   currentCount,
@@ -69,6 +77,7 @@ export async function sendEventUsageEmail({
   const upgrade = eventUsageUpgrade(plan, threshold);
   if (!upgrade) return;
   const { notificationSettingsUrl, headers } = productNotificationOptions(userId);
+  const resetDate = resetsAt.toLocaleDateString("en-US", { month: "long", day: "numeric" });
 
   await sendEmail({
     template: "event-usage-alert",
@@ -76,14 +85,14 @@ export async function sendEventUsageEmail({
     recipientId: userId,
     to: email,
     essential: false,
-    subject: eventUsageSubject(threshold),
+    subject: eventUsageSubject({ threshold, resetDate }),
     react: EventUsageAlertEmail({
-      userName: name,
       threshold,
       limit,
       currentCount,
       plan,
-      resetDate: resetsAt.toLocaleDateString("en-US", { month: "long", day: "numeric" }),
+      resetDate,
+      onPaceToReachLimit: onPaceToReachLimit(currentCount, limit, resetsAt),
       upgrade,
       promo,
       notificationSettingsUrl,

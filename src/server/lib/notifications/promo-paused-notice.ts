@@ -1,4 +1,4 @@
-import PromoPausedNoticeEmail from "@/emails/promo-paused-notice";
+import PromoPausedNoticeEmail, { promoPausedNoticeSubject } from "@/emails/promo-paused-notice";
 import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 
 import { EMAIL_FROM_SYSTEM, sendEmail } from "./send-email";
@@ -9,7 +9,6 @@ import type { Promo } from "@/lib/billing/promo";
 export type SendPromoPausedNoticeInput = {
   userId: string;
   email: string;
-  name: string | null;
   dropped: number;
   pausedAt: Date;
   resetsAt: Date;
@@ -31,7 +30,6 @@ export function promoPausedNoticeUrl(target: "pro" | "ultra"): string {
 export function sendPromoPausedNotice({
   userId,
   email,
-  name,
   dropped,
   pausedAt,
   resetsAt,
@@ -39,6 +37,7 @@ export function sendPromoPausedNotice({
   promo,
 }: SendPromoPausedNoticeInput): Promise<boolean> {
   const { notificationSettingsUrl, headers } = productNotificationOptions(userId);
+  const pausedOn = formatDay(pausedAt);
 
   return sendEmail({
     template: "promo-paused-notice",
@@ -46,11 +45,10 @@ export function sendPromoPausedNotice({
     recipientId: userId,
     to: email,
     essential: false,
-    subject: "Visits to your links are still not being recorded",
+    subject: promoPausedNoticeSubject({ dropped, pausedOn }),
     react: PromoPausedNoticeEmail({
-      userName: name,
       dropped,
-      pausedOn: formatDay(pausedAt),
+      pausedOn,
       resumesOn: formatDay(resetsAt),
       promo,
       upgrade: {

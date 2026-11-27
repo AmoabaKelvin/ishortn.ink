@@ -44,7 +44,6 @@ function ownerSubscription(status: string, plan: "pro" | "ultra" = "ultra"): Sub
 const email = (sub: Subscription | null, kind: "started" | "reminder" = "started") =>
   teamGraceEmail({
     teamName: "Acme",
-    ownerName: "Ama",
     ownerSubscription: sub,
     endsAt: ENDS_AT,
     kind,
@@ -92,7 +91,6 @@ const accountEmail = (
   usage: PlanUsage = { ...EMPTY_USAGE, customDomains: 3 },
 ) =>
   accountGraceEmail({
-    name: "Ama",
     subscription: sub,
     usage,
     gracePlan,
@@ -131,7 +129,7 @@ describe("accountGraceEmail", () => {
       "ultra",
       "over_plan",
     )!;
-    expect(subject).toBe("Some of your iShortn features need Ultra after November 27, 2026");
+    expect(subject).toBe("Keep your Ultra features after November 27, 2026");
     expect(props.updatePaymentUrl).toBeUndefined();
     expect(props.upgradeUrl).toBe("https://ishortn.ink/e-grace-ultra");
   });
