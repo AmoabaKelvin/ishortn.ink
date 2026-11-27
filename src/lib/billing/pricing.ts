@@ -1,7 +1,9 @@
+import { addMonths } from "date-fns";
+
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 
 import { withAttribution } from "./attribution";
-import { promoPrice } from "./promo";
+import { ACTIVE_PROMO, formatDayMonthYearShort, promoPrice } from "./promo";
 
 import type { Attribution } from "./attribution";
 import type { BillingInterval, Plan } from "./plans";
@@ -77,6 +79,80 @@ export function planPriceDisplay(
     };
   }
   return { perMonth: formatUsd(PLAN_PRICES_USD[plan]), compareAt: null, note: "billed monthly" };
+}
+
+/** How long a checkout discount lasts: 12 monthly payments, or the first annual payment. */
+const DISCOUNT_MONTHS = 12;
+
+export type SubscriptionDiscount = {
+  code: string;
+  /** Null for a code that isn't a known promo, so only "discount applied" can be shown. */
+  percentOff: number | null;
+  endsAt: Date;
+};
+
+type DiscountCheckout = {
+  plan: Plan;
+  interval: BillingInterval;
+  promoCode: string | null;
+  provider: string;
+  createdAt: Date;
+};
+
+/**
+ * The discount a subscription is still billed with, from the checkout that created it: the
+ * user's latest checkout start, since a live subscription can't start another. It counts only
+ * while the plan, interval and provider match that checkout, as a plan change may drop it.
+ */
+export function subscriptionDiscount(
+  checkout: DiscountCheckout | null | undefined,
+  subscription: { plan: Plan; interval: BillingInterval; provider: string },
+  now = new Date(),
+  promos: Promo[] = [ACTIVE_PROMO],
+): SubscriptionDiscount | null {
+  if (
+    !checkout?.promoCode ||
+    checkout.plan !== subscription.plan ||
+    checkout.interval !== subscription.interval ||
+    checkout.provider !== subscription.provider
+  ) {
+    return null;
+  }
+  const endsAt = addMonths(checkout.createdAt, DISCOUNT_MONTHS);
+  if (now >= endsAt) return null;
+  const code = checkout.promoCode;
+  const promo = promos.find((candidate) => candidate.code === code);
+  return { code, percentOff: promo?.percentOff ?? null, endsAt };
+}
+
+/** A subscriber's own price line: what they are billed, with the discount while it lasts. */
+export function subscribedPriceDisplay(
+  plan: Exclude<Plan, "free">,
+  interval: BillingInterval,
+  discount: SubscriptionDiscount | null,
+): PlanPriceDisplay {
+  const list = planPriceDisplay(plan, interval);
+  if (!discount) return list;
+  const { percentOff } = discount;
+  if (percentOff === null) return { ...list, note: `${list.note}, discount applied` };
+
+  const off = (price: number) => Math.round(price * (100 - percentOff)) / 100;
+  const label = `${percentOff}% off with ${discount.code}`;
+  if (interval === "annual") {
+    const yearly = PLAN_PRICES_ANNUAL_USD[plan];
+    const firstYear = off(yearly);
+    return {
+      perMonth: formatUsd(firstYear / 12),
+      compareAt: formatUsd(yearly / 12),
+      note: `billed $${formatUsd(firstYear)} the first year (${label}), then $${formatUsd(yearly)}/yr`,
+    };
+  }
+  const monthly = PLAN_PRICES_USD[plan];
+  return {
+    perMonth: formatUsd(off(monthly)),
+    compareAt: formatUsd(monthly),
+    note: `${label} until ${formatDayMonthYearShort(discount.endsAt)}, then $${formatUsd(monthly)}/mo`,
+  };
 }
 
 /**

@@ -41,6 +41,7 @@ async function SettingsPage(props: Props) {
     userProfile,
     workspace,
     graceNotice,
+    latestCheckout,
   ] = await Promise.all([
     api.siteSettings.get.query(),
     api.customDomain.list.query(),
@@ -51,6 +52,7 @@ async function SettingsPage(props: Props) {
     api.user.getProfile.query(),
     api.team.currentWorkspace.query(),
     getDashboardGraceNotice(),
+    api.lemonsqueezy.latestCheckoutStart.query(),
   ]);
   // Dismissal is read on the client (annual-switch-card.tsx).
   const annualOffer = annualSwitchOffer({
@@ -152,7 +154,11 @@ async function SettingsPage(props: Props) {
               {annualOffer && (
                 <AnnualSwitchCard offer={annualOffer} source="billing" className="mb-4" />
               )}
-              <Billing subscriptions={subscriptions} promo={promo} />
+              <Billing
+                subscriptions={subscriptions}
+                promo={promo}
+                latestCheckout={latestCheckout}
+              />
               {checkout === "success" && <CheckoutAcquisitionPrompt />}
             </div>
           </section>

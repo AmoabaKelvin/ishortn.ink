@@ -17,6 +17,7 @@ import {
 } from "../../pricing/_components/plan-change-confirm-dialog";
 
 import type { BillingInterval, Plan, SubscriptionMode } from "@/lib/billing/plans";
+import type { PlanPriceDisplay } from "@/lib/billing/pricing";
 import type { Promo } from "@/lib/billing/promo";
 import type { ComponentProps } from "react";
 
@@ -35,6 +36,8 @@ type PlanSwitcherProps = {
   renewsAt: Date | null;
   /** Running promo, only passed when the next upgrade is a new checkout that gets the code. */
   promo: Promo | null;
+  /** What the subscriber is billed for their current plan and interval, discount included. */
+  currentPrice: PlanPriceDisplay | null;
   subscription: ComponentProps<typeof DowngradeFeedbackModal>["subscription"];
   /** Set while the subscription is paused; it has to be resumed before changing plans. */
   isPaused: boolean;
@@ -46,6 +49,7 @@ export function PlanSwitcher({
   subscriptionMode,
   renewsAt,
   promo,
+  currentPrice,
   subscription,
   isPaused,
 }: PlanSwitcherProps) {
@@ -175,7 +179,10 @@ export function PlanSwitcher({
           const isUpgrade = !isResumable && planOrder[plan.id] > planOrder[currentPlan];
           const isDowngrade = canChangeInPlace && planOrder[plan.id] < planOrder[currentPlan];
 
-          const price = planPriceDisplay(plan.id, interval, promo);
+          const price =
+            matchesCurrent && currentPrice
+              ? currentPrice
+              : planPriceDisplay(plan.id, interval, promo);
 
           return (
             <div

@@ -73,6 +73,11 @@ export function formatPromoEndShort(iso: string): string {
   return `${WEEKDAYS[date.getUTCDay()]!.slice(0, 3)} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]!.slice(0, 3)}`;
 }
 
+/** "25 Nov 2027", in UTC. */
+export function formatDayMonthYearShort(date: Date): string {
+  return `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]!.slice(0, 3)} ${date.getUTCFullYear()}`;
+}
+
 /** One-line announcement shown above the plan cards while the promo runs. */
 export function promoBannerText(promo: Promo): string {
   return `${promo.label}: ${promo.percentOff}% off your first year of Pro or Ultra. Applied at checkout, until ${formatPromoEnd(promo.endsAt)}.`;

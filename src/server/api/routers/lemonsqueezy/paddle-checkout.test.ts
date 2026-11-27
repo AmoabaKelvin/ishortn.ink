@@ -224,8 +224,13 @@ describe("startNewCheckout", () => {
   let restoreContext: () => void;
   let starts: CheckoutStartInput[];
   let lemonSqueezyCalls: number;
+  let lemonSqueezyConfigured: number;
 
   const recordStart = async (start: CheckoutStartInput) => void starts.push(start);
+  // Stands in for configureLemonSqueezy with no Lemon Squeezy env set, where it throws.
+  const configureLemonSqueezy = () => {
+    lemonSqueezyConfigured += 1;
+  };
 
   const createLemonSqueezyCheckout: NewCheckoutDeps["createLemonSqueezyCheckout"] = async () => {
     lemonSqueezyCalls += 1;
@@ -252,6 +257,7 @@ describe("startNewCheckout", () => {
   beforeEach(() => {
     starts = [];
     lemonSqueezyCalls = 0;
+    lemonSqueezyConfigured = 0;
   });
   afterAll(() => restoreContext());
 
@@ -259,12 +265,19 @@ describe("startNewCheckout", () => {
     const { calls, client } = stubPaddle({});
 
     const result = await startNewCheckout(
-      { recordStart, paddleConfig: null, paddleClient: client, createLemonSqueezyCheckout },
+      {
+        recordStart,
+        paddleConfig: null,
+        paddleClient: client,
+        createLemonSqueezyCheckout,
+        configureLemonSqueezy,
+      },
       input("user_paddle"),
     );
 
     expect(result).toEqual({ status: "redirect", url: "https://pay.test/c/1" });
     expect(lemonSqueezyCalls).toBe(1);
+    expect(lemonSqueezyConfigured).toBe(1);
     expect(calls.createTransaction).toHaveLength(0);
     expect(starts).toEqual([expect.objectContaining({ provider: "lemonsqueezy" })]);
   });
@@ -278,6 +291,7 @@ describe("startNewCheckout", () => {
         paddleConfig: buildPaddleConfig(PADDLE_ENV),
         paddleClient: client,
         createLemonSqueezyCheckout,
+        configureLemonSqueezy,
       },
       input("user_other"),
     );
@@ -295,6 +309,7 @@ describe("startNewCheckout", () => {
         paddleConfig: buildPaddleConfig(PADDLE_ENV),
         paddleClient: client,
         createLemonSqueezyCheckout,
+        configureLemonSqueezy,
       },
       input("user_paddle"),
     );
@@ -324,6 +339,7 @@ describe("startNewCheckout", () => {
     paddleConfig: buildPaddleConfig(PADDLE_ENV),
     paddleClient: client,
     createLemonSqueezyCheckout,
+    configureLemonSqueezy,
   });
 
   // SAFETY: getSubscriptionMode reads only these fields of the row.
@@ -362,6 +378,26 @@ describe("startNewCheckout", () => {
     expect(calls.createTransaction).toHaveLength(0);
     expect(lemonSqueezyCalls).toBe(0);
     expect(starts).toEqual([]);
+  });
+
+  test("a Paddle checkout opens without the Lemon Squeezy env", async () => {
+    const { client } = stubPaddle({});
+
+    const result = await startNewCheckout(
+      {
+        ...paddleDeps(client),
+        configureLemonSqueezy: () => {
+          throw new Error("Missing required LEMONSQUEEZY env variables");
+        },
+      },
+      input("user_paddle"),
+    );
+
+    expect(result).toEqual({
+      status: "redirect",
+      url: "https://ishortn.test/checkout?_ptxn=txn_1",
+    });
+    expect(lemonSqueezyCalls).toBe(0);
   });
 
   test("a Paddle subscription that has ended can check out again", async () => {
