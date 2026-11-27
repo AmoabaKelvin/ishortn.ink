@@ -33,5 +33,6 @@ export const DOCS_PAGE_MODULES = {
   "integrations/raycast": () => import("../../../content/docs/integrations/raycast.mdx"),
   "integrations/n8n": () => import("../../../content/docs/integrations/n8n.mdx"),
   "integrations/mcp": () => import("../../../content/docs/integrations/mcp.mdx"),
+  "integrations/webhooks": () => import("../../../content/docs/integrations/webhooks.mdx"),
   "self-hosting": () => import("../../../content/docs/self-hosting.mdx"),
 } satisfies { [Slug in DocsSlug]: () => Promise<DocsModule> };

@@ -13,6 +13,7 @@ import { previousAddressCacheKeys, recordAddressChange } from "@/server/lib/link
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { recordSafetyFollowUp } from "@/server/lib/phishing/follow-up";
 import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
+import { emitLinkWebhooks } from "@/server/lib/webhooks";
 
 import { apiError, errorResponse, readJsonBody, validationError } from "../../errors";
 import {
@@ -249,6 +250,7 @@ export const PATCH = withApiKey(
         ]);
       }
 
+      emitLinkWebhooks(db, personalWorkspace(token), "link.updated", [updatedLink]);
       return Response.json(toApiLink(updatedLink));
     } catch (error) {
       log.error({ err: error, alias, domain }, "failed to update link");

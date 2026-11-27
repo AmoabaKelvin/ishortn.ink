@@ -25,6 +25,7 @@ import { teamRouter } from "./routers/team/team.procedure";
 import { tokenRouter } from "./routers/token/token.procedure";
 import { userRouter } from "./routers/user/user.procedure";
 import { utmTemplateRouter } from "./routers/utm-template/utm-template.router";
+import { webhookRouter } from "./routers/webhook/webhook.procedure";
 import { createTRPCRouter } from "./trpc";
 
 export const appRouter = createTRPCRouter({
@@ -55,6 +56,7 @@ export const appRouter = createTRPCRouter({
   bioPage: bioPageRouter,
   campaign: campaignRouter,
   planLimits: planLimitsRouter,
+  webhook: webhookRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -6,6 +6,7 @@ import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
 import { customDomain, team, user } from "@/server/db/schema";
 import { sendDomainReminderEmail } from "@/server/lib/notifications/domain-reminder";
+import { emitDomainVerified } from "@/server/lib/webhooks";
 
 import {
   buildVerificationChallenges,
@@ -117,6 +118,8 @@ export async function sendDomainConfigurationReminders({
     .select({
       id: customDomain.id,
       domain: customDomain.domain,
+      userId: customDomain.userId,
+      teamId: customDomain.teamId,
       createdAt: customDomain.createdAt,
       teamSlug: team.slug,
       // Team domains go to the team owner, personal ones to the user who added them.
@@ -162,10 +165,17 @@ export async function sendDomainConfigurationReminders({
 
       if (healthy) {
         // Domain is now valid, update our database and skip sending email
-        await db
+        const [updated] = await db
           .update(customDomain)
           .set({ status: "active" })
           .where(and(eq(customDomain.id, domainRecord.id), domainCanGoLive));
+        if (updated.affectedRows > 0) {
+          emitDomainVerified(
+            db,
+            { userId: domainRecord.userId, teamId: domainRecord.teamId },
+            { id: domainRecord.id, domain: domainName },
+          );
+        }
 
         result.domainsUpdatedToActive++;
         log.info({ domain: domainName }, "domain now valid, updated status to 'active'");

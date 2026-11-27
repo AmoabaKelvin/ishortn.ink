@@ -18,6 +18,7 @@ const CRON_ROUTES = [
   "upgrade-nudge",
   "link-creation-health",
   "weekly-summary",
+  "webhook-retries",
 ];
 
 async function main() {

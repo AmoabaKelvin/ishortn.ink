@@ -61,7 +61,7 @@ export function isBlockedAddress(address: string): boolean {
 
 export type HttpUrlCheck = "public" | "private" | "unresolved" | "invalid";
 
-type Resolver = (hostname: string) => Promise<string[]>;
+export type Resolver = (hostname: string) => Promise<string[]>;
 
 const dnsResolver: Resolver = async (hostname) => {
   // resolve4/resolve6 rather than lookup — Workers implements the resolver

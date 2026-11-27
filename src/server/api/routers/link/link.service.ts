@@ -95,6 +95,7 @@ import {
   assertCanEnableVerifiedClicks,
   issueVerifiedClickToken,
 } from "@/server/lib/verified-click";
+import { emitLinkWebhooks } from "@/server/lib/webhooks";
 import {
   getAccessibleFolderIds,
   isWorkspaceAdmin,
@@ -717,6 +718,18 @@ const createLinkSteps = async (
 
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
   checkCampaignPatternsAfterResponse(linkDestinations(linkId, input.url, geoRulesInput));
+  emitLinkWebhooks(ctx.db, ctx.workspace, "link.created", [
+    {
+      id: linkId,
+      createdAt: new Date(),
+      domain,
+      alias,
+      url: input.url,
+      disableLinkAfterDate: input.disableLinkAfterDate ?? null,
+      activateAt: input.activateAt ?? null,
+      disableLinkAfterClicks: input.disableLinkAfterClicks ?? null,
+    },
+  ]);
 
   return { id: linkId, alias, domain, isFirstLink: await isFirstLink(ctx, plan, linkId) };
 };
@@ -1039,6 +1052,7 @@ export const updateLink = async (
       geoRulesInput,
     ),
   );
+  emitLinkWebhooks(ctx.db, ctx.workspace, "link.updated", [updatedLink]);
 };
 
 export const deleteLink = async (ctx: WorkspaceTRPCContext, input: GetLinkInput) => {
@@ -1103,6 +1117,7 @@ export const removeLink = async (
     }),
   ]);
   if (qrCodes.length > 0) await deleteQrCodeImages(db, workspace, qrCodes);
+  emitLinkWebhooks(db, workspace, "link.deleted", [linkToDelete]);
 };
 
 export const bulkDeleteLinks = async (ctx: WorkspaceTRPCContext, linkIds: number[]) => {
@@ -1177,6 +1192,7 @@ export const bulkDeleteLinks = async (ctx: WorkspaceTRPCContext, linkIds: number
   });
 
   if (qrCodes.length > 0) await deleteQrCodeImages(ctx.db, ctx.workspace, qrCodes);
+  emitLinkWebhooks(ctx.db, ctx.workspace, "link.deleted", linksToDelete);
 
   // Invalidate cache for all deleted links in the background. waitUntil keeps
   // the serverless function alive until every deleteFromCache settles.
@@ -1350,6 +1366,18 @@ const shortenLinkSteps = async (
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
   afterCreate({ id: Number(result.insertId), domain, alias });
   checkCampaignPatternsAfterResponse(linkDestinations(Number(result.insertId), input.url));
+  emitLinkWebhooks(ctx.db, ctx.workspace, "link.created", [
+    {
+      id: Number(result.insertId),
+      createdAt: new Date(),
+      domain,
+      alias,
+      url: input.url,
+      disableLinkAfterDate: null,
+      activateAt: null,
+      disableLinkAfterClicks: null,
+    },
+  ]);
 
   return {
     id: result.insertId,

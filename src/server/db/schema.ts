@@ -20,6 +20,7 @@ import {
 
 import type { StaticPayloadType, StaticQrPayload } from "@/lib/qr-generator/payload";
 import type { QRCodeStyle } from "@/lib/qr-generator/types";
+import type { WebhookEventType } from "@/lib/webhooks";
 
 // ============================================================================
 // TEAM TABLES
@@ -1747,3 +1748,70 @@ export const subscriptionCancellation = mysqlTable(
 );
 
 export type SubscriptionCancellation = typeof subscriptionCancellation.$inferSelect;
+
+// ============================================================================
+// OUTBOUND WEBHOOKS
+// ============================================================================
+
+// An endpoint a workspace sends signed events to (src/server/lib/webhooks).
+export const webhook = mysqlTable(
+  "Webhook",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    teamId: int("teamId"), // null = personal workspace, non-null = team workspace
+    url: varchar("url", { length: 2048 }).notNull(),
+    description: varchar("description", { length: 255 }),
+    events: json("events").$type<WebhookEventType[]>().notNull(),
+    // HMAC key for X-iShortn-Signature. Kept in plaintext because every delivery signs with it;
+    // the dashboard shows it only when it is created or rolled.
+    secret: varchar("secret", { length: 80 }).notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    // Failed attempts since the last success; the endpoint is disabled at WEBHOOK_DISABLE_AFTER.
+    consecutiveFailures: int("consecutiveFailures").notNull().default(0),
+    // Set when failures disabled the endpoint (not when the user switched it off).
+    disabledAt: timestamp("disabledAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").onUpdateNow(),
+  },
+  (table) => ({
+    userIdIdx: index("webhook_userId_idx").on(table.userId),
+    teamIdIdx: index("webhook_teamId_idx").on(table.teamId),
+  }),
+);
+
+export type Webhook = typeof webhook.$inferSelect;
+
+// One row per event per endpoint, updated on every attempt; the dashboard shows the latest 50.
+export const webhookDelivery = mysqlTable(
+  "WebhookDelivery",
+  {
+    id: serial("id").primaryKey(),
+    webhookId: int("webhookId").notNull(),
+    eventId: varchar("eventId", { length: 40 }).notNull(),
+    eventType: varchar("eventType", { length: 32 }).notNull(),
+    // The exact body sent, so every retry is signed over the same bytes.
+    payload: text("payload").notNull(),
+    status: mysqlEnum("status", ["pending", "succeeded", "failed"]).notNull().default("pending"),
+    // Attempts made so far; retries are attempts - 1.
+    attempts: int("attempts").notNull().default(0),
+    responseStatus: int("responseStatus"),
+    durationMs: int("durationMs"),
+    error: varchar("error", { length: 255 }),
+    // When the next attempt is due; null once the delivery succeeded or gave up.
+    nextAttemptAt: timestamp("nextAttemptAt"),
+    lastAttemptAt: timestamp("lastAttemptAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    webhookCreatedAtIdx: index("webhookDelivery_webhookId_createdAt_idx").on(
+      table.webhookId,
+      table.createdAt,
+    ),
+    eventIdIdx: index("webhookDelivery_eventId_idx").on(table.eventId),
+    createdAtIdx: index("webhookDelivery_createdAt_idx").on(table.createdAt),
+    dueIdx: index("webhookDelivery_status_nextAttemptAt_idx").on(table.status, table.nextAttemptAt),
+  }),
+);
+
+export type WebhookDelivery = typeof webhookDelivery.$inferSelect;
