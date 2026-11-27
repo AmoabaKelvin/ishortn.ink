@@ -62,6 +62,7 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
   // What the stubbed Paddle answers with; a PaddleApiError is thrown instead of returned.
   let respond: (method: string) => PaddleSubscription | PaddleApiError;
   let portalFails = false;
+  let discountFails = false;
 
   function paddleSub(overrides: Partial<PaddleSubscription> = {}): PaddleSubscription {
     updatedAt += 1000;
@@ -124,6 +125,7 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
     },
     createDiscount: async (input) => {
       calls.push(["createDiscount", input]);
+      if (discountFails) throw paddleError(500);
       return {
         id: "dsc_01firstyear",
         recur: input.maximumRecurringIntervals !== null,
@@ -209,6 +211,7 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
   beforeEach(async () => {
     calls = [];
     portalFails = false;
+    discountFails = false;
     respond = () => paddleSub();
     fetchSpy.mockReset();
     fetchSpy.mockImplementation(async () => Response.json({ errors: [] }, { status: 500 }));
@@ -311,6 +314,36 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
       expect(discountCall()).toMatchObject({ percentOff: 20, maximumRecurringIntervals: null });
       expect(updateCall()).toMatchObject({
         discount: { id: "dsc_01firstyear", effectiveFrom: "immediately" },
+      });
+    });
+
+    test("a returning customer counts the first year from the promo checkout", async () => {
+      // The reused Subscription row keeps the first subscription's createdAt.
+      await seedPromo(1);
+      await db
+        .update(schema.subscription)
+        .set({ createdAt: addMonths(new Date(), -33) })
+        .where(eq(schema.subscription.userId, USER_ID));
+      respond = () => paddleSub({ items: [{ price: { id: PRICES.ultraMonthly } }] });
+
+      await caller().createCheckoutOrUpdate({ plan: "ultra", interval: "monthly" });
+
+      expect(discountCall()).toMatchObject({ maximumRecurringIntervals: 11 });
+      expect(updateCall()).toMatchObject({
+        discount: { id: "dsc_01firstyear", effectiveFrom: "immediately" },
+      });
+    });
+
+    test("a failed discount create still changes the plan and leaves the discount", async () => {
+      await seedPromo(3);
+      discountFails = true;
+      respond = () => paddleSub({ items: [{ price: { id: PRICES.ultraMonthly } }] });
+
+      await caller().createCheckoutOrUpdate({ plan: "ultra", interval: "monthly" });
+
+      expect(updateCall()).toEqual({
+        items: [{ priceId: PRICES.ultraMonthly, quantity: 1 }],
+        prorationBillingMode: "prorated_immediately",
       });
     });
 

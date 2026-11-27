@@ -10,7 +10,7 @@ import { and, eq, isNull, lt, or } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
 import { checkoutCustomData, checkoutEventProperties } from "@/lib/billing/attribution";
-import { planChangeDiscount } from "@/lib/billing/first-year-discount";
+import { planChangeDiscount, promoFirstPaymentAt } from "@/lib/billing/first-year-discount";
 import {
   canOfferPause,
   getIntervalFromVariantId,
@@ -252,8 +252,7 @@ async function promoDiscountUpdate(
   if (!checkout || !promo) return {};
 
   const discount = planChangeDiscount({
-    // The row's createdAt is Paddle's created_at: the first payment, for an automatic checkout.
-    firstPaymentAt: row.createdAt ?? checkout.createdAt,
+    firstPaymentAt: promoFirstPaymentAt(row.createdAt, checkout.createdAt),
     from: subscriptionInterval(row),
     to: change.to,
     billsNow: change.billsNow,
@@ -261,18 +260,28 @@ async function promoDiscountUpdate(
   if (discount.action === "remove") return { discount: null };
 
   const userId = ctx.auth.userId;
-  const created = await callPaddle(
-    "create discount",
-    { userId, providerSubscriptionId: row.providerSubscriptionId },
-    () =>
-      client.createDiscount({
-        percentOff: promo.percentOff,
-        description: `${promo.code}: ${promo.percentOff}% off the first year`,
-        maximumRecurringIntervals: discount.terms.maximumRecurringIntervals,
-        customData: { user_id: userId, promo_code: promo.code },
-      }),
-  );
-  return { discount: { id: created.id, effectiveFrom: discount.effectiveFrom } };
+  try {
+    const created = await client.createDiscount({
+      percentOff: promo.percentOff,
+      description: `${promo.code}: ${promo.percentOff}% off the first year`,
+      maximumRecurringIntervals: discount.terms.maximumRecurringIntervals,
+      customData: { user_id: userId, promo_code: promo.code },
+    });
+    return { discount: { id: created.id, effectiveFrom: discount.effectiveFrom } };
+  } catch (err) {
+    // The plan change still goes ahead; without `discount` Paddle keeps the current one.
+    log.error(
+      {
+        err,
+        statusCode: err instanceof PaddleApiError ? err.status : null,
+        provider: "paddle",
+        userId,
+        providerSubscriptionId: row.providerSubscriptionId,
+      },
+      "paddle create discount failed",
+    );
+    return {};
+  }
 }
 
 /** Paddle's counterpart of applyProviderState, matched on the Paddle subscription id. */

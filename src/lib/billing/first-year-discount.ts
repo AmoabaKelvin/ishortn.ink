@@ -96,3 +96,17 @@ export function promoDiscountActive(input: {
   const periodStart = addMonths(periodEndsAt, -FIRST_YEAR_MONTHS);
   return now < periodEndsAt && periodStart < firstYearEnd ? { endsAt: periodEndsAt } : null;
 }
+
+/**
+ * When a promo subscription's first year started. A returning customer's Subscription row is
+ * reused (one per user), so its createdAt can be an older subscription's; the checkout start
+ * always comes just before its own subscription, so the later of the two is this one's start.
+ */
+export function promoFirstPaymentAt(
+  subscriptionCreatedAt: Date | null | undefined,
+  checkoutCreatedAt: Date,
+): Date {
+  return subscriptionCreatedAt && subscriptionCreatedAt > checkoutCreatedAt
+    ? subscriptionCreatedAt
+    : checkoutCreatedAt;
+}

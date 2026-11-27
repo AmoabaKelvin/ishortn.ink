@@ -5,6 +5,7 @@ import {
   paddleDiscountCode,
   planChangeDiscount,
   promoDiscountActive,
+  promoFirstPaymentAt,
 } from "./first-year-discount";
 
 const firstPaymentAt = new Date("2026-11-27T10:00:00Z");
@@ -227,5 +228,21 @@ describe("promoDiscountActive", () => {
         now: inMonth(15),
       }),
     ).toBeNull();
+  });
+});
+
+describe("promoFirstPaymentAt", () => {
+  const checkoutAt = new Date("2026-11-27T09:59:00Z");
+
+  test("is the subscription's createdAt when it follows the checkout", () => {
+    expect(promoFirstPaymentAt(firstPaymentAt, checkoutAt)).toEqual(firstPaymentAt);
+  });
+
+  test("ignores a reused row's createdAt from an earlier subscription", () => {
+    expect(promoFirstPaymentAt(new Date("2024-03-01T00:00:00Z"), checkoutAt)).toEqual(checkoutAt);
+  });
+
+  test("falls back to the checkout when the row has no createdAt", () => {
+    expect(promoFirstPaymentAt(null, checkoutAt)).toEqual(checkoutAt);
   });
 });

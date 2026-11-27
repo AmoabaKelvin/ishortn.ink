@@ -202,6 +202,22 @@ describe("subscriptionDiscount", () => {
       ).toBeNull();
     });
 
+    test("a reused row's older createdAt counts from the promo checkout", () => {
+      expect(
+        subscriptionDiscount(
+          paddleCheckout,
+          {
+            plan: "ultra",
+            interval: "monthly",
+            provider: "paddle",
+            startedAt: new Date("2024-03-01T00:00:00Z"),
+            periodEndsAt: new Date("2027-01-25T12:00:00Z"),
+          },
+          now,
+        ),
+      ).toMatchObject({ endsAt: new Date("2027-11-25T12:00:00Z") });
+    });
+
     test("after the first year nothing is shown", () => {
       expect(
         subscriptionDiscount(

@@ -3,7 +3,7 @@ import { addMonths } from "date-fns";
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 
 import { withAttribution } from "./attribution";
-import { promoDiscountActive } from "./first-year-discount";
+import { promoDiscountActive, promoFirstPaymentAt } from "./first-year-discount";
 import { ACTIVE_PROMO, formatDayMonthYearShort, promoPrice } from "./promo";
 
 import type { Attribution } from "./attribution";
@@ -104,7 +104,7 @@ type DiscountSubscription = {
   plan: Plan;
   interval: BillingInterval;
   provider: string;
-  /** When the subscription started billing; the checkout time stands in when missing. */
+  /** When the subscription row was created; an earlier time than the checkout's is ignored. */
   startedAt?: Date | null;
   /** End of the current billing period (renewal, or the end date of a cancelled one). */
   periodEndsAt?: Date | null;
@@ -130,7 +130,7 @@ export function subscriptionDiscount(
     const active = promoDiscountActive({
       checkoutInterval: checkout.interval,
       interval: subscription.interval,
-      firstPaymentAt: subscription.startedAt ?? checkout.createdAt,
+      firstPaymentAt: promoFirstPaymentAt(subscription.startedAt, checkout.createdAt),
       periodEndsAt: subscription.periodEndsAt ?? null,
       now,
     });
