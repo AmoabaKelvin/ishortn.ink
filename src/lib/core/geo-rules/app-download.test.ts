@@ -5,8 +5,10 @@ import { getRuleDevice, matchLinkRules } from "@/middlewares/resolve-link";
 import {
   buildAppDownloadPreset,
   detectAppStore,
+  findAppDownloadRules,
   isAppStoreRule,
   parseStoreUrl,
+  replaceAppStoreRules,
 } from "./app-download";
 
 import type { GeoRule } from "@/server/db/schema";
@@ -111,6 +113,65 @@ describe("isAppStoreRule", () => {
     expect(isAppStoreRule({ type: "os", condition: "in", values: ["ios", "windows"] })).toBe(false);
     expect(isAppStoreRule({ type: "os", condition: "not_in", values: ["ios"] })).toBe(false);
     expect(isAppStoreRule({ type: "device", condition: "in", values: ["mobile"] })).toBe(false);
+  });
+});
+
+describe("replaceAppStoreRules", () => {
+  const preset = buildAppDownloadPreset({
+    appStoreUrl: APP_STORE,
+    playStoreUrl: PLAY_STORE,
+    fallbackUrl: WEBSITE,
+  });
+  if (!preset.ok) throw new Error("preset should build");
+  const countryRule = {
+    type: "country" as const,
+    condition: "in" as const,
+    values: ["GB"],
+    action: "redirect" as const,
+    destination: "https://ishortn.ink/uk",
+  };
+
+  test("applying the preset twice leaves one pair of store rules", () => {
+    const once = replaceAppStoreRules([countryRule], preset.rules);
+    const twice = replaceAppStoreRules(once, preset.rules);
+    expect(once).toHaveLength(3);
+    expect(twice).toEqual(once);
+  });
+
+  test("an edited preset replaces the old store links", () => {
+    const edited = buildAppDownloadPreset({
+      appStoreUrl: "https://apps.apple.com/app/id999",
+      playStoreUrl: PLAY_STORE,
+      fallbackUrl: WEBSITE,
+    });
+    if (!edited.ok) throw new Error("preset should build");
+    const rules = replaceAppStoreRules(preset.rules, edited.rules);
+    expect(rules).toHaveLength(2);
+    expect(findAppDownloadRules(rules)?.appStoreUrl).toBe("https://apps.apple.com/app/id999");
+  });
+});
+
+describe("findAppDownloadRules", () => {
+  const ios = { type: "os", condition: "in", values: ["ios"], destination: APP_STORE };
+  const android = { type: "os", condition: "in", values: ["android"], destination: PLAY_STORE };
+
+  test("returns the store links once both phones have a store rule", () => {
+    expect(findAppDownloadRules([ios, android])).toEqual({
+      appStoreUrl: APP_STORE,
+      playStoreUrl: PLAY_STORE,
+    });
+  });
+
+  test("is null until both rules exist", () => {
+    expect(findAppDownloadRules([])).toBeNull();
+    expect(findAppDownloadRules([ios])).toBeNull();
+    expect(findAppDownloadRules([android])).toBeNull();
+  });
+
+  test("ignores rules that don't send each phone to its own store", () => {
+    expect(findAppDownloadRules([{ ...ios, destination: WEBSITE }, android])).toBeNull();
+    expect(findAppDownloadRules([{ ...ios, destination: PLAY_STORE }, android])).toBeNull();
+    expect(findAppDownloadRules([{ ...ios, condition: "not_in" }, android])).toBeNull();
   });
 });
 

@@ -76,6 +76,7 @@ import {
   recordLinkCreationFailures,
   trackLinkCreation,
 } from "@/server/lib/link-creation/failures";
+import { getTargetingTypesByLinkId } from "@/server/lib/link-targeting";
 import { scrapeMetadata } from "@/server/lib/metadata";
 import { assertUrlSafe, assertUrlSafeFast, canDeferLlmCheck } from "@/server/lib/phishing";
 import {
@@ -338,6 +339,12 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
     linksQuery,
   ]);
 
+  // Started now so it runs alongside the creator and tag lookups below.
+  const targetingByLink = getTargetingTypesByLinkId(
+    ctx.db,
+    links.map((l) => l.id),
+  );
+
   // Batch fetch creator info for team workspaces (avoid N+1)
   let creatorMap: Map<string, { id: string; name: string | null; imageUrl: string | null }> =
     new Map();
@@ -389,6 +396,8 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
     }),
   );
 
+  const targetingTypes = await targetingByLink;
+
   const totalLinks = totalLinksResult?.[0]?.count ?? 0;
   // Tells a brand-new workspace (first-link prompt) apart from a filter that
   // matched nothing; only queried when this page came back empty.
@@ -401,7 +410,10 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
     (Number(archivedClicksResult?.[0]?.archivedClicks) || 0);
 
   return {
-    links: linksWithTags,
+    links: linksWithTags.map((linkItem) => ({
+      ...linkItem,
+      targetingTypes: targetingTypes.get(linkItem.id) ?? [],
+    })),
     totalLinks,
     totalClicks,
     currentPage: page,

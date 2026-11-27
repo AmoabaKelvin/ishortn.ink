@@ -13,6 +13,7 @@ import {
   buildAppDownloadPreset,
   detectAppStore,
 } from "@/lib/core/geo-rules/app-download";
+import { cn } from "@/lib/utils";
 
 const FIELDS = [
   {
@@ -35,11 +36,16 @@ const FIELDS = [
   },
 ] satisfies { key: keyof AppDownloadInput; label: string; hint: string; placeholder: string }[];
 
+type CurrentStores = Pick<AppDownloadInput, "appStoreUrl" | "playStoreUrl">;
+
 const EMPTY_INPUT: AppDownloadInput = { appStoreUrl: "", playStoreUrl: "", fallbackUrl: "" };
 
-// Starts from the link's current destination: a store link fills that store, anything else is
-// the website.
-function initialInput(destinationUrl: string): AppDownloadInput {
+// Starts from the store rules already set up, or else from the link's current destination: a
+// store link fills that store, anything else is the website.
+function initialInput(destinationUrl: string, current: CurrentStores | null): AppDownloadInput {
+  if (current) {
+    return { ...current, fallbackUrl: detectAppStore(destinationUrl) ? "" : destinationUrl };
+  }
   const store = detectAppStore(destinationUrl);
   if (store === "appStore") return { ...EMPTY_INPUT, appStoreUrl: destinationUrl };
   if (store === "playStore") return { ...EMPTY_INPUT, playStoreUrl: destinationUrl };
@@ -48,10 +54,13 @@ function initialInput(destinationUrl: string): AppDownloadInput {
 
 export function AppDownloadPreset({
   destinationUrl,
+  current,
   hasRoom,
   onApply,
 }: {
   destinationUrl: string;
+  // Store links of the rules this preset already added; switches the card to editing them.
+  current: CurrentStores | null;
   // Whether the plan's rule limit leaves space for the two store rules.
   hasRoom: boolean;
   onApply: (preset: { destination: string; rules: AppDownloadRule[] }) => void;
@@ -62,7 +71,7 @@ export function AppDownloadPreset({
   const [errors, setErrors] = useState<AppDownloadErrors>({});
 
   const open = () => {
-    setInput(initialInput(destinationUrl.trim()));
+    setInput(initialInput(destinationUrl.trim(), current));
     setErrors({});
     setIsOpen(true);
   };
@@ -84,15 +93,21 @@ export function AppDownloadPreset({
           <IconDeviceMobileDown
             size={16}
             stroke={1.5}
-            className="mt-0.5 shrink-0 text-neutral-400 dark:text-muted-foreground"
+            className={cn(
+              "mt-0.5 shrink-0",
+              current
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-neutral-400 dark:text-muted-foreground",
+            )}
           />
           <div className="min-w-0">
             <p className="text-[13px] font-medium text-neutral-900 dark:text-foreground">
               App download link
             </p>
             <p className="mt-0.5 text-[12px] text-neutral-500 dark:text-neutral-400">
-              Send iPhone visitors to the App Store, Android to Google Play, and everyone else to
-              your website.
+              {current
+                ? "iPhone visitors go to the App Store, Android to Google Play, and everyone else to your website."
+                : "Send iPhone visitors to the App Store, Android to Google Play, and everyone else to your website."}
             </p>
           </div>
         </div>
@@ -104,7 +119,7 @@ export function AppDownloadPreset({
             onClick={open}
             className="shrink-0 border-neutral-200 bg-white text-[13px] dark:border-border dark:bg-card"
           >
-            Set up
+            {current ? "Edit" : "Set up"}
           </Button>
         )}
       </div>
@@ -186,7 +201,7 @@ export function AppDownloadPreset({
                   disabled={!hasRoom}
                   className="bg-blue-600 text-[13px] text-white hover:bg-blue-700"
                 >
-                  Add 2 rules
+                  {current ? "Update rules" : "Add 2 rules"}
                 </Button>
               </div>
             </div>

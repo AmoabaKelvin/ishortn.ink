@@ -38,7 +38,12 @@ import {
 } from "@/components/ui/select";
 import { UpgradeCta } from "@/components/upgrade-cta";
 import { DEVICE_TYPES, OS_TYPES, type TargetingRuleType } from "@/lib/constants/targeting";
-import { detectAppStore, isAppStoreRule } from "@/lib/core/geo-rules/app-download";
+import {
+  detectAppStore,
+  findAppDownloadRules,
+  isAppStoreRule,
+  replaceAppStoreRules,
+} from "@/lib/core/geo-rules/app-download";
 import { buildAmazonStorefrontRules } from "@/lib/core/geo-rules/marketplace";
 import { COUNTRIES } from "@/lib/countries";
 import { cn } from "@/lib/utils";
@@ -506,9 +511,9 @@ export function GeoRulesForm({
     form.setValue("geoRules", [...geoRules, ...newRules]);
   };
 
-  // Applying the preset again replaces its earlier store rules instead of stacking duplicates.
   const rulesKeptByAppPreset = geoRules.filter((rule) => !isAppStoreRule(rule));
   const appPresetHasRoom = isUnlimited || !maxRules || rulesKeptByAppPreset.length + 2 <= maxRules;
+  const currentAppDownload = findAppDownloadRules(geoRules);
 
   const applyAppDownloadPreset = (preset: { destination: string; rules: AppDownloadRule[] }) => {
     const newRules: GeoRuleFormData[] = preset.rules.map((rule) => ({
@@ -516,8 +521,12 @@ export function GeoRulesForm({
       ...rule,
     }));
     form.setValue("url", preset.destination, { shouldDirty: true, shouldValidate: true });
-    form.setValue("geoRules", [...rulesKeptByAppPreset, ...newRules]);
-    toast.success("Store rules added. The website is now the link's destination.");
+    form.setValue("geoRules", replaceAppStoreRules(geoRules, newRules));
+    toast.success(
+      currentAppDownload
+        ? "Store rules updated."
+        : "Store rules added. The website is now the link's destination.",
+    );
   };
 
   const isAppStoreDestination = !disabled && detectAppStore(destinationUrl) !== null;
@@ -655,6 +664,7 @@ export function GeoRulesForm({
 
                   <AppDownloadPreset
                     destinationUrl={destinationUrl}
+                    current={currentAppDownload}
                     hasRoom={appPresetHasRoom}
                     onApply={applyAppDownloadPreset}
                   />
