@@ -5,6 +5,12 @@ import { z } from "zod";
 
 import { normalizeSocialUrl } from "@/components/bio/social-links";
 import {
+  buildWhatsAppUrl,
+  parseWhatsApp,
+  serializeWhatsApp,
+  WHATSAPP_DEFAULT_LABEL,
+} from "@/components/bio/whatsapp";
+import {
   canRemoveBioBranding,
   canScheduleBioBlocks,
   canUseBioCustomDomain,
@@ -211,9 +217,10 @@ function toEditorBlock(
   linkMap: Map<number, { domain: string; alias: string | null; blocked: boolean | null }>,
 ) {
   const trackingLink = b.type === "link" && b.linkId ? linkMap.get(b.linkId) : undefined;
+  const whatsapp = b.type === "link" ? parseWhatsApp(b.content) : null;
   return {
     id: b.id,
-    type: b.type,
+    type: whatsapp ? ("whatsapp" as const) : b.type,
     title: b.title,
     content: b.content,
     url: b.url,
@@ -222,6 +229,7 @@ function toEditorBlock(
     scheduledAt: b.scheduledAt,
     scheduledUntil: b.scheduledUntil,
     socials: b.type === "social" ? parseSocials(b.content) : undefined,
+    whatsapp,
     shortUrl: trackingLink?.alias ? `https://${trackingLink.domain}/${trackingLink.alias}` : null,
     blocked: trackingLink?.blocked ?? false,
   };
@@ -444,8 +452,16 @@ export async function addBlock(ctx: WorkspaceTRPCContext, input: AddBioBlockInpu
       ? JSON.stringify(normalizeSocials(input.socials ?? []))
       : (input.content ?? null);
 
-  if (input.type === "link") {
-    const destination = input.url?.trim();
+  const whatsapp = input.type === "whatsapp" ? input.whatsapp : undefined;
+  if (input.type === "whatsapp" && !whatsapp) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "A WhatsApp block needs a phone number.",
+    });
+  }
+
+  if (input.type === "link" || input.type === "whatsapp") {
+    const destination = whatsapp ? buildWhatsAppUrl(whatsapp) : input.url?.trim();
     if (!destination) {
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -464,6 +480,7 @@ export async function addBlock(ctx: WorkspaceTRPCContext, input: AddBioBlockInpu
         bioPageId: page.id,
         type: "link",
         title: input.title ?? null,
+        content: whatsapp ? serializeWhatsApp(whatsapp) : null,
         url: destination,
         linkId,
         position,
@@ -510,18 +527,25 @@ export async function updateBlock(ctx: WorkspaceTRPCContext, input: UpdateBioBlo
   if (input.scheduledAt !== undefined) updates.scheduledAt = input.scheduledAt;
   if (input.scheduledUntil !== undefined) updates.scheduledUntil = input.scheduledUntil;
 
+  // A link block's content only ever holds its WhatsApp details, so it changes
+  // through `whatsapp` and the destination is rebuilt from them.
+  const isWhatsApp = block.type === "link" && parseWhatsApp(block.content) !== null;
+  const url = isWhatsApp ? input.whatsapp && buildWhatsAppUrl(input.whatsapp) : input.url;
+
   if (block.type === "social") {
     if (input.socials !== undefined)
       updates.content = JSON.stringify(normalizeSocials(input.socials));
-  } else if (input.content !== undefined) {
+  } else if (isWhatsApp) {
+    if (input.whatsapp) updates.content = serializeWhatsApp(input.whatsapp);
+  } else if (input.content !== undefined && block.type !== "link") {
     updates.content = input.content;
   }
 
-  if (input.url !== undefined) {
-    updates.url = input.url;
-    if (block.type === "link" && block.linkId && input.url) {
+  if (url !== undefined) {
+    updates.url = url;
+    if (block.type === "link" && block.linkId && url) {
       await updateHiddenTrackingLink(ctx, block.linkId, {
-        url: input.url,
+        url,
         name: input.title ?? block.title ?? undefined,
       });
     }
@@ -589,6 +613,7 @@ export async function reorderBlocks(ctx: WorkspaceTRPCContext, input: ReorderBlo
 
 export type PublicBioBlock =
   | { id: number; type: "link"; title: string | null; href: string }
+  | { id: number; type: "whatsapp"; title: string | null; href: string }
   | { id: number; type: "email"; title: string | null; href: string | null }
   | { id: number; type: "social"; socials: BioSocialLink[] }
   | {
@@ -644,7 +669,8 @@ async function assemblePublicBioPage(
         const l = b.linkId ? linkMap.get(b.linkId) : undefined;
         // A blocked/disabled or missing backing link hides the block entirely.
         if (!l || l.blocked || l.disabled || !l.alias) return null;
-        return { id: b.id, type: "link", title: b.title, href: `https://${l.domain}/${l.alias}` };
+        const type = parseWhatsApp(b.content) ? "whatsapp" : "link";
+        return { id: b.id, type, title: b.title, href: `https://${l.domain}/${l.alias}` };
       }
       if (b.type === "social") {
         return { id: b.id, type: "social", socials: parseSocials(b.content) };
@@ -794,7 +820,7 @@ export async function getBioPageAnalytics(
   const perBlock = linkBlocks
     .map((b) => ({
       blockId: b.id,
-      title: b.title || b.url || "Link",
+      title: b.title || (parseWhatsApp(b.content) ? WHATSAPP_DEFAULT_LABEL : b.url) || "Link",
       clicks: clickMap.get(b.linkId!) ?? 0,
     }))
     .sort((a, b) => b.clicks - a.clicks);
