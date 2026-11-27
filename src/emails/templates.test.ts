@@ -20,7 +20,7 @@ import UpgradeNudgeEmail, {
   upgradeNudgeSubject,
   type UpgradeNudgeEmailProps,
 } from "./upgrade-nudge";
-import WeeklySummaryEmail, { compareWeeks } from "./weekly-summary";
+import WeeklySummaryEmail, { compareWeeks, upgradeCopy } from "./weekly-summary";
 
 type Template = FunctionComponent<object> & { PreviewProps?: object };
 
@@ -142,7 +142,7 @@ describe("weekly summary", () => {
     ],
     topCountry: { name: "Ghana", clicks: 611 },
     topSource: { name: "Instagram", clicks: 402 },
-    droppedClicks: null,
+    upgrade: null,
   };
 
   test("shows the week's clicks, comparison, top links, country, source and the analytics button", async () => {
@@ -171,13 +171,60 @@ describe("weekly summary", () => {
     const html = await render(
       createElement(
         WeeklySummaryEmail,
-        weeklySummaryEmailProps("user_1", "Ama", { ...content, droppedClicks: 342 }),
+        weeklySummaryEmailProps("user_1", "Ama", {
+          ...content,
+          upgrade: { reason: "paused", count: 342 },
+        }),
       ),
     );
 
     expect(html).toContain("so 342 clicks this month weren&#x27;t recorded.");
     expect(html).toContain("Upgrade to Pro");
-    expect(html).toContain("/dashboard/pricing?highlight=pro&amp;source=weekly_summary");
+    expect(html).toContain("/dashboard/pricing?highlight=pro&amp;source=weekly_summary&amp;");
+  });
+
+  test("a Free account at 60%+ of the cap gets its usage with a link to Pro", async () => {
+    const html = await render(
+      createElement(
+        WeeklySummaryEmail,
+        weeklySummaryEmailProps("user_1", "Ama", {
+          ...content,
+          upgrade: { reason: "cap", count: 640 },
+        }),
+      ),
+    );
+
+    expect(html).toContain("You&#x27;ve used 640 of 1,000 tracked visits this month.");
+    expect(html).toContain("Upgrade to Pro");
+    expect(html).toContain("for 10,000 a month.");
+    expect(html).toContain("/dashboard/pricing?highlight=pro&amp;source=weekly_summary_cap&amp;");
+    expect(html).not.toContain("hidden on the Free plan");
+  });
+
+  test("a Free account with older clicks gets the hidden-history line with a link to Pro", async () => {
+    const html = await render(
+      createElement(
+        WeeklySummaryEmail,
+        weeklySummaryEmailProps("user_1", "Ama", {
+          ...content,
+          upgrade: { reason: "history", count: 2_418 },
+        }),
+      ),
+    );
+
+    expect(html).toContain("2,418 clicks older than 7 days are hidden on the Free plan.");
+    expect(html).toContain("to see your full history.");
+    expect(html).toContain(
+      "/dashboard/pricing?highlight=pro&amp;source=weekly_summary_history&amp;",
+    );
+    expect(html).not.toContain("tracked visits this month");
+  });
+
+  test("the upgrade copy handles one click", () => {
+    expect(upgradeCopy({ reason: "history", count: 1 }).lead).toBe(
+      "1 click older than 7 days is hidden on the Free plan.",
+    );
+    expect(upgradeCopy({ reason: "paused", count: 1 }).lead).toContain("1 click this month wasn't");
   });
 
   test("the footer offers a one-click unsubscribe for the weekly summary", async () => {
