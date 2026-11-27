@@ -176,8 +176,10 @@ type Tool = {
   description: string;
   input: z.ZodType;
   annotations: Annotations;
-  /** Validates `args` against `input`, then runs the tool. Invalid arguments are a tool error. */
-  run: (caller: McpCaller, args: ToolArguments | undefined) => Promise<ToolResult>;
+  /** Validates `args` against `input`: a runner for valid arguments, else a tool error. */
+  prepare: (
+    args: ToolArguments | undefined,
+  ) => { run: (caller: McpCaller) => Promise<ToolResult> } | { invalid: ToolResult };
 };
 
 function formatIssues(heading: string, error: z.ZodError) {
@@ -188,16 +190,17 @@ function formatIssues(heading: string, error: z.ZodError) {
 function defineTool<Input>({
   call,
   ...tool
-}: Omit<Tool, "run"> & {
+}: Omit<Tool, "prepare"> & {
   input: z.ZodType<Input>;
   call: (caller: McpCaller, input: Input) => Promise<ToolResult>;
 }): Tool {
   return {
     ...tool,
-    run: async (caller, args) => {
+    prepare: (args) => {
       const parsed = tool.input.safeParse(args ?? {});
-      if (!parsed.success) return toolError(formatIssues("Invalid arguments", parsed.error));
-      return call(caller, parsed.data);
+      if (!parsed.success)
+        return { invalid: toolError(formatIssues("Invalid arguments", parsed.error)) };
+      return { run: (caller) => call(caller, parsed.data) };
     },
   };
 }
@@ -340,12 +343,8 @@ export function listTools() {
   });
 }
 
-/** Runs a tool; null when there is no tool by that name. */
-export async function callTool(
-  caller: McpCaller,
-  name: string,
-  args: ToolArguments | undefined,
-): Promise<ToolResult | null> {
+/** The named tool with `args` validated, or null for an unknown tool. */
+export function prepareToolCall(name: string, args: ToolArguments | undefined) {
   const tool = TOOLS.find((candidate) => candidate.name === name);
-  return tool ? tool.run(caller, args) : null;
+  return tool ? tool.prepare(args) : null;
 }

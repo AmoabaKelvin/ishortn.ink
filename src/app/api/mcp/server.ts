@@ -3,7 +3,7 @@ import { z } from "zod";
 import { logger } from "@/lib/logger";
 
 import { withApiKey } from "../v1/utils";
-import { callTool, listTools, McpUnauthorizedError, toolArguments } from "./tools";
+import { listTools, McpUnauthorizedError, prepareToolCall, toolArguments } from "./tools";
 
 import type { ToolResult } from "./tools";
 
@@ -172,10 +172,15 @@ export async function handleMcpPost(request: Request): Promise<Response> {
   try {
     if (method === "tools/call") {
       const call = toolCallParams.safeParse(params);
+      const prepared = call.success ? prepareToolCall(call.data.name, call.data.arguments) : null;
+      if (prepared && "run" in prepared) return result(id, await prepared.run({ apiKey, origin }));
+      // A rejected call never reaches the v1 API, so check the key here: a bad key gets the 401,
+      // not an argument error.
+      const refused = await protocolError(apiKey, origin, id);
+      if (refused) return refused;
       if (!call.success) return rpcError(id, INVALID_PARAMS, "tools/call needs a tool `name`");
-      const toolResult = await callTool({ apiKey, origin }, call.data.name, call.data.arguments);
-      if (!toolResult) return rpcError(id, INVALID_PARAMS, `Unknown tool: ${call.data.name}`);
-      return result(id, toolResult);
+      if (!prepared) return rpcError(id, INVALID_PARAMS, `Unknown tool: ${call.data.name}`);
+      return result(id, prepared.invalid);
     }
 
     const refused = await protocolError(apiKey, origin, id);

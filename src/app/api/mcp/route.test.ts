@@ -227,6 +227,11 @@ describe.skipIf(!testDatabaseUrl)("/mcp tools (MySQL)", () => {
       expect(response.status).toBe(401);
       expect(response.body.error.message).toContain("API key");
     }
+    // Calls rejected before reaching the v1 API still check the key first.
+    for (const params of [{ name: "create_link", arguments: {} }, { name: "nope" }, {}]) {
+      const response = await rpc("tools/call", params, "not-a-key");
+      expect(response.status).toBe(401);
+    }
   });
 
   test("a Free key past the API sunset connects but every tool returns the plan error", async () => {
