@@ -1,6 +1,6 @@
 ---
 title: MCP server
-description: Connect Claude, ChatGPT (Codex), Cursor and other AI assistants to iShortn with the remote MCP server at https://ishortn.ink/mcp, authenticated with an API key.
+description: Connect Claude, ChatGPT (Codex), Cursor, VS Code (GitHub Copilot), Windsurf, Gemini CLI and other AI assistants to iShortn with the remote MCP server at https://ishortn.ink/mcp, authenticated with an API key.
 ---
 
 iShortn runs a remote [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server, so AI assistants can create and manage your short links, read their analytics and make QR codes for you. Ask in plain language, for example "shorten https://example.com/spring-sale as spring-sale" or "which countries did my launch link get clicks from this week?".
@@ -71,6 +71,79 @@ Open **Cursor Settings** → **Tools & MCP** → **New MCP Server**, or edit `~/
   }
 }
 ```
+
+### VS Code
+
+GitHub Copilot in VS Code reads remote MCP servers from `~/.copilot/mcp-config.json` (all workspaces) or `.mcp.json` at the root of a workspace. Run **MCP: Add Server** from the Command Palette and choose **Global** → **Copilot Global** to create the user file, or add iShortn to it yourself:
+
+```json
+{
+  "mcpServers": {
+    "ishortn": {
+      "type": "http",
+      "url": "https://ishortn.ink/mcp",
+      "headers": { "Authorization": "Bearer ${ISHORTN_API_KEY}" },
+      "tools": ["*"]
+    }
+  }
+}
+```
+
+Copilot reads the key from the `ISHORTN_API_KEY` environment variable, so set it in the environment VS Code starts from (for example your shell profile) and restart VS Code. Keep the key out of a `.mcp.json` you commit. To check the connection, pick **Copilot** as the chat's session target, run **Chat: Open Customizations** and open **MCP Servers**: **ishortn** should be listed with its tools.
+
+The older Local harness, which VS Code removes in February 2027, uses a different format in `.vscode/mcp.json` and can prompt for the key instead:
+
+```json
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "ishortn-api-key",
+      "description": "iShortn API key",
+      "password": true
+    }
+  ],
+  "servers": {
+    "ishortn": {
+      "type": "http",
+      "url": "https://ishortn.ink/mcp",
+      "headers": { "Authorization": "Bearer ${input:ishortn-api-key}" }
+    }
+  }
+}
+```
+
+### Windsurf
+
+Windsurf is now called Devin Desktop. Its agents read MCP servers from `~/.config/devin/mcp_config.json` (`%AppData%/devin/mcp_config.json` on Windows). Open it from **Customize** → **MCPs**, or with **Open MCP config file** in Cascade's MCP menu:
+
+```json
+{
+  "mcpServers": {
+    "ishortn": {
+      "url": "https://ishortn.ink/mcp",
+      "headers": { "Authorization": "Bearer YOUR_API_KEY" }
+    }
+  }
+}
+```
+
+### Gemini CLI
+
+Add iShortn to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "ishortn": {
+      "httpUrl": "https://ishortn.ink/mcp",
+      "headers": { "Authorization": "Bearer YOUR_API_KEY" }
+    }
+  }
+}
+```
+
+Run `/mcp` in Gemini CLI to check that **ishortn** is connected.
 
 ### ChatGPT and OpenAI
 
