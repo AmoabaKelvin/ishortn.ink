@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     const completed = order.success ? orderCompletedEvent(order.data) : null;
     if (!order.success) log.warn({ issues: order.error.issues }, "unreadable order payload");
     if (completed) {
-      captureServerEvent(completed.distinctId, "order_completed", completed.properties);
+      captureServerEvent(completed.user, "order_completed", completed.properties);
     }
     return new Response("OK", { status: 200 });
   }
