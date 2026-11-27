@@ -127,6 +127,8 @@ describe("parseEmbedUrl: SoundCloud", () => {
   test("rejects profiles and short links", () => {
     expect(error("https://soundcloud.com/forss")).toMatch(/SoundCloud track/);
     expect(error("https://on.soundcloud.com/abc123")).toMatch(/short link/);
+    expect(error("https://soundcloud.com/forss/tracks")).toMatch(/SoundCloud track/);
+    expect(error("https://soundcloud.com/forss/likes")).toMatch(/SoundCloud track/);
   });
 });
 
@@ -189,6 +191,11 @@ describe("parseEmbedUrl: Google Maps", () => {
   test("rejects other Google pages and short links", () => {
     expect(error("https://www.google.com/search?q=maps")).toBe("Paste a Google Maps link.");
     expect(error("https://maps.app.goo.gl/abc")).toMatch(/short link/);
+  });
+
+  test("rejects malformed percent-escapes instead of throwing", () => {
+    expect(error("https://www.google.com/maps/place/Caf%C3")).toMatch(/valid Google Maps link/);
+    expect(error("https://www.google.com/maps/search/a%C")).toMatch(/valid Google Maps link/);
   });
 });
 

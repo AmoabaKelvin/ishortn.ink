@@ -67,7 +67,12 @@ type Props = {
 export function BlockFormDialog({ open, onOpenChange, ...form }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85dvh] grid-rows-[auto_minmax(0,1fr)_auto]">
+      <DialogContent
+        className="max-h-[85dvh] grid-rows-[auto_minmax(0,1fr)_auto]"
+        // The image dropzone is the first focusable element; landing on it
+        // on open paints a focus ring before the user has done anything.
+        onOpenAutoFocus={form.type === "image" ? (e) => e.preventDefault() : undefined}
+      >
         <BlockForm {...form} onOpenChange={onOpenChange} />
       </DialogContent>
     </Dialog>

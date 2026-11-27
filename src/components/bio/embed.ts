@@ -101,11 +101,23 @@ function parseSpotify(url: URL): EmbedParseResult {
   return ok("spotify", embedId, `https://open.spotify.com/${embedId}`);
 }
 
+// Profile sub-pages that share the /<user>/<track> shape but aren't playable.
+const SOUNDCLOUD_PROFILE_PAGES = new Set([
+  "tracks",
+  "likes",
+  "reposts",
+  "albums",
+  "popular-tracks",
+  "followers",
+  "following",
+  "comments",
+]);
+
 function parseSoundCloud(url: URL): EmbedParseResult {
   const path = url.pathname.split("/").filter(Boolean);
   const isSet = path[1] === "sets";
   const parts = isSet ? path.slice(0, 3) : path.slice(0, 2);
-  if (parts.length < (isSet ? 3 : 2))
+  if (parts.length < (isSet ? 3 : 2) || (!isSet && SOUNDCLOUD_PROFILE_PAGES.has(path[1] ?? "")))
     return fail("Paste the link to a SoundCloud track or playlist.");
   const embedId = parts.join("/");
   return ok("soundcloud", embedId, `https://soundcloud.com/${embedId}`);
@@ -144,11 +156,16 @@ function parseMaps(url: URL): EmbedParseResult {
     .split(",")
     .slice(0, 2)
     .join(",");
-  const raw =
-    (named && decodeURIComponent(named.replace(/\+/g, " "))) ||
-    url.searchParams.get("q") ||
-    url.searchParams.get("query") ||
-    coords;
+  let decoded: string | undefined;
+  if (named) {
+    try {
+      decoded = decodeURIComponent(named.replace(/\+/g, " "));
+    } catch {
+      // Half-typed or broken escapes (`Caf%C3`) throw URIError.
+      return fail("That doesn't look like a valid Google Maps link.");
+    }
+  }
+  const raw = decoded || url.searchParams.get("q") || url.searchParams.get("query") || coords;
   const query = raw?.trim();
   if (!query) return fail("Paste a Google Maps link to a place or address.");
   return ok(
