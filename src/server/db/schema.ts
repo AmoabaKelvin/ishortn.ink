@@ -175,8 +175,8 @@ export const user = mysqlTable(
     droppedEventCount: int("droppedEventCount").default(0),
     eventTrackingPausedAt: timestamp("eventTrackingPausedAt"),
     lastViewedChangelogSlug: varchar("lastViewedChangelogSlug", { length: 100 }),
-    // Milestone, usage-alert, domain-reminder, first-link nudge, upgrade nudge and weekly summary
-    // emails. Account, billing and team emails ignore it.
+    // Milestone, usage-alert, domain-reminder, broken-destination, first-link nudge, upgrade nudge
+    // and weekly summary emails. Account, billing and team emails ignore it.
     productEmailsEnabled: boolean("productEmailsEnabled").notNull().default(true),
     // Weekly click summary (see src/server/lib/weekly-summary.ts); sent only while
     // productEmailsEnabled is also on.
@@ -901,6 +901,29 @@ export const linkSafetyRecheck = mysqlTable(
   (table) => ({
     linkIdIdx: index("linkId_idx").on(table.linkId),
     createdAtIdx: index("createdAt_idx").on(table.createdAt),
+  }),
+);
+
+// Destination checks from the daily link-health job (src/server/lib/link-health). A link is
+// broken after BROKEN_AFTER_FAILURES consecutive failed checks and recovers on one success;
+// alertedAt is set once the owner has been told, and cleared on recovery so a link alerts once
+// per outage.
+export const linkHealth = mysqlTable(
+  "LinkHealth",
+  {
+    linkId: int("linkId").primaryKey(),
+    lastCheckedAt: timestamp("lastCheckedAt").notNull(),
+    // HTTP status of the last conclusive check; null when no response came back.
+    lastStatus: int("lastStatus"),
+    // LinkHealthError code ("dns_failure", "timeout", …) when no usable response came back.
+    lastError: varchar("lastError", { length: 32 }),
+    consecutiveFailures: int("consecutiveFailures").notNull().default(0),
+    brokenSince: timestamp("brokenSince"),
+    alertedAt: timestamp("alertedAt"),
+  },
+  (table) => ({
+    lastCheckedAtIdx: index("linkHealth_lastCheckedAt_idx").on(table.lastCheckedAt),
+    brokenSinceIdx: index("linkHealth_brokenSince_idx").on(table.brokenSince),
   }),
 );
 

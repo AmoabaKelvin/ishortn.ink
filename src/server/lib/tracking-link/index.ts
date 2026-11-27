@@ -11,6 +11,7 @@ import {
   restrictedLinkValues,
 } from "@/server/api/routers/link/utils";
 import { link, linkVisit, uniqueLinkVisit, user } from "@/server/db/schema";
+import { resetLinkHealth } from "@/server/lib/link-health/status";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { recordSafetyFollowUp, workspaceSafetyAccount } from "@/server/lib/phishing/follow-up";
 import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
@@ -172,6 +173,9 @@ export async function updateHiddenTrackingLink(
 
   if (Object.keys(updates).length > 0) {
     await ctx.db.update(link).set(updates).where(eq(link.id, linkId));
+    if (updates.url !== undefined && updates.url !== existing.url) {
+      await resetLinkHealth(ctx.db, linkId);
+    }
   }
   recordSafetyFollowUp(linkId, safety);
 
