@@ -157,6 +157,7 @@ import type { ScrapedMetadata } from "@/server/lib/metadata";
 import type { UrlSafetyDeps, UrlSafetyResult } from "@/server/lib/phishing";
 import type { CreatedLink } from "@/server/lib/phishing/follow-up";
 import type { WorkspaceContext } from "@/server/lib/workspace";
+import type { SQLWrapper } from "drizzle-orm";
 
 const log = logger.child({ component: "link.service" });
 
@@ -1361,13 +1362,14 @@ export const getLinkVisitsInWindow = (
  * Clicks on these links before `before`, raw visits plus archived daily summaries, in one
  * statement: the count uses the (linkId, createdAt) index, the subquery the (linkId, date) one.
  * Summary rows only hold whole days, and `before` is a UTC midnight, so neither side overlaps.
+ * `linkIds` may be a subquery selecting link ids, so a whole workspace needs no id list.
  */
 export const countClicksBefore = async (
   db: WorkspaceTRPCContext["db"],
-  linkIds: number[],
+  linkIds: number[] | SQLWrapper,
   before: Date,
 ) => {
-  if (linkIds.length === 0) return 0;
+  if (Array.isArray(linkIds) && linkIds.length === 0) return 0;
   const archived = db
     .select({ clicks: sql`coalesce(sum(${linkVisitDailySummary.clicks}), 0)` })
     .from(linkVisitDailySummary)

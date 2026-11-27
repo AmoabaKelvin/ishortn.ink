@@ -80,6 +80,14 @@ describe.skipIf(!testDatabaseUrl)("countClicksBefore (MySQL)", () => {
     expect(await countClicksBefore(db, linkIds, windowStart)).toBe(2 + 40 + 1 + 1000);
   });
 
+  test("takes a subquery of link ids", async () => {
+    const userLinks = db
+      .select({ id: schema.link.id })
+      .from(schema.link)
+      .where(eq(schema.link.userId, USER));
+    expect(await countClicksBefore(db, userLinks, windowStart)).toBe(2 + 40 + 1 + 1000);
+  });
+
   test("is zero with no older clicks or no links", async () => {
     expect(await countClicksBefore(db, linkIds, subDays(now, 365))).toBe(0);
     expect(await countClicksBefore(db, [], windowStart)).toBe(0);
