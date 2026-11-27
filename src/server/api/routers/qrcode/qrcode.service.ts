@@ -22,6 +22,7 @@ import { insertHiddenTrackingLink, prepareHiddenTrackingLink } from "@/server/li
 import { workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
 
 import { updateLink } from "../link/link.service";
+import { countWorkspaceQrCodes } from "./qrcode-bulk.service";
 import { toLegacyQrStyles } from "./utils";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
@@ -35,14 +36,6 @@ import type { qrcodeSaveImageInput } from "./qrcode.input";
 import type { z } from "zod";
 
 const log = logger.child({ component: "qrcode.service" });
-
-export async function countWorkspaceQrCodes(ctx: WorkspaceTRPCContext) {
-  const [result] = await ctx.db
-    .select({ count: count() })
-    .from(qrcode)
-    .where(workspaceFilter(ctx.workspace, qrcode.userId, qrcode.teamId));
-  return Number(result?.count ?? 0);
-}
 
 function userFacing<A extends unknown[], R>(
   operation: string,
@@ -292,9 +285,13 @@ export const deleteQrCode = userFacing(
       }
     }
 
+    // Only a code's own hidden tracking link goes with it. Codes made by a CSV import encode one
+    // of the workspace's visible links, which stays.
+    const ownsLink = Boolean(qrCode.linkId && qrCode.linkId > 0 && qrCode.link?.isQrCode);
+
     // Collect cache key before the transaction so we can invalidate after it commits
     let cacheKey: string | undefined;
-    if (qrCode.link?.alias) {
+    if (ownsLink && qrCode.link?.alias) {
       cacheKey = buildCacheKey(qrCode.link.domain, qrCode.link.alias);
     }
 
@@ -302,7 +299,7 @@ export const deleteQrCode = userFacing(
     await ctx.db.transaction(async (tx) => {
       await tx.delete(qrcode).where(eq(qrcode.id, id));
 
-      if (qrCode.linkId && qrCode.linkId > 0) {
+      if (ownsLink && qrCode.linkId) {
         await Promise.all([
           tx.delete(uniqueLinkVisit).where(eq(uniqueLinkVisit.linkId, qrCode.linkId)),
           tx.delete(linkVisit).where(eq(linkVisit.linkId, qrCode.linkId)),

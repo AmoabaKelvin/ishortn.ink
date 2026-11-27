@@ -1,11 +1,13 @@
 "use client";
 
-import { IconClick, IconClock, IconExternalLink } from "@tabler/icons-react";
+import { IconCheck, IconClick, IconClock, IconExternalLink } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 import { Link } from "next-view-transitions";
+import { useMemo } from "react";
 
-import { daysSinceDate } from "@/lib/utils";
+import { cn, daysSinceDate } from "@/lib/utils";
 
+import { qrPreviewSrc } from "../utils";
 import { QRCodeActions } from "./qrcode-actions";
 
 import type { RouterOutputs } from "@/trpc/shared";
@@ -13,9 +15,20 @@ import type { RouterOutputs } from "@/trpc/shared";
 type QRCodeCardProps = {
   qr: RouterOutputs["qrCode"]["list"][number];
   index: number;
+  selected: boolean;
+  /** Some code is selected, so every row shows its checkbox. */
+  isSelectionMode: boolean;
+  onToggleSelected: (id: number) => void;
 };
 
-export function QRCodeCard({ qr, index }: QRCodeCardProps) {
+export function QRCodeCard({
+  qr,
+  index,
+  selected,
+  isSelectionMode,
+  onToggleSelected,
+}: QRCodeCardProps) {
+  const previewSrc = useMemo(() => qrPreviewSrc(qr), [qr]);
   const daysSinceCreation = daysSinceDate(new Date(qr.createdAt!));
   const scans = qr.visitCount ?? 0;
   const activateAt = qr.link?.activateAt;
@@ -29,16 +42,49 @@ export function QRCodeCard({ qr, index }: QRCodeCardProps) {
       exit={{ opacity: 0, y: -12 }}
       transition={{ duration: 0.2, delay: index * 0.04 }}
     >
-      <div className="group relative px-1 py-4 transition-colors">
+      <div
+        className={cn(
+          "group relative px-1 py-4 transition-colors",
+          selected && "bg-neutral-50 dark:bg-accent/50",
+        )}
+      >
         <div className="flex items-center gap-4">
+          {/* Checkbox */}
+          <div
+            className={cn(
+              "flex shrink-0 items-center transition-all duration-150",
+              // Hidden, the negative margin cancels the row gap so the thumbnail keeps its place.
+              isSelectionMode
+                ? "w-5 opacity-100"
+                : "-mr-4 w-0 overflow-hidden opacity-0 group-focus-within:mr-0 group-focus-within:w-5 group-focus-within:opacity-100 group-hover:mr-0 group-hover:w-5 group-hover:opacity-100 [@media(hover:none)]:mr-0 [@media(hover:none)]:w-5 [@media(hover:none)]:opacity-100",
+            )}
+          >
+            <button
+              type="button"
+              aria-pressed={selected}
+              aria-label={`Select ${qr.title || "QR code"}`}
+              onClick={() => onToggleSelected(qr.id)}
+              className={cn(
+                "flex h-[18px] w-[18px] items-center justify-center rounded border-[1.5px] transition-colors",
+                selected
+                  ? "border-blue-600 bg-blue-600"
+                  : "border-neutral-300 bg-white hover:border-neutral-400 dark:bg-card",
+              )}
+            >
+              {selected && <IconCheck size={11} stroke={3} className="text-white" />}
+            </button>
+          </div>
+
           {/* QR Code Thumbnail */}
           <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-neutral-100 dark:border-border/50 bg-white dark:bg-card p-1.5 transition-all duration-200 group-hover:border-neutral-200 group-hover:shadow-sm">
-            {/* eslint-disable-next-line next/no-img-element -- generated QR data: URL */}
-            <img
-              src={qr.qrCode!}
-              alt="QR Code"
-              className="h-full w-full object-contain transition-transform duration-200 group-hover:scale-105"
-            />
+            {previewSrc && (
+              // eslint-disable-next-line next/no-img-element -- generated QR data: URL
+              <img
+                src={previewSrc}
+                alt="QR Code"
+                className="h-full w-full object-contain transition-transform duration-200 group-hover:scale-105"
+              />
+            )}
           </div>
 
           {/* Content */}

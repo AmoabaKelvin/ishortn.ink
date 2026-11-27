@@ -17,6 +17,7 @@ import { convertDataToCSV } from "@/lib/utils/convert-links-to-csv";
 import { convertDataToJSON } from "@/lib/utils/convert-links-to-json";
 import { api } from "@/trpc/react";
 
+import { bulkQrLimitFor } from "../../qrcodes/utils";
 import { BulkLinkUploadDialog } from "./bulk-link-upload";
 
 export function BulkLinkActions() {
@@ -126,7 +127,8 @@ export function BulkLinkActions() {
       <BulkLinkUploadDialog
         open={isUploadModalOpen && !isDropdownOpen}
         setOpen={setIsUploadModalOpen}
-        proMembership={(subStatus?.plan ?? "free") !== "free"}
+        plan={subStatus?.plan ?? "free"}
+        bulkQrLimit={bulkQrLimitFor(subStatus)}
       />
     </>
   );

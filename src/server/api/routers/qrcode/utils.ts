@@ -1,7 +1,11 @@
+import { getPlanCaps } from "@/lib/billing/plans";
+import { defaultGeneratorState } from "@/lib/qr-generator/state";
+import { MarkerFrames, PixelStyles, QREffects, QRMarkerCenters } from "@/lib/qr-generator/types";
 import { isR2UrlOwnedBy } from "@/server/lib/storage";
 
-import type { MarkerFrame, PixelStyle } from "@/lib/qr-generator/types";
-import type { qrcode } from "@/server/db/schema";
+import type { Plan } from "@/lib/billing/plans";
+import type { MarkerFrame, PixelStyle, QRCodeStyle } from "@/lib/qr-generator/types";
+import type { qrcode, qrPreset } from "@/server/db/schema";
 
 type LegacyPatternStyle = (typeof qrcode.patternStyle.enumValues)[number];
 type LegacyCornerStyle = (typeof qrcode.cornerStyle.enumValues)[number];
@@ -63,4 +67,86 @@ export function storedQrImageSource(
     return null;
   }
   return isR2UrlOwnedBy(qr, url, r2PublicUrl) ? { type: "bucket", url } : null;
+}
+
+/**
+ * Why a CSV import can't also create `rowCount` QR codes, or null when it can. Bulk QR is off on
+ * Free, capped per import on Pro and unlimited on Ultra (team workspaces have Ultra features),
+ * and the plan's total QR code cap still applies.
+ */
+export function bulkQrCodeLimitError({
+  plan,
+  rowCount,
+  qrCodeCount,
+}: {
+  plan: Plan;
+  rowCount: number;
+  qrCodeCount: number;
+}): string | null {
+  const { bulkQrBatchLimit, qrCodeLimit } = getPlanCaps(plan);
+  if (bulkQrBatchLimit === 0) {
+    return "Creating QR codes from a CSV import is available on Pro and Ultra. Upgrade to use it.";
+  }
+  if (bulkQrBatchLimit !== undefined && rowCount > bulkQrBatchLimit) {
+    return `Your plan creates up to ${bulkQrBatchLimit.toLocaleString()} QR codes per import, and this file has ${rowCount.toLocaleString()} rows. Split the file or upgrade to Ultra for unlimited QR codes.`;
+  }
+  if (qrCodeLimit !== undefined && qrCodeCount + rowCount > qrCodeLimit) {
+    const left = Math.max(0, qrCodeLimit - qrCodeCount);
+    return `Your plan allows ${qrCodeLimit.toLocaleString()} QR codes and has room for ${left.toLocaleString()} more. Upgrade to create more.`;
+  }
+  return null;
+}
+
+type StylePreset = Pick<
+  typeof qrPreset.$inferSelect,
+  | "pixelStyle"
+  | "markerFrame"
+  | "markerCenter"
+  | "darkColor"
+  | "lightColor"
+  | "effect"
+  | "marginNoise"
+  | "marginNoiseRate"
+  | "logoSize"
+  | "logoMargin"
+  | "logoBorderRadius"
+>;
+
+const pick = <T extends string>(values: readonly T[], value: string, fallback: T) =>
+  values.find((candidate) => candidate === value) ?? fallback;
+
+/**
+ * The saved style for a code drawn with a preset, or with the generator defaults when there is
+ * none. `logoImage` is set separately once the logo is stored for the code.
+ */
+export function qrStyleFromPreset(
+  preset: StylePreset | null,
+  { seed, hasLogo }: { seed: number; hasLogo: boolean },
+): QRCodeStyle {
+  const defaults = defaultGeneratorState();
+  const rate = preset ? Number.parseFloat(preset.marginNoiseRate) : defaults.marginNoiseRate;
+  return {
+    pixelStyle: preset
+      ? pick(PixelStyles, preset.pixelStyle, defaults.pixelStyle)
+      : defaults.pixelStyle,
+    markerFrame: preset
+      ? pick(MarkerFrames, preset.markerFrame, defaults.markerFrame)
+      : defaults.markerFrame,
+    markerCenter: preset
+      ? pick(QRMarkerCenters, preset.markerCenter, defaults.markerCenter)
+      : defaults.markerCenter,
+    darkColor: preset?.darkColor ?? defaults.darkColor,
+    lightColor: preset?.lightColor ?? defaults.lightColor,
+    // A logo covers modules, so the generator always switches to the highest error correction.
+    ecc: hasLogo ? "H" : defaults.ecc,
+    margin: defaults.margin,
+    seed,
+    marginNoise: preset?.marginNoise ?? defaults.marginNoise,
+    marginNoiseRate: Number.isFinite(rate) ? Math.min(1, Math.max(0, rate)) : 0.5,
+    effect: preset ? pick(QREffects, preset.effect, "none") : "none",
+    logoImage: null,
+    logoSize: preset?.logoSize ?? defaults.logoSize,
+    logoMargin: preset?.logoMargin ?? defaults.logoMargin,
+    logoBorderRadius: preset?.logoBorderRadius ?? defaults.logoBorderRadius,
+  };
 }

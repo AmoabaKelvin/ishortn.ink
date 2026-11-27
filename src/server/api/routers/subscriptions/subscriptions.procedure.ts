@@ -20,7 +20,7 @@ import {
 import { workspaceFilter } from "@/server/lib/workspace";
 
 import { createTRPCRouter, workspaceProcedure } from "../../trpc";
-import { countWorkspaceQrCodes } from "../qrcode/qrcode.service";
+import { countWorkspaceQrCodes } from "../qrcode/qrcode-bulk.service";
 
 export const subscriptionsRouter = createTRPCRouter({
   // Grace-period notice for the dashboard banner (see src/lib/billing/entitlements.ts).
