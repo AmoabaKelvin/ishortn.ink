@@ -4,6 +4,9 @@ import type { Plan } from "@/lib/billing/plans";
 // "Not now" on the dashboard card hides it for 14 days, and it comes back at most once.
 export const ACQUISITION_PROMPT_MAX_DISMISSALS = 2;
 export const ACQUISITION_PROMPT_COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
+// A "Not now" this recent also holds after checkout, so a plan change right after dismissing
+// (often a second checkout on the same billing screen) doesn't ask again.
+export const ACQUISITION_PROMPT_CHECKOUT_QUIET_MS = 24 * 60 * 60 * 1000;
 
 type AcquisitionPromptRow = {
   submittedAt: Date | null;
@@ -22,7 +25,7 @@ export type AcquisitionPromptState = {
  * Whether a paid account should be asked how it found iShortn. Free accounts never are (they
  * get the full survey). The full survey asks the same question, so submitting it counts as an
  * answer. Right after checkout the cooldown is skipped, as that is the moment worth asking at,
- * but the dismissal cap still applies.
+ * unless it was dismissed within the last day; the dismissal cap still applies.
  */
 export function acquisitionPromptState(
   plan: Plan,
@@ -33,13 +36,13 @@ export function acquisitionPromptState(
   const dismissCount = row?.acquisitionDismissCount ?? 0;
   const eligible = plan !== "free" && !answered && dismissCount < ACQUISITION_PROMPT_MAX_DISMISSALS;
   const dismissedAt = row?.acquisitionDismissedAt;
-  const cooledDown =
-    !dismissedAt || dismissedAt.getTime() <= now.getTime() - ACQUISITION_PROMPT_COOLDOWN_MS;
+  const dismissedAgo = dismissedAt ? now.getTime() - dismissedAt.getTime() : Infinity;
+  const cooledDown = dismissedAgo >= ACQUISITION_PROMPT_COOLDOWN_MS;
 
   return {
     plan,
     showOnDashboard: eligible && cooledDown,
-    showAfterCheckout: eligible,
+    showAfterCheckout: eligible && dismissedAgo >= ACQUISITION_PROMPT_CHECKOUT_QUIET_MS,
   };
 }
 
