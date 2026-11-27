@@ -75,6 +75,8 @@ export type ApplySubscriptionEventOptions = {
   isBehindProvider?: (providerUpdatedAt: Date) => Promise<boolean>;
   /** Rows this caller must leave alone; the event is acknowledged as `superseded`. */
   isSuperseded?: (existing: Subscription) => boolean;
+  /** `created` sends the welcome email unless this is false (an import of an existing plan). */
+  sendWelcome?: boolean;
 };
 
 const eventSubscriptionId = (event: SubscriptionEvent) =>
@@ -86,7 +88,7 @@ const storedSubscriptionId = (row: Subscription) =>
 /** Applies a subscription event to the user's row, throwing on any failure a retry could fix. */
 export async function applySubscriptionEvent(
   event: SubscriptionEvent,
-  { log, isBehindProvider, isSuperseded }: ApplySubscriptionEventOptions,
+  { log, isBehindProvider, isSuperseded, sendWelcome = true }: ApplySubscriptionEventOptions,
 ): Promise<SubscriptionEventOutcome> {
   const { kind, userId, status, plan, endsAt, providerUpdatedAt } = event;
   const subscriptionId = eventSubscriptionId(event);
@@ -266,9 +268,9 @@ export async function applySubscriptionEvent(
       .values({ ...state, userId, createdAt: event.createdAt })
       .onDuplicateKeyUpdate({ set: state });
 
-    if (!account.email) {
+    if (sendWelcome && !account.email) {
       log.error(logContext, "user has no email for welcome");
-    } else {
+    } else if (sendWelcome && account.email) {
       void runBackgroundTask(
         sendWelcomeEmail({ userId, email: account.email, name: account.name }, paidPlan),
       );
@@ -317,7 +319,9 @@ export async function applySubscriptionEvent(
         .where(currentSubscription),
     );
 
-    if (result === "applied") {
+    // Paddle repeats the cancelled state on every later update until the period ends; only the
+    // transition into it is a cancellation.
+    if (result === "applied" && existing?.status !== "cancelled") {
       emailOwner((recipient) => sendSubscriptionCancelledEmail(recipient, paidPlan, endsAt));
     }
     return { result, previous: existing ?? null };

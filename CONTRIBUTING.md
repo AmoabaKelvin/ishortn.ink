@@ -21,7 +21,7 @@ Tool versions are pinned in `mise.toml` (`mise install`), matching CI.
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | Run the app                                         | `bun dev`                                                                                 |
 | Seed sample data for the account you signed in with | `bun run seed --email you+clerk_test@example.com`                                         |
-| Replay a webhook                                    | `bun run webhook clerk user.created`, `bun run webhook lemonsqueezy subscription_created` |
+| Replay a webhook                                    | `bun run webhook paddle subscription.created` (also `clerk`, `resend` and `lemonsqueezy`) |
 | Trigger a cron route                                | `bun run cron cleanup-expired`                                                            |
 | Inspect the database                                | `bun run db:studio`                                                                       |
 | Preview email templates                             | `bun run email:dev`                                                                       |
@@ -71,7 +71,7 @@ not configured (see `src/server/api/routers/domains/cloudflare.ts` for the patte
 - **R2**: `docker compose --profile storage up -d` runs MinIO; enable the `R2_*` block in `.env`.
 - **Resend**: sends are skipped (and logged) without `RESEND_API_KEY`. `bun run webhook resend
   email.bounced --email <address>` marks an address as hard-bounced (`email.delivered` clears it).
-- **Lemon Squeezy, OpenAI, Safe Browsing, PostHog, Discord**: off until their keys are set.
+- **Lemon Squeezy, Paddle, OpenAI, Safe Browsing, PostHog, Discord**: off until their keys are set.
 
 ## Code style
 
