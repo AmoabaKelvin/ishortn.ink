@@ -75,7 +75,7 @@ export const softwareApplicationSchema = {
       priceCurrency: "USD",
       name: "Pro",
       url: PRICING_URL,
-      description: `${formatCount(pro.linksLimit)} links a month, unlimited analytics history, ${pluralize(pro.domainLimit, "custom domain")}, link-in-bio on your domain, REST API`,
+      description: `${formatCount(pro.linksLimit)} links a month, 1 year of detailed analytics, ${pluralize(pro.domainLimit, "custom domain")}, link-in-bio on your domain, REST API`,
     },
     {
       "@type": "Offer",

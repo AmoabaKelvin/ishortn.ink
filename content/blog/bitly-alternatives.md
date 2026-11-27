@@ -47,7 +47,7 @@ Our post on [Bitly's free plan limits](/blog/bitly-free-plan-limits) covers each
 
 The free plan gives you 30 new links a month on our `isht.app` domain, 1,000 tracked events a month and 7 days of analytics with location, device, browser and referrer. You can change a link's destination at any time, and there's no ad page in front of your links. You also get 5 dynamic QR codes that never expire. Each QR code uses one of your 30 monthly links, the same way Bitly counts them.
 
-Pro is $8 a month or $80 a year. It adds 1,000 links and 10,000 tracked events a month, full analytics history, 3 custom domains, password-protected links, geo and device targeting, CSV import and the REST API. Ultra is $15 a month for unlimited links, events and domains, plus team workspaces. The [pricing page](/pricing) lists every limit.
+Pro is $8 a month or $80 a year. It adds 1,000 links and 10,000 tracked events a month, a full year of detailed analytics, 3 custom domains, password-protected links, geo and device targeting, CSV import and the REST API. Ultra is $15 a month for unlimited links, events and domains, plus team workspaces. The [pricing page](/pricing) lists every limit.
 
 Two things help when you report to someone else or your budget changes. Any link or QR code can have a read-only stats page that you send to a client or manager, and they don't need an account. On Free that page shows the last 7 days. And if you pay monthly, you can pause billing for 1 to 3 months instead of cancelling. Your links keep redirecting while it's paused.
 
@@ -121,7 +121,7 @@ Bitly's cheapest way to see clicks is Core at $120 a year. Here's what tracking 
 | Rebrandly | Essentials, $11/month billed annually | 250 links a month, detailed data on 10,000 clicks, 2 domains |
 | Dub | Free, or Pro at $30/month ($27/month billed yearly) | Free: 30 days of history, 3 custom domains. Pro: 1 year of history, 10 custom domains |
 
-Short.io Hobby is the cheapest paid plan in this list. iShortn Pro is the cheapest with full analytics history and your own domain. These are list prices. Bitly and TinyURL sometimes discount the first year of an annual plan, and prices change, so check the pricing page before you switch.
+Short.io Hobby is the cheapest paid plan in this list. iShortn Pro is the cheapest with a full year of detailed analytics and your own domain. These are list prices. Bitly and TinyURL sometimes discount the first year of an annual plan, and prices change, so check the pricing page before you switch.
 
 ## Bitly alternatives for enterprise users
 
@@ -195,7 +195,7 @@ TinyURL is the closest to Bitly's free plan: paste a link, get a short one. iSho
 
 ### What is the cheapest alternative to Bitly for link tracking?
 
-iShortn and Short.io both track clicks on their free plans. Among paid plans, Short.io Hobby at $5 a month is the cheapest, and iShortn Pro at $8 a month is the cheapest with full analytics history and 3 custom domains.
+iShortn and Short.io both track clicks on their free plans. Among paid plans, Short.io Hobby at $5 a month is the cheapest, and iShortn Pro at $8 a month is the cheapest with a full year of detailed analytics and 3 custom domains.
 
 ### Which Bitly alternative is best for enterprise users?
 

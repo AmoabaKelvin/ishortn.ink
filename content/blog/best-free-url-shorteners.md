@@ -103,7 +103,7 @@ If you want to create links from code, TinyURL, Short.io, Rebrandly and Dub incl
 | Tool | Cheapest paid plan | What it adds |
 | --- | --- | --- |
 | Short.io | Hobby, $5/month | Country targeting |
-| iShortn | Pro, $8/month or $80/year | 1,000 links a month, full analytics history, 3 custom domains, API, geo targeting, password protection |
+| iShortn | Pro, $8/month or $80/year | 1,000 links a month, a full year of detailed analytics, 3 custom domains, API, geo targeting, password protection |
 | TinyURL | Pro, $9/month billed annually | Click analytics, 125 links a month, 3 branded domains |
 | Bitly | Core, $10/month billed annually | 100 links a month, 30 days of click history; custom domains need Growth |
 | Rebrandly | Essentials, $11/month billed annually | 250 links a month, detailed data on 10,000 clicks, 2 domains |

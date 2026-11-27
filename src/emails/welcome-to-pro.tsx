@@ -34,7 +34,7 @@ const planBenefits = {
   pro: [
     `${(pro.linksLimit ?? 0).toLocaleString()} short links per month`,
     `${(pro.eventsLimit ?? 0).toLocaleString()} tracked events per month`,
-    "Unlimited analytics history",
+    "1 year of detailed analytics",
     `${pro.domainLimit} custom domains`,
     `${pro.folderLimit} folders`,
     "Geo & device targeting, password protection and REST API access",

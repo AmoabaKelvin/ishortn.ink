@@ -333,7 +333,7 @@ export const competitors = {
     whySwitch: [
       "Dub Free allows 25 new links a month; iShortn Free allows 30 and includes 5 dynamic QR codes",
       "Dub's paid plans start at $30/month; iShortn Pro is $8/month with 3 custom domains",
-      "iShortn Pro unlocks unlimited analytics history for $8/month",
+      "iShortn Pro keeps a full year of detailed analytics for $8/month",
       "iShortn includes password protection and geo-targeting on the Pro plan",
       "Dub is the better fit if you run an affiliate or partner program (Dub Partners), or want 30 days of analytics and 3 custom domains on a free plan",
     ],

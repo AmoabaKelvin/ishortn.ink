@@ -92,7 +92,7 @@ export async function generateMetadata({
 
 const ishortn = {
   freeLinks: "30/month on Free, 1,000 on Pro, unlimited on Ultra",
-  freeAnalytics: "7 days on Free, unlimited on Pro and Ultra",
+  freeAnalytics: "7 days on Free, 1 year on Pro, unlimited on Ultra",
   customDomains: "3 on Pro, unlimited on Ultra",
   qrCodes:
     "5 dynamic QR codes on Free (edit anytime, never expire, no ads), branded on Pro and Ultra",
@@ -331,7 +331,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
                 <div>
                   <dt className="inline font-medium text-neutral-900">Pro $8/mo: </dt>
                   <dd className={cn(bodyClass, "inline")}>
-                    1,000 links/month, 10,000 tracked events, unlimited analytics history, 3 custom
+                    1,000 links/month, 10,000 tracked events, 1 year of detailed analytics, 3 custom
                     domains, branded + dynamic QR codes, REST API.
                     {isLinkInBio && ` ${proBioPlanLine}`}
                   </dd>
