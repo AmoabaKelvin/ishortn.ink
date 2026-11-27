@@ -18,6 +18,9 @@ interface IdentityClient {
   reset(): void;
   get_distinct_id(): string;
   get_property(name: string): string | undefined;
+  opt_out_capturing(): void;
+  opt_in_capturing(options: { captureEventName: false }): void;
+  has_opted_out_capturing(): boolean;
 }
 
 type Run<T> = (call: (client: T) => void) => void;
@@ -69,12 +72,13 @@ export function createPageviewTracker(run: Run<PageviewClient>, readCookie: () =
 /**
  * Returns a function to call with the signed-in user's id (null when signed out). Identifies each
  * user once, so their anonymous history merges into their person, and resets on sign-out so later
- * events get a new anonymous id.
+ * events get a new anonymous id. Internal accounts are opted out of capturing instead of
+ * identified; PostHog keeps the opt-out across page loads until a non-internal user signs in.
  */
 export function createIdentityTracker(run: Run<IdentityClient>) {
   // undefined until the first call: the page doesn't know who PostHog last identified.
   let current: string | null | undefined;
-  return (userId: string | null) => {
+  return (userId: string | null, internal = false) => {
     if (userId === current) return;
     current = userId;
     run((posthog) => {
@@ -82,7 +86,14 @@ export function createIdentityTracker(run: Run<IdentityClient>) {
       // in a full page load is only noticed here.
       const identified = posthog.get_property("$user_state") === "identified";
       if (identified && posthog.get_distinct_id() !== userId) posthog.reset();
-      if (userId) posthog.identify(userId);
+      if (!userId) return;
+      if (internal) {
+        posthog.opt_out_capturing();
+        return;
+      }
+      // After reset(): reset clears consent, and opting in first would be undone by it.
+      if (posthog.has_opted_out_capturing()) posthog.opt_in_capturing({ captureEventName: false });
+      posthog.identify(userId);
     });
   };
 }

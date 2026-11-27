@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { LINK_UTM_PLAN_MESSAGE, PLAN_VARIANT_IDS } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { link, linkCreationFailure } from "@/server/db/schema";
 import { parseScrapedPage } from "@/server/lib/metadata";
@@ -10,10 +11,17 @@ import type { WorkspaceTRPCContext } from "../../trpc";
 import type { LinkCreationFailure } from "@/server/lib/link-creation/failures";
 import type { MySqlTable } from "drizzle-orm/mysql-core";
 
-type InsertedLink = { url: string; name: string; alias: string; domain: string };
+type InsertedLink = {
+  url: string;
+  name: string;
+  alias: string;
+  domain: string;
+  utmParams?: unknown;
+};
 
 type FakeContextOptions = {
   failInsert?: boolean;
+  plan?: "free" | "pro" | "ultra";
   /** Rows the first-link check finds: the workspace's other short links. */
   otherLinks?: { id: number }[];
   failFirstLinkCheck?: boolean;
@@ -21,13 +29,15 @@ type FakeContextOptions = {
 };
 
 // In-memory stand-in for the queries createLink and shortenLinkWithAutoAlias make:
-// the plan and default-domain lookups (free plan, no saved domain), the
-// reserved-alias check for the generated alias (none reserved), the link insert,
-// failure records, the monthly count update and the first-link check.
-// `failInsert` and `failFirstLinkCheck` make that query throw like a database
-// outage would; `team` makes it an Ultra team workspace.
+// the plan and default-domain lookups (no saved domain), the reserved-alias check
+// for the generated alias (none reserved), the link insert, failure records, the
+// monthly count update and the first-link check. `plan` sets the personal
+// workspace's plan (free by default). `failInsert` and `failFirstLinkCheck` make
+// that query throw like a database outage would; `team` makes it an Ultra team
+// workspace.
 function fakeContext({
   failInsert = false,
+  plan = "free",
   otherLinks = [],
   failFirstLinkCheck = false,
   team = false,
@@ -43,7 +53,10 @@ function fakeContext({
           monthlyLinkCount: 0,
           lastLinkCountReset: new Date(),
           createdAt: new Date(),
-          subscriptions: null,
+          subscriptions:
+            plan === "free"
+              ? null
+              : { status: "active", plan, variantId: PLAN_VARIANT_IDS[plan].monthly },
         }),
       },
       team: { findFirst: async () => ({ id: 3, defaultDomain: null }) },
@@ -86,7 +99,7 @@ function fakeContext({
         teamId: null,
         teamSlug: null,
         role: "owner",
-        plan: "free",
+        plan,
       };
   // SAFETY: link creation without tags, geo rules, campaign or image only reaches
   // the db methods stubbed above, plus ctx.workspace and ctx.auth.userId.
@@ -239,5 +252,25 @@ describe("first-link flag", () => {
     const { ctx, inserted } = fakeContext({ failFirstLinkCheck: true });
     expect(await createLink(ctx, { url: URL }, deps)).toMatchObject({ isFirstLink: false });
     expect(inserted).toHaveLength(1);
+  });
+});
+
+describe("createLink UTM parameters", () => {
+  const utmParams = { utm_source: "newsletter", utm_medium: "email" };
+
+  test("are refused on Free with a prompt that points to Pro", async () => {
+    const { ctx, inserted } = fakeContext();
+    await expect(
+      createLink(ctx, { url: URL, utmParams }, { ...allowUrl, fetchMetadata: noMetadata }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: LINK_UTM_PLAN_MESSAGE });
+    expect(inserted).toEqual([]);
+  });
+
+  test("are saved on Pro and Ultra", async () => {
+    for (const plan of ["pro", "ultra"] as const) {
+      const { ctx, inserted } = fakeContext({ plan });
+      await createLink(ctx, { url: URL, utmParams }, { ...allowUrl, fetchMetadata: noMetadata });
+      expect(inserted[0]).toMatchObject({ utmParams });
+    }
   });
 });

@@ -24,6 +24,18 @@ const PRO_MONTHLY_VARIANT = 1811616;
 const PRO_ANNUAL_VARIANT = 1809620;
 const DAY = 24 * 60 * 60 * 1000;
 
+type CheckoutBody = {
+  data: {
+    attributes: { checkout_data: { custom: Record<string, string>; discount_code?: string } };
+  };
+};
+
+type CaptureBody = {
+  event: string;
+  distinct_id: string;
+  properties: Record<string, string | number | boolean>;
+};
+
 type PatchBody = {
   data: {
     attributes: { pause?: { mode: string; resumes_at: string } | null; cancelled?: boolean };
@@ -91,6 +103,7 @@ describe.skipIf(!testDatabaseUrl)("lemonsqueezy cancel flow (MySQL)", () => {
     await db
       .delete(schema.subscriptionCancellation)
       .where(eq(schema.subscriptionCancellation.userId, USER_ID));
+    await db.delete(schema.checkoutStart).where(eq(schema.checkoutStart.userId, USER_ID));
     await db.delete(schema.subscription).where(eq(schema.subscription.userId, USER_ID));
     await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
   }
@@ -102,6 +115,9 @@ describe.skipIf(!testDatabaseUrl)("lemonsqueezy cancel flow (MySQL)", () => {
       LEMONSQUEEZY_STORE_ID: "1",
       LEMONSQUEEZY_WEBHOOK_SECRET: "test-secret",
       DISCORD_WEBHOOK_URL: undefined,
+      // Captures go to the stubbed fetch, never to a real PostHog project.
+      NEXT_PUBLIC_POSTHOG_HOST: "https://posthog.test",
+      NEXT_PUBLIC_POSTHOG_KEY: "phc_test",
     });
     // Also set directly: another test file replaces configureLemonSqueezy with a no-op for the run.
     lemonSqueezySetup({ apiKey: "test-key" });
@@ -119,6 +135,7 @@ describe.skipIf(!testDatabaseUrl)("lemonsqueezy cancel flow (MySQL)", () => {
   afterAll(async () => {
     fetchSpy.mockRestore();
     restoreContext();
+    Object.assign(env, { NEXT_PUBLIC_POSTHOG_HOST: undefined, NEXT_PUBLIC_POSTHOG_KEY: undefined });
     await cleanup();
   });
 
@@ -253,5 +270,51 @@ describe.skipIf(!testDatabaseUrl)("lemonsqueezy cancel flow (MySQL)", () => {
       "Your subscription is paused. Resume it before changing plans.",
     );
     expect(requests).toHaveLength(0);
+  });
+
+  test("a new checkout carries its attribution into custom data and checkout_started", async () => {
+    const posted: { url: string; body: string }[] = [];
+    fetchSpy.mockImplementation(async (input, init) => {
+      // SAFETY: both the Lemon Squeezy client and the PostHog capture send string JSON bodies.
+      posted.push({ url: String(input), body: init?.body as string });
+      return Response.json({ data: { id: "1", attributes: { url: "https://pay.test/c/1" } } });
+    });
+
+    const result = await caller().createCheckoutOrUpdate({
+      plan: "pro",
+      interval: "annual",
+      source: "browser-extension",
+      utm: { utm_source: "browser-extension", utm_campaign: "popup" },
+    });
+    expect(result).toEqual({ status: "redirect", url: "https://pay.test/c/1" });
+
+    const checkout = posted.find((request) => request.url.includes("/v1/checkouts"));
+    // SAFETY: the checkout request body is the JSON:API document the client builds.
+    const checkoutData = (JSON.parse(checkout?.body ?? "null") as CheckoutBody).data.attributes
+      .checkout_data;
+    expect(checkoutData.custom).toMatchObject({
+      user_id: USER_ID,
+      source: "browser-extension",
+      utm_source: "browser-extension",
+      utm_campaign: "popup",
+    });
+    // The code rides along only while a promo runs; custom data mirrors whatever was sent.
+    expect(checkoutData.custom.discount_code).toBe(checkoutData.discount_code);
+
+    const captureRequest = posted.find((request) => request.url.startsWith("https://posthog.test"));
+    // SAFETY: captureServerEvent sends this JSON shape.
+    const capture = JSON.parse(captureRequest?.body ?? "null") as CaptureBody;
+    expect(capture).toMatchObject({
+      event: "checkout_started",
+      distinct_id: USER_ID,
+      properties: {
+        plan: "pro",
+        interval: "annual",
+        source: "browser-extension",
+        utm_source: "browser-extension",
+        utm_campaign: "popup",
+      },
+    });
+    expect(capture.properties.discount_code).toBe(checkoutData.discount_code);
   });
 });

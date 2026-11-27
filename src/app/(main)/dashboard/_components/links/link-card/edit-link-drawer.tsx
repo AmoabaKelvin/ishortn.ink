@@ -698,7 +698,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                         description="Add UTM parameters for campaign tracking"
                         isOpen={isUtmParamsOpen}
                         onToggle={() => setIsUtmParamsOpen(!isUtmParamsOpen)}
-                        badge={!isUltraUser ? <PlanBadge plan="Ultra" /> : undefined}
+                        badge={!isProOrUltraUser ? <PlanBadge plan="Pro" /> : undefined}
                       >
                         {isUltraUser && (
                           <div className="flex justify-end">
@@ -725,7 +725,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                             />
                           </div>
                         )}
-                        <UtmParamsForm form={form} disabled={!isUltraUser} />
+                        <UtmParamsForm form={form} disabled={!isProOrUltraUser} />
                       </SectionToggle>
 
                       {/* Link Cloaking */}

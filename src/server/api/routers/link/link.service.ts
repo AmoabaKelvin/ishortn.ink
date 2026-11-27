@@ -22,6 +22,8 @@ import { z } from "zod";
 
 import {
   canUseCampaignUtmDefaults,
+  canUseLinkUtmParams,
+  LINK_UTM_PLAN_MESSAGE,
   canUseGeoRules,
   getGeoRulesLimit,
   isUnlimitedGeoRules,
@@ -538,19 +540,12 @@ const createLinkSteps = async (
     }
   }
 
-  // Check for UTM params - Ultra plan only
   const utmParamsValues = Object.values(input.utmParams ?? {});
   const hasUtmParams = utmParamsValues.some(
     (value) => value !== undefined && value !== null && value !== "",
   );
-  if (hasUtmParams) {
-    if (plan !== "ultra") {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message:
-          "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
-      });
-    }
+  if (hasUtmParams && !canUseLinkUtmParams(plan)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: LINK_UTM_PLAN_MESSAGE });
   }
 
   // Check for link cloaking - Ultra plan only
@@ -809,15 +804,12 @@ export const updateLink = async (
     );
   }
 
-  // Check for UTM params - Ultra plan only
   if (
-    (hasUtmValues(existingLink.utmParams) ? usagePlan : workspacePlan) !== "ultra" &&
+    !canUseLinkUtmParams(hasUtmValues(existingLink.utmParams) ? usagePlan : workspacePlan) &&
     hasUtmValues(input.utmParams) &&
     !sameUtmParams(input.utmParams, existingLink.utmParams)
   ) {
-    throw new Error(
-      "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
-    );
+    throw new Error(LINK_UTM_PLAN_MESSAGE);
   }
 
   // Check for link cloaking - Ultra plan only
