@@ -74,7 +74,7 @@ export function buildLlmsTxt({
 - [Plans and limits](${SITE}/docs/plans)
 - [Migrate from Bitly](${SITE}/docs/migrate-from-bitly)
 - [API reference](${SITE}/docs/api)
-- [MCP server setup for Claude, Cursor and Codex](${SITE}/docs/integrations/mcp)
+- [MCP server setup for Claude, Cursor, VS Code, Windsurf, Gemini CLI and Codex](${SITE}/docs/integrations/mcp)
 - [Source code](https://github.com/AmoabaKelvin/ishortn.ink)`,
   ];
   if (guides.length > 0) sections.push(`## Guides\n\n${guides.join("\n")}`);

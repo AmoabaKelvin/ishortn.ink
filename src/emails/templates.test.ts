@@ -7,7 +7,9 @@ import { createElement, type FunctionComponent } from "react";
 
 import { env } from "@/env.mjs";
 import { PLAN_CAPS } from "@/lib/billing/plans";
+import { ACTIVE_PROMO } from "@/lib/billing/promo";
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
+import { eventUsageUpgrade } from "@/server/lib/notifications/event-usage";
 import { promoPausedNoticeUrl } from "@/server/lib/notifications/promo-paused-notice";
 import { renderEmail } from "@/server/lib/notifications/render-email";
 import { scheduledReportEmailProps } from "@/server/lib/notifications/scheduled-report";
@@ -18,8 +20,11 @@ import {
 } from "@/server/lib/notifications/weekly-summary";
 
 import { EmailLayout, EMAIL_POSTAL_ADDRESS } from "./_components/layout";
+import { planGraceSubject } from "./_components/plan-grace-subject";
+import EventUsageAlertEmail, { eventUsageSubject } from "./event-usage-alert";
 import FirstLinkNudgeEmail from "./first-link-nudge";
-import PromoPausedNoticeEmail from "./promo-paused-notice";
+import PlanGraceEmail, { type PlanGraceEmailProps } from "./plan-grace";
+import PromoPausedNoticeEmail, { promoPausedNoticeSubject } from "./promo-paused-notice";
 import ScheduledReportEmail, { comparePeriods, scheduledReportSubject } from "./scheduled-report";
 import UpgradeNudgeEmail, {
   UPGRADE_NUDGE_PREVIEWS,
@@ -202,13 +207,18 @@ describe("welcome", () => {
 
 describe("promo paused notice", () => {
   test("a Free account under Pro's allowance is offered Pro with the promo", async () => {
-    const html = await render(
-      createElement(PromoPausedNoticeEmail, PromoPausedNoticeEmail.PreviewProps),
-    );
+    const props = PromoPausedNoticeEmail.PreviewProps;
+    const html = await render(createElement(PromoPausedNoticeEmail, props));
 
-    expect(html).toContain("1,284 clicks");
-    expect(html).toContain("paused since <!-- -->November 20");
-    expect(html).toContain("Counting resumes on its own on <!-- -->December 1");
+    expect(promoPausedNoticeSubject(props)).toBe(
+      "1,284 clicks haven't been tracked since November 20",
+    );
+    expect(html).toMatch(/<h1[^>]*>Click tracking is paused until December 1<\/h1>/);
+    expect(html).toContain("Your links still work. Tracking resumes on its own on December 1.");
+    expect(html).toContain(
+      "Free plan&#x27;s <!-- -->1,000<!-- --> tracked clicks for this month on <!-- -->November 20",
+    );
+    expect(html).toContain("<!-- -->1,284 clicks<!-- --> reached your links");
     expect(html).toContain("Pro includes 10,000 tracked clicks a month");
     expect(html).toContain(
       "Black Friday: Pro is 20% off your first year until Tuesday 1 December.",
@@ -216,6 +226,12 @@ describe("promo paused notice", () => {
     expect(html).toContain("Upgrade to Pro");
     expect(html).toContain('href="https://ishortn.ink/e-paused-pro"');
     expect(html).toContain("Email settings");
+  });
+
+  test("one untracked click is singular", () => {
+    expect(promoPausedNoticeSubject({ dropped: 1, pausedOn: "November 20" })).toBe(
+      "1 click hasn't been tracked since November 20",
+    );
   });
 
   test("an account over Pro's allowance is offered Ultra", async () => {
@@ -231,7 +247,7 @@ describe("promo paused notice", () => {
       }),
     );
 
-    expect(html).toContain("Ultra has no monthly cap on tracked clicks");
+    expect(html).toContain("Ultra has no monthly limit on tracked clicks");
     expect(html).toContain("Black Friday: Ultra is 20% off your first year");
     expect(html).toContain("Upgrade to Ultra");
     expect(html).toContain('href="https://ishortn.ink/e-paused-ultra"');
@@ -405,18 +421,17 @@ describe("upgrade nudge", () => {
   const expected = {
     limit_hit: {
       subject: "Custom domains is part of Pro",
-      paragraph:
-        "On 21 November you tried custom domains. That comes with Pro, along with the rest of the list below.",
+      paragraph: "On 21 November you tried custom domains. That comes with Pro.",
     },
     events: {
-      subject: "Your links are on pace to pass 1,000 clicks this month",
+      subject: "Your links are on pace to pass 1,000 tracked clicks this month",
       paragraph:
-        "Free records 1,000 clicks a month. Your links are at 640, so at this pace they'll pass it around 27 November. After that your links keep working, but new clicks stop showing in your analytics until the count resets on 1 December.",
+        "Free includes 1,000 tracked clicks a month. Your links are at 640, so at this pace they'll pass it around 27 November. After that they keep working, but new clicks won't show in your analytics until the count resets on 1 December. Pro includes 10,000 tracked clicks a month.",
     },
     links: {
       subject: "You've used 18 of your 30 free links this month",
       paragraph:
-        "Free includes 30 new links a month and you've used 18. Your count resets on 1 December.",
+        "Free includes 30 new links a month and you've used 18. Your count resets on 1 December. Pro includes 1,000 new links a month.",
     },
     analytics: {
       subject: "Your first clicks are leaving the 7-day view",
@@ -431,7 +446,7 @@ describe("upgrade nudge", () => {
   };
 
   for (const props of Object.values(UPGRADE_NUDGE_PREVIEWS)) {
-    test(`${props.angle.reason}: subject, angle paragraph, preview text and the plan summary`, async () => {
+    test(`${props.angle.reason}: subject, angle paragraph, preview text and the price`, async () => {
       const want = expected[props.angle.reason];
       const text = await plain(props);
 
@@ -445,12 +460,8 @@ describe("upgrade nudge", () => {
       expect(text).toContain(
         `Pro is $${PLAN_PRICES_USD.pro} a month, or $${PLAN_PRICES_ANNUAL_USD.pro} a year.`,
       );
-      expect(text).toContain(
-        `${PLAN_CAPS.pro.linksLimit?.toLocaleString("en-US")} links and ${PLAN_CAPS.pro.eventsLimit?.toLocaleString("en-US")} tracked clicks a month`,
-      );
-      expect(text).toContain(`${PLAN_CAPS.pro.domainLimit} custom domains`);
       expect(text).toContain("Compare plans");
-      expect(text).toContain("we won't send you this email again.");
+      expect(text).toContain("I won't send you this email again. Kelvin");
       expect(text).not.toContain("isht.ink");
     });
   }
@@ -604,4 +615,89 @@ describe("scheduled report", () => {
       Object.assign(env, { EMAIL_UNSUBSCRIBE_SECRET: previous });
     }
   });
+});
+
+describe("cap, grace, promo-paused and upgrade-nudge copy", () => {
+  const eventUsage = (["free", "pro"] as const).flatMap((plan) =>
+    [80, 90, 100].flatMap((threshold) =>
+      [ACTIVE_PROMO, null].flatMap((promo) =>
+        [true, false].map((onPaceToReachLimit) => {
+          const limit = PLAN_CAPS[plan].eventsLimit ?? 0;
+          const upgrade = eventUsageUpgrade(plan, threshold);
+          if (!upgrade) throw new Error(`no upgrade for ${plan}`);
+          const props = {
+            ...EventUsageAlertEmail.PreviewProps,
+            plan,
+            threshold,
+            limit,
+            currentCount: Math.round((limit * threshold) / 100),
+            onPaceToReachLimit,
+            upgrade,
+            promo,
+          };
+          return {
+            name: `event usage ${plan} ${threshold}%`,
+            subject: eventUsageSubject(props),
+            element: createElement(EventUsageAlertEmail, props),
+          };
+        }),
+      ),
+    ),
+  );
+
+  const promoPaused = (["pro", "ultra"] as const).map((plan) => {
+    const props = {
+      ...PromoPausedNoticeEmail.PreviewProps,
+      upgrade: { plan, label: `Upgrade to ${plan}`, url: promoPausedNoticeUrl(plan) },
+    };
+    return {
+      name: `promo paused ${plan}`,
+      subject: promoPausedNoticeSubject(props),
+      element: createElement(PromoPausedNoticeEmail, props),
+    };
+  });
+
+  const planGrace = (["started", "reminder", "ended"] as const).flatMap((kind) =>
+    (["lapsed", "over_plan", "team"] as const).flatMap((reason) =>
+      [undefined, "https://ishortn.ink/dashboard/settings/billing/update-payment"].map(
+        (updatePaymentUrl) => {
+          const props: PlanGraceEmailProps = {
+            ...PlanGraceEmail.PreviewProps,
+            kind,
+            reason,
+            teamName: "Acme",
+            updatePaymentUrl,
+          };
+          return {
+            name: `plan grace ${kind} ${reason}${updatePaymentUrl ? " payment failed" : ""}`,
+            subject: planGraceSubject(props),
+            element: createElement(PlanGraceEmail, props),
+          };
+        },
+      ),
+    ),
+  );
+
+  const upgradeNudge = Object.values(UPGRADE_NUDGE_PREVIEWS).map(
+    (props: UpgradeNudgeEmailProps) => ({
+      name: `upgrade nudge ${props.angle.reason}`,
+      subject: upgradeNudgeSubject(props.angle),
+      element: createElement(UpgradeNudgeEmail, props),
+    }),
+  );
+
+  for (const email of [...eventUsage, ...promoPaused, ...planGrace, ...upgradeNudge]) {
+    test(`${email.name}: no exclamation marks, em dashes or old wording`, async () => {
+      // The plain-text part carries the preview text and the body.
+      const { text } = await renderEmail(email.element, "ama@example.com");
+      for (const copy of [email.subject, text]) {
+        expect(copy).not.toContain("!");
+        expect(copy).not.toContain("\u2014");
+        expect(copy.toLowerCase()).not.toContain("analytics events");
+        expect(copy.toLowerCase()).not.toMatch(/\bvisits?\b/);
+        expect(copy).not.toContain("Heads up");
+        expect(copy).not.toContain("Thanks for using iShortn");
+      }
+    });
+  }
 });

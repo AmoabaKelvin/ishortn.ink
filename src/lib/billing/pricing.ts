@@ -3,7 +3,12 @@ import { addMonths } from "date-fns";
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 
 import { withAttribution } from "./attribution";
-import { promoDiscountActive, promoFirstPaymentAt } from "./first-year-discount";
+import {
+  FIRST_YEAR_MONTHS,
+  planChangeDiscount,
+  promoDiscountActive,
+  promoFirstPaymentAt,
+} from "./first-year-discount";
 import { FIRST_YEAR_PROMOS, formatDayMonthYearShort, promoPrice } from "./promo";
 
 import type { Attribution } from "./attribution";
@@ -148,6 +153,47 @@ export function subscriptionDiscount(
   return { code, percentOff, endsAt };
 }
 
+/**
+ * The discount a Paddle plan or interval change to `to` would be billed with, for the plan rows a
+ * promo subscriber can switch to. Mirrors promoDiscountUpdate in lemonsqueezy.procedure.ts: every
+ * change there bills now, so a switch to annual gets the discount once on that annual charge, and
+ * a monthly switch keeps it to the end of the first year. Lemon Squeezy changes may drop the
+ * checkout discount, so they show list prices.
+ */
+export function planChangeDiscountTo(
+  checkout: DiscountCheckout | null | undefined,
+  subscription: DiscountSubscription,
+  to: BillingInterval,
+  now = new Date(),
+  promos: readonly Pick<Promo, "code" | "percentOff">[] = FIRST_YEAR_PROMOS,
+): SubscriptionDiscount | null {
+  if (subscription.provider !== "paddle" || checkout?.provider !== "paddle") return null;
+  const code = checkout.promoCode;
+  const promo = code ? promos.find((candidate) => candidate.code === code) : undefined;
+  if (!code || !promo) return null;
+
+  const firstPaymentAt = promoFirstPaymentAt(subscription.startedAt, checkout.createdAt);
+  const { discountEndedAt } = subscription;
+  if (discountEndedAt && discountEndedAt >= firstPaymentAt) return null;
+  const change = planChangeDiscount({
+    firstPaymentAt,
+    from: subscription.interval,
+    to,
+    billsNow: true,
+    now,
+  });
+  if (change.action === "remove") return null;
+
+  // Annual to annual keeps the current period; monthly to annual starts a new one now.
+  const endsAt =
+    to === "monthly"
+      ? addMonths(firstPaymentAt, FIRST_YEAR_MONTHS)
+      : subscription.interval === "annual" && subscription.periodEndsAt
+        ? subscription.periodEndsAt
+        : addMonths(now, FIRST_YEAR_MONTHS);
+  return { code, percentOff: promo.percentOff, endsAt };
+}
+
 /** A subscriber's own price line: what they are billed, with the discount while it lasts. */
 export function subscribedPriceDisplay(
   plan: Exclude<Plan, "free">,
@@ -167,7 +213,7 @@ export function subscribedPriceDisplay(
     return {
       perMonth: formatUsd(firstYear / 12),
       compareAt: formatUsd(yearly / 12),
-      note: `billed $${formatUsd(firstYear)} the first year (${label}), then $${formatUsd(yearly)}/yr`,
+      note: `billed $${formatUsd(firstYear)}, ${label} until ${formatDayMonthYearShort(discount.endsAt)}, then $${formatUsd(yearly)}/yr`,
     };
   }
   const monthly = PLAN_PRICES_USD[plan];

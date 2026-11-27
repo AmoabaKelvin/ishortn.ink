@@ -150,13 +150,25 @@ export type CreateDiscountInput = {
   /** Percent off, e.g. 20. */
   percentOff: number;
   description: string;
-  /** `null` for a one-off discount; otherwise how many billing periods it recurs for. */
-  maximumRecurringIntervals: number | null;
+  /**
+   * How many billing periods it recurs for. Always recurring: Paddle rejects one-off discounts on
+   * subscription updates, the only place these codeless discounts are used.
+   */
+  maximumRecurringIntervals: number;
   customData?: PaddleCustomData;
+};
+
+export type PreviewSubscriptionUpdateInput = {
+  items: PaddleItem[];
+  prorationBillingMode: PaddleProrationBillingMode;
+  discount?: UpdateSubscriptionInput["discount"];
 };
 
 const toPaddleItems = (items: PaddleItem[]) =>
   items.map((item) => ({ price_id: item.priceId, quantity: item.quantity }));
+
+const toPaddleDiscount = (discount: UpdateSubscriptionInput["discount"]) =>
+  discount && { id: discount.id, effective_from: discount.effectiveFrom };
 
 export function createPaddleClient(config: PaddleConfig) {
   const baseUrl = paddleApiBaseUrl(config);
@@ -263,8 +275,8 @@ export function createPaddleClient(config: PaddleConfig) {
         description: input.description,
         enabled_for_checkout: false,
         mode: "custom",
-        recur: input.maximumRecurringIntervals !== null,
-        maximum_recurring_intervals: input.maximumRecurringIntervals ?? undefined,
+        recur: true,
+        maximum_recurring_intervals: input.maximumRecurringIntervals,
         custom_data: input.customData,
       }),
 
@@ -307,17 +319,11 @@ export function createPaddleClient(config: PaddleConfig) {
         items: input.items && toPaddleItems(input.items),
         proration_billing_mode: input.prorationBillingMode,
         scheduled_change: input.scheduledChange,
-        discount: input.discount && {
-          id: input.discount.id,
-          effective_from: input.discount.effectiveFrom,
-        },
+        discount: toPaddleDiscount(input.discount),
       }),
 
     /** What an item change would bill, without applying it. */
-    previewSubscriptionUpdate: (
-      id: string,
-      input: { items: PaddleItem[]; prorationBillingMode: PaddleProrationBillingMode },
-    ) =>
+    previewSubscriptionUpdate: (id: string, input: PreviewSubscriptionUpdateInput) =>
       request(
         "PATCH",
         `/subscriptions/${encodeURIComponent(id)}/preview`,
@@ -325,6 +331,7 @@ export function createPaddleClient(config: PaddleConfig) {
         {
           items: toPaddleItems(input.items),
           proration_billing_mode: input.prorationBillingMode,
+          discount: toPaddleDiscount(input.discount),
         },
       ),
 

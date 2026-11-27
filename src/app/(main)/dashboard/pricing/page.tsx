@@ -28,6 +28,7 @@ async function PricingPage() {
       renewsAt={subscription?.renewsAt ?? null}
       promo={promo}
       subscription={subscription}
+      planMode={subscriptions.planMode}
     />
   );
 }

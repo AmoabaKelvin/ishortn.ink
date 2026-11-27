@@ -733,8 +733,15 @@
     {
       "idx": 104,
       "version": "5",
-      "when": 1795782072948,
-      "tag": "0104_scheduled_report",
+      "when": 1795782084758,
+      "tag": "0104_qr_code_static_payload",
+      "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "5",
+      "when": 1795788981218,
+      "tag": "0105_scheduled_report",
       "breakpoints": true
     }
   ]

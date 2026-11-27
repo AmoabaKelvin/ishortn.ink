@@ -18,6 +18,7 @@ import {
   varchar,
 } from "drizzle-orm/mysql-core";
 
+import type { StaticPayloadType, StaticQrPayload } from "@/lib/qr-generator/payload";
 import type { QRCodeStyle } from "@/lib/qr-generator/types";
 
 // ============================================================================
@@ -639,6 +640,11 @@ export const qrcode = mysqlTable(
 
     // Generator options used for the SVG download; null for codes saved before SVG export.
     style: json("style").$type<QRCodeStyle>(),
+
+    // Static codes (contentType "text") built from a form: which form, and its fields so the
+    // editor can re-open them. Null for links, plain text and codes made before these types.
+    payloadType: varchar("payloadType", { length: 16 }).$type<StaticPayloadType>(),
+    payloadFields: json("payloadFields").$type<StaticQrPayload>(),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),

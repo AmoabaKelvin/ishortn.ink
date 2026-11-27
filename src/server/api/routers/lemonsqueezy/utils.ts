@@ -40,12 +40,33 @@ export function providerErrorToClient(statusCode: number | null): ClientBillingE
   };
 }
 
+// Paddle error codes for a charge the customer's payment method couldn't cover.
+const PADDLE_PAYMENT_FAILURE_CODES = new Set([
+  "subscription_payment_declined",
+  "subscription_payment_retry_attempts_exceeded",
+  "subscription_missing_payment_method_cannot_update",
+  "subscription_missing_payment_method_cannot_retry_payment",
+  "subscription_update_when_past_due",
+]);
+
 /**
- * providerErrorToClient for a failed Paddle call. Paddle rejects a change it can't apply (a
- * renewal in progress, a pending change) with 400 or 409 where Lemon Squeezy uses 422.
+ * providerErrorToClient for a failed Paddle call. Paddle rejects a change it can't apply with 400,
+ * 409 or 422 and names the reason in `code`. Only payment failures point at the payment method;
+ * anything else (a discount it won't apply, a renewal in progress, a pending change) gets a
+ * generic message, since updating the card wouldn't help.
  */
-export function paddleErrorToClient(statusCode: number | null): ClientBillingError {
-  return providerErrorToClient(statusCode === 400 || statusCode === 409 ? 422 : statusCode);
+export function paddleErrorToClient(
+  statusCode: number | null,
+  code: string | null = null,
+): ClientBillingError {
+  if (code && PADDLE_PAYMENT_FAILURE_CODES.has(code)) return providerErrorToClient(422);
+  if (statusCode === 400 || statusCode === 409 || statusCode === 422) {
+    return {
+      code: "BAD_REQUEST",
+      message: "We couldn't apply this change. Please try again or contact support.",
+    };
+  }
+  return providerErrorToClient(statusCode);
 }
 
 /** `updated_at` from a provider response, or null when it can't be trusted as an ordering marker. */

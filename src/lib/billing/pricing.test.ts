@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   formatUsd,
+  planChangeDiscountTo,
   planPriceDisplay,
   planSignupHref,
   resolveBillingInterval,
@@ -265,6 +266,101 @@ describe("subscriptionDiscount", () => {
   });
 });
 
+describe("planChangeDiscountTo", () => {
+  const checkout = {
+    plan: "pro" as const,
+    interval: "monthly" as const,
+    promoCode: "BFCM20",
+    provider: "paddle",
+    createdAt: new Date("2026-11-25T12:00:00Z"),
+  };
+  const startedAt = new Date("2026-11-25T12:05:00Z");
+  const monthlyPro = {
+    plan: "pro" as const,
+    interval: "monthly" as const,
+    provider: "paddle",
+    startedAt,
+    periodEndsAt: new Date("2027-01-25T12:05:00Z"),
+  };
+  const now = new Date("2026-12-27T00:00:00Z");
+
+  test("in the first year a monthly switch keeps the promo to the end of that year", () => {
+    expect(planChangeDiscountTo(checkout, monthlyPro, "monthly", now)).toEqual({
+      code: "BFCM20",
+      percentOff: 20,
+      endsAt: new Date("2027-11-25T12:05:00Z"),
+    });
+  });
+
+  test("monthly to annual gets the promo once, on the annual period starting now", () => {
+    expect(planChangeDiscountTo(checkout, monthlyPro, "annual", now)).toEqual({
+      code: "BFCM20",
+      percentOff: 20,
+      endsAt: new Date("2027-12-27T00:00:00Z"),
+    });
+  });
+
+  test("annual to annual keeps the current period's end; annual to monthly has no promo", () => {
+    const annualPro = {
+      ...monthlyPro,
+      interval: "annual" as const,
+      periodEndsAt: new Date("2027-11-25T12:05:00Z"),
+    };
+    const annualCheckout = { ...checkout, interval: "annual" as const };
+    expect(planChangeDiscountTo(annualCheckout, annualPro, "annual", now)).toMatchObject({
+      endsAt: new Date("2027-11-25T12:05:00Z"),
+    });
+    expect(planChangeDiscountTo(annualCheckout, annualPro, "monthly", now)).toBeNull();
+  });
+
+  test("without an active promo the rows keep list prices", () => {
+    // After the first year.
+    expect(
+      planChangeDiscountTo(checkout, monthlyPro, "monthly", new Date("2027-11-26T00:00:00Z")),
+    ).toBeNull();
+    // No code, an unknown code, or Lemon Squeezy.
+    expect(planChangeDiscountTo(null, monthlyPro, "monthly", now)).toBeNull();
+    expect(
+      planChangeDiscountTo({ ...checkout, promoCode: null }, monthlyPro, "monthly", now),
+    ).toBeNull();
+    expect(
+      planChangeDiscountTo({ ...checkout, promoCode: "PARTNER10" }, monthlyPro, "annual", now),
+    ).toBeNull();
+    expect(
+      planChangeDiscountTo(
+        { ...checkout, provider: "lemonsqueezy" },
+        { ...monthlyPro, provider: "lemonsqueezy" },
+        "monthly",
+        now,
+      ),
+    ).toBeNull();
+    // A change already ended the promo.
+    expect(
+      planChangeDiscountTo(
+        checkout,
+        { ...monthlyPro, discountEndedAt: new Date("2026-12-20T00:00:00Z") },
+        "monthly",
+        now,
+      ),
+    ).toBeNull();
+  });
+
+  test("the row shows the discounted price, the list price and the end date", () => {
+    const discount = planChangeDiscountTo(checkout, monthlyPro, "monthly", now);
+    expect(subscribedPriceDisplay("ultra", "monthly", discount)).toEqual({
+      perMonth: "12",
+      compareAt: "15",
+      note: "20% off with BFCM20 until 25 Nov 2027, then $15/mo",
+    });
+    const annual = planChangeDiscountTo(checkout, monthlyPro, "annual", now);
+    expect(subscribedPriceDisplay("pro", "annual", annual)).toEqual({
+      perMonth: "5.33",
+      compareAt: "6.67",
+      note: "billed $64, 20% off with BFCM20 until 27 Dec 2027, then $80/yr",
+    });
+  });
+});
+
 describe("subscribedPriceDisplay", () => {
   const endsAt = new Date("2027-11-25T12:00:00Z");
 
@@ -290,7 +386,7 @@ describe("subscribedPriceDisplay", () => {
     ).toEqual({
       perMonth: "10",
       compareAt: "12.50",
-      note: "billed $120 the first year (20% off with BFCM20), then $150/yr",
+      note: "billed $120, 20% off with BFCM20 until 25 Nov 2027, then $150/yr",
     });
   });
 

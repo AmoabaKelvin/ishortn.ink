@@ -4,6 +4,10 @@ import type { BillingInterval, Plan } from "@/lib/billing/plans";
 
 export type PlanChangeKind = "switch" | "upgrade";
 
+/** The CONFLICT message for a plan change sent from a billing screen that no longer matches. */
+export const STALE_BILLING_MESSAGE =
+  "Your subscription changed since this page loaded. Review the change and confirm it.";
+
 /**
  * What an in-place plan change charges today:
  * - `list_price`: no preview exists (Lemon Squeezy); the copy quotes the list price.

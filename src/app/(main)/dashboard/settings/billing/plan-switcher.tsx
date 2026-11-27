@@ -1,13 +1,19 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+import { STALE_BILLING_MESSAGE } from "@/lib/billing/plan-change-copy";
 import { scheduledPause } from "@/lib/billing/plans";
-import { planPriceDisplay, resolveBillingInterval } from "@/lib/billing/pricing";
+import {
+  planPriceDisplay,
+  resolveBillingInterval,
+  subscribedPriceDisplay,
+} from "@/lib/billing/pricing";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -15,7 +21,7 @@ import { DowngradeFeedbackModal } from "../../pricing/_components/downgrade-feed
 import { PlanChangeConfirmDialog } from "../../pricing/_components/plan-change-confirm-dialog";
 
 import type { BillingInterval, Plan, SubscriptionMode } from "@/lib/billing/plans";
-import type { PlanPriceDisplay } from "@/lib/billing/pricing";
+import type { PlanPriceDisplay, SubscriptionDiscount } from "@/lib/billing/pricing";
 import type { Promo } from "@/lib/billing/promo";
 import type { ComponentProps } from "react";
 
@@ -36,9 +42,15 @@ type PlanSwitcherProps = {
   promo: Promo | null;
   /** What the subscriber is billed for their current plan and interval, discount included. */
   currentPrice: PlanPriceDisplay | null;
+  /** The first-year promo a change to each interval keeps (planChangeDiscountTo), if any. */
+  changeDiscounts: Record<BillingInterval, SubscriptionDiscount | null> | null;
   subscription: ComponentProps<typeof DowngradeFeedbackModal>["subscription"];
   /** Set while the subscription is paused; it has to be resumed before changing plans. */
   isPaused: boolean;
+  /** `planMode` from subscriptions.get, sent with every change so a stale screen is refused. */
+  planMode: Plan;
+  /** Blocks every plan change, e.g. while a just-finished checkout is still being stored. */
+  disabled: boolean;
 };
 
 export function PlanSwitcher({
@@ -48,9 +60,14 @@ export function PlanSwitcher({
   renewsAt,
   promo,
   currentPrice,
+  changeDiscounts,
   subscription,
   isPaused,
+  planMode,
+  disabled,
 }: PlanSwitcherProps) {
+  const router = useRouter();
+  const [isRefreshing, startRefresh] = useTransition();
   const [interval, setIntervalState] = useState<BillingInterval>(() =>
     resolveBillingInterval(null, currentPlan, currentInterval),
   );
@@ -81,9 +98,21 @@ export function PlanSwitcher({
       }
       setLoadingPlan(null);
     },
-    onError: (error) => {
-      toast.error(error.message);
+    onError: (error, variables) => {
       setLoadingPlan(null);
+      if (error.message === STALE_BILLING_MESSAGE) {
+        // The subscription changed under this screen (e.g. the checkout webhook landed): reload
+        // the billing state and ask for confirmation instead of charging it straight away.
+        toast(error.message);
+        setPendingChange({
+          plan: variables.plan,
+          kind: variables.plan === currentPlan ? "switch" : "upgrade",
+        });
+        setConfirmOpen(true);
+        startRefresh(() => router.refresh());
+        return;
+      }
+      toast.error(error.message);
     },
   });
 
@@ -98,7 +127,12 @@ export function PlanSwitcher({
 
   const runUpgrade = (plan: Exclude<Plan, "free">) => {
     setLoadingPlan(plan);
-    createCheckoutOrUpdate.mutate({ plan, interval, source: "settings_billing" });
+    createCheckoutOrUpdate.mutate({
+      plan,
+      interval,
+      displayedPlanMode: planMode,
+      source: "settings_billing",
+    });
   };
 
   const requestUpgrade = (plan: Plan, kind: "switch" | "upgrade") => {
@@ -178,10 +212,13 @@ export function PlanSwitcher({
           const isUpgrade = !isResumable && planOrder[plan.id] > planOrder[currentPlan];
           const isDowngrade = canChangeInPlace && planOrder[plan.id] < planOrder[currentPlan];
 
+          const changeDiscount = changeDiscounts?.[interval] ?? null;
           const price =
             matchesCurrent && currentPrice
               ? currentPrice
-              : planPriceDisplay(plan.id, interval, promo);
+              : plan.id !== "free" && changeDiscount
+                ? subscribedPriceDisplay(plan.id, interval, changeDiscount)
+                : planPriceDisplay(plan.id, interval, promo);
 
           return (
             <div
@@ -228,7 +265,7 @@ export function PlanSwitcher({
                   variant="outline"
                   className="h-8 shrink-0 text-[12px]"
                   onClick={() => requestUpgrade(plan.id, "switch")}
-                  disabled={loadingPlan !== null}
+                  disabled={disabled || loadingPlan !== null}
                 >
                   {loadingPlan === plan.id && (
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -240,7 +277,7 @@ export function PlanSwitcher({
                   size="sm"
                   className="h-8 shrink-0 bg-blue-600 text-[12px] text-white hover:bg-blue-700"
                   onClick={() => requestUpgrade(plan.id, "upgrade")}
-                  disabled={loadingPlan !== null}
+                  disabled={disabled || loadingPlan !== null}
                 >
                   {loadingPlan === plan.id && (
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -253,7 +290,7 @@ export function PlanSwitcher({
                   variant="outline"
                   className="h-8 shrink-0 text-[12px]"
                   onClick={() => handleDowngrade(plan.id)}
-                  disabled={loadingPlan !== null}
+                  disabled={disabled || loadingPlan !== null}
                 >
                   {plan.id === "free" ? "Cancel plan" : "Downgrade"}
                 </Button>
@@ -282,7 +319,7 @@ export function PlanSwitcher({
           kind={pendingChange.kind}
           targetPlan={pendingChange.plan}
           interval={interval}
-          isLoading={createCheckoutOrUpdate.isLoading}
+          isLoading={createCheckoutOrUpdate.isLoading || isRefreshing}
           onConfirm={() => runUpgrade(pendingChange.plan)}
         />
       )}

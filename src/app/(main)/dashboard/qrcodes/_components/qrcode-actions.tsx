@@ -41,7 +41,14 @@ import { api } from "@/trpc/react";
 
 import { revalidateRoute } from "../../revalidate-homepage";
 import { renderQrPng } from "../qr-export";
-import { qrCodeFileName, savedQrCodeSvgState, saveBlob, saveSvg, svgNoteFor } from "../utils";
+import {
+  qrCodeFileName,
+  savedQrCodeSvgState,
+  saveBlob,
+  saveSvg,
+  staticTypeOf,
+  svgNoteFor,
+} from "../utils";
 import { DownloadPdfDialog } from "./download-pdf-dialog";
 import { EditQRCodeDrawer } from "./edit-qrcode-drawer";
 
@@ -66,6 +73,9 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
   // Codes made by a CSV import encode one of the workspace's own links, which deleting keeps.
   const sharesLink = Boolean(qr.link && !qr.link.isQrCode);
   const svgNote = svgNoteFor(qr);
+  // Link codes and static codes with a saved style can be redrawn as SVG and PDF.
+  const canRedraw = savedQrCodeSvgState(qr) !== null;
+  const isStatic = staticTypeOf(qr) !== null && canRedraw;
 
   const toggleStatusMutation = api.qrCode.toggleStatus.useMutation({
     onSuccess: async () => {
@@ -186,7 +196,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
           <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-muted-foreground">
             Edit & Manage
           </DropdownMenuLabel>
-          {hasLink && (
+          {(hasLink || isStatic) && (
             <DropdownMenuItem
               onClick={handleOpenEditDrawer}
               className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
@@ -210,7 +220,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
             />
             Download PNG
           </DropdownMenuItem>
-          {hasLink && (
+          {canRedraw && (
             <DropdownMenuItem
               onClick={handleDownloadSvg}
               className="items-start rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
@@ -230,7 +240,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
               </span>
             </DropdownMenuItem>
           )}
-          {hasLink && (
+          {canRedraw && (
             <DropdownMenuItem
               onClick={() => setPdfDialog(true)}
               className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
@@ -317,7 +327,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
         <EditQRCodeDrawer qr={qr} open={openEditDrawer} onClose={() => setOpenEditDrawer(false)} />
       )}
 
-      {hasLink && <DownloadPdfDialog qr={qr} open={pdfDialog} onOpenChange={setPdfDialog} />}
+      {canRedraw && <DownloadPdfDialog qr={qr} open={pdfDialog} onOpenChange={setPdfDialog} />}
 
       {qr.link && (
         <ShareStatsDialog

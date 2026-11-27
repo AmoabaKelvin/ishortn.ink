@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   Dialog,
@@ -23,13 +22,16 @@ import type { Plan } from "@/lib/billing/plans";
 // The checkout redirect can land before the subscription webhook; poll briefly for the paid plan.
 const PLAN_POLL_INTERVAL_MS = 3000;
 const PLAN_POLL_ATTEMPTS = 10;
+/** How long the poll waits for the subscription webhook before giving up. */
+export const CHECKOUT_CONFIRM_TIMEOUT_MS = PLAN_POLL_INTERVAL_MS * PLAN_POLL_ATTEMPTS;
 
-/** Asks a new subscriber how they found iShortn, once, on return from checkout. */
-export function CheckoutAcquisitionPrompt() {
-  const router = useRouter();
+/**
+ * Asks a new subscriber how they found iShortn, once, on return from checkout. `onPaidPlan` runs
+ * once the poll sees the paid plan, so the billing card can reload what it rendered before.
+ */
+export function CheckoutAcquisitionPrompt({ onPaidPlan }: { onPaidPlan: () => void }) {
   const [open, setOpen] = useState(false);
   const [shownPlan, setShownPlan] = useState<Plan | null>(null);
-  const sawFreePlan = useRef(false);
   // Set once a paid plan is seen: the prompt is decided and the query stops.
   const [settled, setSettled] = useState(false);
 
@@ -49,13 +51,9 @@ export function CheckoutAcquisitionPrompt() {
         : false,
     onSuccess: (prompt) => {
       if (settled) return;
-      if (prompt.plan === "free") {
-        sawFreePlan.current = true;
-        return;
-      }
+      if (prompt.plan === "free") return;
       setSettled(true);
-      // The billing section was rendered before the webhook landed; show the new plan.
-      if (sawFreePlan.current) router.refresh();
+      onPaidPlan();
       if (!prompt.showAfterCheckout) return;
       setShownPlan(prompt.plan);
       setOpen(true);
