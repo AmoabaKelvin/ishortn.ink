@@ -10,6 +10,7 @@ import {
   EMAIL_REPLY_TO,
   type SendEmailInput,
   withReplyTo,
+  senderFirstName,
   withSenderName,
 } from "./send-email";
 
@@ -228,5 +229,17 @@ describe("every Resend send", () => {
       to: "ama@example.com",
       reply_to: EMAIL_REPLY_TO,
     });
+  });
+});
+
+describe("senderFirstName", () => {
+  test("reads the first name from a founder-voice sender", () => {
+    expect(senderFirstName("Kelvin from iShortn <kelvin@ishortn.ink>")).toBe("Kelvin");
+    expect(senderFirstName('"Ama from iShortn" <ama@ishortn.ink>')).toBe("Ama");
+  });
+
+  test("is null for any other sender", () => {
+    expect(senderFirstName("iShortn <notifications@ishortn.ink>")).toBeNull();
+    expect(senderFirstName("kelvin@ishortn.ink")).toBeNull();
   });
 });

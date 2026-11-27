@@ -13,6 +13,9 @@ import type { CreateEmailOptions, CreateEmailResponse } from "resend";
 /** Founder voice: welcome, nudges, plan changes. Also the default for sendEmail. */
 export const EMAIL_FROM = env.EMAIL_FROM ?? "Kelvin from iShortn <kelvin@ishortn.ink>";
 
+/** "Kelvin" from "Kelvin from iShortn <…>": the founder-voice sign-off, so it follows EMAIL_FROM. */
+export const EMAIL_FROM_FIRST_NAME = senderFirstName(EMAIL_FROM);
+
 /** System notices: reports, cap alerts, plan grace, domain, account, team and transfer emails. */
 export const EMAIL_FROM_SYSTEM = env.EMAIL_FROM_SYSTEM ?? "iShortn <notifications@ishortn.ink>";
 
@@ -32,6 +35,11 @@ export function withSenderName(from: string, nameFrom: string): string {
   const address = from.match(/<([^>]+)>/)?.[1] ?? from.trim();
   const name = nameFrom.match(/^(.*?)\s*</)?.[1]?.trim();
   return name ? `${name} <${address}>` : address;
+}
+
+/** The first name in a "<name> from iShortn" display name, or null for any other sender. */
+export function senderFirstName(from: string): string | null {
+  return from.match(/^\s*"?([^\s"<]+) from /i)?.[1] ?? null;
 }
 
 type EmailClient = {
