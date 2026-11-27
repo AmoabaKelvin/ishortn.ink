@@ -43,7 +43,7 @@ describe("planChangeDiscount", () => {
         }),
       ).toEqual({
         action: "apply",
-        terms: { recur: false, maximumRecurringIntervals: null },
+        terms: { recur: true, maximumRecurringIntervals: 1 },
         effectiveFrom: "immediately",
       });
     }
@@ -110,7 +110,11 @@ describe("planChangeDiscount", () => {
         billsNow: true,
         now: inMonth(4),
       }),
-    ).toMatchObject({ action: "apply", terms: { recur: false } });
+    ).toEqual({
+      action: "apply",
+      terms: { recur: true, maximumRecurringIntervals: 1 },
+      effectiveFrom: "immediately",
+    });
     expect(
       planChangeDiscount({
         firstPaymentAt,

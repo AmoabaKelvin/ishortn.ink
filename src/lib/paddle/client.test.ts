@@ -217,7 +217,7 @@ describe("Paddle client", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
-  test("createDiscount posts a codeless percentage discount, recurring or one-off", async () => {
+  test("createDiscount posts a codeless recurring percentage discount", async () => {
     const client = createPaddleClient(sandbox);
     fetchSpy.mockImplementation(() =>
       Promise.resolve(ok({ id: "dsc_2", recur: true, maximum_recurring_intervals: 5 })),
@@ -246,13 +246,13 @@ describe("Paddle client", () => {
       },
     });
 
+    // A single recurrence is how a subscription update discounts one payment.
     await client.createDiscount({
       percentOff: 20,
       description: "BFCM20",
-      maximumRecurringIntervals: null,
+      maximumRecurringIntervals: 1,
     });
-    expect(call(1).body).toMatchObject({ recur: false });
-    expect(call(1).body).not.toHaveProperty("maximum_recurring_intervals");
+    expect(call(1).body).toMatchObject({ recur: true, maximum_recurring_intervals: 1 });
   });
 
   test("archiveDiscount patches the discount's status to archived", async () => {
@@ -391,6 +391,28 @@ describe("Paddle client", () => {
     expect(result).toEqual({
       immediate_transaction: { details: { totals: { grand_total: "609", currency_code: "USD" } } },
     });
+    expect(call().body).not.toHaveProperty("discount");
+  });
+
+  test("previewSubscriptionUpdate sends a discount like updateSubscription", async () => {
+    const client = createPaddleClient(sandbox);
+    const preview = { ...subscription, immediate_transaction: null };
+    fetchSpy.mockImplementation(() => Promise.resolve(ok(preview)));
+    const items = [{ priceId: "pri_pro_y", quantity: 1 }];
+
+    await client.previewSubscriptionUpdate("sub_1", {
+      items,
+      prorationBillingMode: "prorated_immediately",
+      discount: { id: "dsc_1", effectiveFrom: "immediately" },
+    });
+    expect(call().body).toMatchObject({ discount: { id: "dsc_1", effective_from: "immediately" } });
+
+    await client.previewSubscriptionUpdate("sub_1", {
+      items,
+      prorationBillingMode: "prorated_immediately",
+      discount: null,
+    });
+    expect(call(1).body).toMatchObject({ discount: null });
   });
 
   test("cancel, pause and resume post effective_from to their endpoints", async () => {
