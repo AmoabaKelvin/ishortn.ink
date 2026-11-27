@@ -52,6 +52,6 @@ export const PLAN_FEATURES = {
       "Team workspaces",
       "Priority support",
     ],
-    comingSoon: ["Conversion tracking", "Customization of password-protected pages"],
+    comingSoon: ["Customization of password-protected pages"],
   },
 } satisfies Record<Plan, PlanFeatures>;
