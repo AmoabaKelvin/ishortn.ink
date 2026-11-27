@@ -1778,8 +1778,11 @@ export const webhook = mysqlTable(
     // the dashboard shows it only when it is created or rolled.
     secret: varchar("secret", { length: 80 }).notNull(),
     enabled: boolean("enabled").notNull().default(true),
-    // Failed attempts since the last success; the endpoint is disabled at WEBHOOK_DISABLE_AFTER.
+    // Failures counted since the last success (at most one per WEBHOOK_FAILURE_WINDOW_MS); the
+    // endpoint is disabled at WEBHOOK_DISABLE_AFTER.
     consecutiveFailures: int("consecutiveFailures").notNull().default(0),
+    // When a failure was last counted toward consecutiveFailures.
+    lastFailureAt: timestamp("lastFailureAt"),
     // Set when failures disabled the endpoint (not when the user switched it off).
     disabledAt: timestamp("disabledAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),

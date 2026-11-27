@@ -1,8 +1,11 @@
-import { and, asc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 
-import { webhook, webhookDelivery } from "@/server/db/schema";
+import { team, webhook, webhookDelivery } from "@/server/db/schema";
+import { getTeamAccess, getUserEffectivePlan } from "@/server/lib/workspace/workspace.service";
 
-import type { WebhookStore, WebhookWorkspace } from "./delivery";
+import { WEBHOOK_FAILURE_WINDOW_MS, type WebhookStore, type WebhookWorkspace } from "./delivery";
+
+import type { Plan } from "@/lib/billing/plans";
 import type { db as appDb } from "@/server/db";
 
 type Db = typeof appDb;
@@ -15,6 +18,16 @@ export function webhookWorkspaceFilter(workspace: WebhookWorkspace) {
   return workspace.teamId === null
     ? and(eq(webhook.userId, workspace.userId), isNull(webhook.teamId))
     : eq(webhook.teamId, workspace.teamId);
+}
+
+/** The workspace's effective plan: the user's own, or for a team its owner's (see getTeamAccess). */
+export async function webhookWorkspacePlan(db: Db, workspace: WebhookWorkspace): Promise<Plan> {
+  if (workspace.teamId === null) return getUserEffectivePlan(workspace.userId, db);
+  const [teamRecord] = await db
+    .select({ ownerId: team.ownerId, ownerPlanGraceEndsAt: team.ownerPlanGraceEndsAt })
+    .from(team)
+    .where(and(eq(team.id, workspace.teamId), isNull(team.deletedAt)));
+  return teamRecord ? (await getTeamAccess(teamRecord, db)).plan : "free";
 }
 
 const jobColumns = {
@@ -42,6 +55,8 @@ export function dbWebhookStore(db: Db): WebhookStore {
         })
         .from(webhook)
         .where(and(webhookWorkspaceFilter(workspace), eq(webhook.enabled, true))),
+
+    workspacePlan: (workspace) => webhookWorkspacePlan(db, workspace),
 
     insertDeliveries: async (rows) => {
       if (rows.length === 0) return [];
@@ -76,14 +91,26 @@ export function dbWebhookStore(db: Db): WebhookStore {
     },
 
     resetFailures: async (webhookId) => {
-      await db.update(webhook).set({ consecutiveFailures: 0 }).where(eq(webhook.id, webhookId));
+      await db
+        .update(webhook)
+        .set({ consecutiveFailures: 0, lastFailureAt: null })
+        .where(eq(webhook.id, webhookId));
     },
 
     recordFailure: async (webhookId, disableAfter, now) => {
-      await db
+      const [counted] = await db
         .update(webhook)
-        .set({ consecutiveFailures: sql`${webhook.consecutiveFailures} + 1` })
-        .where(eq(webhook.id, webhookId));
+        .set({ consecutiveFailures: sql`${webhook.consecutiveFailures} + 1`, lastFailureAt: now })
+        .where(
+          and(
+            eq(webhook.id, webhookId),
+            or(
+              isNull(webhook.lastFailureAt),
+              lte(webhook.lastFailureAt, new Date(now.getTime() - WEBHOOK_FAILURE_WINDOW_MS)),
+            ),
+          ),
+        );
+      if (counted.affectedRows === 0) return false;
       // Conditional on `enabled`, so of concurrent failures only one disables and notifies.
       const [disabled] = await db
         .update(webhook)

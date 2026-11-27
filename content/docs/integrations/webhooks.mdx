@@ -128,6 +128,6 @@ app.post("/webhooks/ishortn", express.text({ type: "application/json" }), (req, 
 - Redirects aren't followed; a `3xx` counts as a failure.
 - A failed delivery is retried with exponential backoff, about 5 minutes, 15 minutes, 45 minutes, 2 hours, 7 hours and 12 hours after the previous attempt, for up to 24 hours after the event. Retries are checked every 15 minutes, so they can run a few minutes late.
 - Events can arrive more than once and out of order. Deduplicate on the event `id`, and use `createdAt` to order them.
-- After **20 failed attempts in a row**, the endpoint is turned off and the workspace owner gets one email. Turn it back on from its menu once your server is fixed. Events from while it was off aren't resent.
+- After **20 failed attempts in a row**, counting at most one per minute (so a burst of events during a brief outage doesn't trip it), the endpoint is turned off and the workspace owner gets one email. Turn it back on from its menu once your server is fixed. Events from while it was off aren't resent.
 
 **View deliveries** in the endpoint's menu shows its last 50 deliveries: the event, the status code your server returned, how long it took, when it was last tried and how many times it was retried.

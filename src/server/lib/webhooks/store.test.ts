@@ -3,8 +3,9 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:tes
 import { inArray } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
+import { PLAN_VARIANT_IDS } from "@/lib/billing/plans";
 import { db } from "@/server/db";
-import { webhook, webhookDelivery } from "@/server/db/schema";
+import { subscription, user, webhook, webhookDelivery } from "@/server/db/schema";
 import { toApiLink } from "@/server/lib/api-link";
 
 import { dispatchWebhookEvents, runDueDeliveries, type DeliveryDeps } from "./delivery";
@@ -35,6 +36,8 @@ describe.skipIf(!testDatabaseUrl)("dbWebhookStore (MySQL)", () => {
   });
 
   async function clear() {
+    await db.delete(subscription).where(inArray(subscription.userId, USERS));
+    await db.delete(user).where(inArray(user.id, USERS));
     const ids = (
       await db.select({ id: webhook.id }).from(webhook).where(inArray(webhook.userId, USERS))
     ).map((row) => row.id);
@@ -65,7 +68,17 @@ describe.skipIf(!testDatabaseUrl)("dbWebhookStore (MySQL)", () => {
     };
   }
 
-  beforeEach(clear);
+  // USERS[0] is on Pro; USERS[1] is on Free.
+  beforeEach(async () => {
+    await clear();
+    await db.insert(user).values(USERS.map((id) => ({ id, planCheckedAt: new Date() })));
+    await db.insert(subscription).values({
+      userId: USERS[0]!,
+      plan: "pro",
+      variantId: PLAN_VARIANT_IDS.pro.monthly,
+      status: "active",
+    });
+  });
   afterAll(clear);
 
   test("lists only the workspace's enabled endpoints", async () => {
@@ -110,6 +123,7 @@ describe.skipIf(!testDatabaseUrl)("dbWebhookStore (MySQL)", () => {
 
   test("failures schedule a retry and disable the endpoint once, failing its queue", async () => {
     const id = await addEndpoint({ userId: USERS[0]!, consecutiveFailures: 18 });
+    const minuteAgo = new Date(Date.now() - 61_000);
     const failing = deps(500);
     const workspace = { userId: USERS[0]!, teamId: null };
 
@@ -121,7 +135,19 @@ describe.skipIf(!testDatabaseUrl)("dbWebhookStore (MySQL)", () => {
     expect(pending).toMatchObject({ status: "pending", attempts: 1, error: "HTTP 500" });
     expect(pending!.nextAttemptAt).not.toBeNull();
 
-    // Two failures racing for the 20th: only one disables and notifies.
+    // Counted as the 19th; a failure within the next minute isn't counted.
+    expect(await store.recordFailure(id, 20, new Date())).toBe(false);
+    const [counted] = await db
+      .select()
+      .from(webhook)
+      .where(inArray(webhook.id, [id]));
+    expect(counted).toMatchObject({ enabled: true, consecutiveFailures: 19 });
+
+    // A minute on, two failures race for the 20th: only one counts, disables and notifies.
+    await db
+      .update(webhook)
+      .set({ lastFailureAt: minuteAgo })
+      .where(inArray(webhook.id, [id]));
     const [first, second] = await Promise.all([
       store.recordFailure(id, 20, new Date()),
       store.recordFailure(id, 20, new Date()),
@@ -132,7 +158,7 @@ describe.skipIf(!testDatabaseUrl)("dbWebhookStore (MySQL)", () => {
       .select()
       .from(webhook)
       .where(inArray(webhook.id, [id]));
-    expect(endpoint).toMatchObject({ enabled: false, consecutiveFailures: 21 });
+    expect(endpoint).toMatchObject({ enabled: false, consecutiveFailures: 20 });
     expect(endpoint!.disabledAt).not.toBeNull();
     const rows = await db
       .select()
@@ -142,6 +168,26 @@ describe.skipIf(!testDatabaseUrl)("dbWebhookStore (MySQL)", () => {
     // The last error stays for the log and the email.
     expect(rows[0]!.error).toBe("HTTP 500");
     expect(await store.dueDeliveries(new Date(Date.now() + 86_400_000), 10)).toEqual([]);
+  });
+
+  test("sends nothing for a workspace whose plan has no webhooks", async () => {
+    const id = await addEndpoint({ userId: USERS[1]! });
+
+    const jobs = await dispatchWebhookEvents(
+      store,
+      { userId: USERS[1]!, teamId: null },
+      "link.created",
+      [link],
+      deps(200),
+    );
+
+    expect(jobs).toEqual([]);
+    expect(
+      await db
+        .select()
+        .from(webhookDelivery)
+        .where(inArray(webhookDelivery.webhookId, [id])),
+    ).toEqual([]);
   });
 
   test("due deliveries are picked up by the retry run", async () => {

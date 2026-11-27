@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "e66ba8f8-fe76-4d01-96a0-adc833117e1b",
+  "id": "e62dff09-35db-4cba-b747-8f1c1b607998",
   "prevId": "43b37e2c-66c4-43c1-8261-4d712215f840",
   "tables": {
     "AccountDeletion": {
@@ -5199,6 +5199,13 @@
           "notNull": true,
           "autoincrement": false,
           "default": 0
+        },
+        "lastFailureAt": {
+          "name": "lastFailureAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "disabledAt": {
           "name": "disabledAt",

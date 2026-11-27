@@ -6,7 +6,7 @@ import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
 import { customDomain, team, user } from "@/server/db/schema";
 import { sendDomainReminderEmail } from "@/server/lib/notifications/domain-reminder";
-import { emitDomainVerified } from "@/server/lib/webhooks";
+import { emitDomainVerified, webhookWorkspacePlan } from "@/server/lib/webhooks";
 
 import {
   buildVerificationChallenges,
@@ -170,9 +170,11 @@ export async function sendDomainConfigurationReminders({
           .set({ status: "active" })
           .where(and(eq(customDomain.id, domainRecord.id), domainCanGoLive));
         if (updated.affectedRows > 0) {
+          const workspace = { userId: domainRecord.userId, teamId: domainRecord.teamId };
+          const plan = await webhookWorkspacePlan(db, workspace);
           emitDomainVerified(
             db,
-            { userId: domainRecord.userId, teamId: domainRecord.teamId },
+            { ...workspace, plan },
             { id: domainRecord.id, domain: domainName },
           );
         }

@@ -12,6 +12,8 @@ import {
 } from "./delivery";
 import { dbWebhookStore } from "./store";
 
+export { webhookWorkspacePlan } from "./store";
+
 import type { Plan } from "@/lib/billing/plans";
 import type { WebhookEventType } from "@/lib/webhooks";
 import type { db as appDb } from "@/server/db";

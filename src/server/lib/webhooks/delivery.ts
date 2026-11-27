@@ -1,9 +1,11 @@
 import { randomBytes } from "node:crypto";
 
+import { getWebhookEndpointLimit } from "@/lib/billing/plans";
 import { checkHttpUrl, type Resolver } from "@/server/lib/ssrf";
 
 import { signWebhookPayload, WEBHOOK_SIGNATURE_HEADER } from "./signature";
 
+import type { Plan } from "@/lib/billing/plans";
 import type { WebhookEventType } from "@/lib/webhooks";
 import type { toApiLink } from "@/server/lib/api-link";
 
@@ -11,8 +13,13 @@ export const WEBHOOK_TEST_EVENT = "webhook.test";
 export const WEBHOOK_TIMEOUT_MS = 10_000;
 /** Failed deliveries are retried until this long after the event. */
 export const WEBHOOK_RETRY_WINDOW_MS = 24 * 60 * 60 * 1000;
-/** Consecutive failed attempts after which an endpoint is switched off. */
+/** Consecutive counted failures after which an endpoint is switched off. */
 export const WEBHOOK_DISABLE_AFTER = 20;
+/**
+ * At most one failure per endpoint counts toward WEBHOOK_DISABLE_AFTER in this window, so a burst
+ * of attempts from one bulk action during a brief outage can't switch the endpoint off.
+ */
+export const WEBHOOK_FAILURE_WINDOW_MS = 60 * 1000;
 /** Deliveries shown per endpoint in the dashboard. */
 export const WEBHOOK_LOG_SIZE = 50;
 
@@ -85,6 +92,8 @@ export type DeliveryUpdate = {
 export type WebhookStore = {
   /** The workspace's enabled endpoints. */
   listEnabledEndpoints(workspace: WebhookWorkspace): Promise<WebhookEndpoint[]>;
+  /** The workspace's effective plan (a team's comes from its owner). */
+  workspacePlan(workspace: WebhookWorkspace): Promise<Plan>;
   /** Inserts the rows and returns them as jobs, in order. */
   insertDeliveries(rows: NewDelivery[]): Promise<DeliveryJob[]>;
   /** Pending deliveries of enabled endpoints due by `now`, oldest first. */
@@ -92,8 +101,9 @@ export type WebhookStore = {
   saveAttempt(deliveryId: number, update: DeliveryUpdate): Promise<void>;
   resetFailures(webhookId: number): Promise<void>;
   /**
-   * Counts one failed attempt. When that reaches `disableAfter` on an enabled endpoint, disables
-   * it, fails its pending deliveries and returns true; only that one call returns true.
+   * Counts one failed attempt, unless one was already counted within WEBHOOK_FAILURE_WINDOW_MS of
+   * `now`. When the count reaches `disableAfter` on an enabled endpoint, disables it, fails its
+   * pending deliveries and returns true; only that one call returns true.
    */
   recordFailure(webhookId: number, disableAfter: number, now: Date): Promise<boolean>;
 };
@@ -268,12 +278,20 @@ export async function dispatchWebhookEvents(
   deps: DeliveryDeps,
 ): Promise<DeliveryJob[]> {
   if (items.length === 0) return [];
-  const endpoints = subscribedEndpoints(
-    await store.listEnabledEndpoints(workspace),
-    workspace,
-    type,
+  const enabled = await store.listEnabledEndpoints(workspace);
+  const subscribed = subscribedEndpoints(enabled, workspace, type);
+  if (subscribed.length === 0) return [];
+  // Callers skip plans without webhooks when they know the plan; this also covers the ones that
+  // don't, and endpoints kept past a downgrade's lower limit (the oldest ones stay live).
+  const limit = getWebhookEndpointLimit(await store.workspacePlan(workspace));
+  if (limit === 0) return [];
+  const live = new Set(
+    enabled
+      .map((endpoint) => endpoint.id)
+      .sort((a, b) => a - b)
+      .slice(0, limit),
   );
-  if (endpoints.length === 0) return [];
+  const endpoints = subscribed.filter((endpoint) => live.has(endpoint.id));
 
   const now = deps.now();
   const leaseUntil = new Date(now.getTime() + FIRST_ATTEMPT_LEASE_MS);

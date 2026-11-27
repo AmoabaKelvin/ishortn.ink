@@ -125,6 +125,13 @@ export function Webhooks({ webhooks }: { webhooks: WebhookList }) {
           </Button>
           <p className="text-[12px] tabular-nums text-neutral-400 dark:text-muted-foreground">
             {endpoints.length.toLocaleString()} of {limit.toLocaleString()} endpoints used
+            {endpoints.length > limit && (
+              // Kept after a downgrade; dispatch only sends to the oldest `limit` enabled ones.
+              <>
+                {" "}
+                &middot; only the oldest {limit.toLocaleString()} active endpoints receive events
+              </>
+            )}
             {atLimit && limit < getWebhookEndpointLimit("ultra") && (
               <>
                 {" "}

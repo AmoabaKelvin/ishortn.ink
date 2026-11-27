@@ -9,6 +9,7 @@ import {
   nextAttemptAt,
   runDueDeliveries,
   WEBHOOK_DISABLE_AFTER,
+  WEBHOOK_FAILURE_WINDOW_MS,
   WEBHOOK_RETRY_WINDOW_MS,
   WEBHOOK_TEST_EVENT,
   type DeliveryDeps,
@@ -19,6 +20,8 @@ import {
   type WebhookStore,
 } from "./delivery";
 
+import type { Plan } from "@/lib/billing/plans";
+
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 
@@ -26,11 +29,12 @@ type StoredEndpoint = WebhookEndpoint & {
   url: string;
   secret: string;
   consecutiveFailures: number;
+  lastFailureAt?: Date;
 };
 type StoredDelivery = NewDelivery & Partial<DeliveryUpdate> & { id: number; attempts: number };
 
 /** In-memory WebhookStore with the semantics of dbWebhookStore. */
-function memoryStore(endpoints: StoredEndpoint[]) {
+function memoryStore(endpoints: StoredEndpoint[], plan: Plan = "ultra") {
   const deliveries: StoredDelivery[] = [];
   const toJob = (delivery: StoredDelivery): DeliveryJob => {
     const endpoint = endpoints.find((e) => e.id === delivery.webhookId)!;
@@ -55,6 +59,7 @@ function memoryStore(endpoints: StoredEndpoint[]) {
             ? e.teamId === null && e.userId === workspace.userId
             : e.teamId === workspace.teamId),
       ),
+    workspacePlan: async () => plan,
     insertDeliveries: async (rows) =>
       rows.map((row) => {
         const delivery = {
@@ -85,11 +90,20 @@ function memoryStore(endpoints: StoredEndpoint[]) {
       );
     },
     resetFailures: async (webhookId) => {
-      endpoints.find((e) => e.id === webhookId)!.consecutiveFailures = 0;
+      Object.assign(
+        endpoints.find((e) => e.id === webhookId)!,
+        {
+          consecutiveFailures: 0,
+          lastFailureAt: undefined,
+        },
+      );
     },
-    recordFailure: async (webhookId, disableAfter) => {
+    recordFailure: async (webhookId, disableAfter, now) => {
       const endpoint = endpoints.find((e) => e.id === webhookId)!;
+      const last = endpoint.lastFailureAt?.getTime();
+      if (last !== undefined && now.getTime() - last < WEBHOOK_FAILURE_WINDOW_MS) return false;
       endpoint.consecutiveFailures++;
+      endpoint.lastFailureAt = now;
       if (!endpoint.enabled || endpoint.consecutiveFailures < disableAfter) return false;
       endpoint.enabled = false;
       for (const d of deliveries) {
@@ -197,6 +211,33 @@ describe("dispatchWebhookEvents", () => {
 
     await dispatchWebhookEvents(store, team, "link.created", [link], deps);
 
+    expect(deliveries.map((d) => d.webhookId)).toEqual([2, 3]);
+  });
+
+  test("sends nothing on a plan without webhooks", async () => {
+    const { store, deliveries } = memoryStore([endpoint(1, { ...personal })], "free");
+    const { deps, sent } = fakeDeps();
+
+    expect(await dispatchWebhookEvents(store, personal, "link.created", [link], deps)).toEqual([]);
+    expect(deliveries).toEqual([]);
+    expect(sent).toEqual([]);
+  });
+
+  test("past the plan's endpoint limit only the oldest endpoints receive events", async () => {
+    const { store, deliveries } = memoryStore(
+      [
+        endpoint(4, { ...personal }),
+        endpoint(1, { ...personal, events: ["link.deleted"] }),
+        endpoint(2, { ...personal }),
+        endpoint(3, { ...personal }),
+      ],
+      "pro",
+    );
+    const { deps } = fakeDeps();
+
+    await dispatchWebhookEvents(store, personal, "link.created", [link], deps);
+
+    // Pro allows 3: endpoints 1-3 are live (1 isn't subscribed), 4 is over the limit.
     expect(deliveries.map((d) => d.webhookId)).toEqual([2, 3]);
   });
 
@@ -359,17 +400,45 @@ describe("auto-disable", () => {
   test("a success in between starts the count over", async () => {
     let status = 500;
     const { store, endpoints } = memoryStore([endpoint(1, { ...personal })]);
-    const { deps, disabled } = fakeDeps(() => status);
+    const { deps, disabled, advance } = fakeDeps(() => status);
 
     for (let i = 0; i < WEBHOOK_DISABLE_AFTER - 1; i++) {
       await dispatchWebhookEvents(store, personal, "link.created", [link], deps);
+      advance(MINUTE);
     }
+    expect(endpoints[0]!.consecutiveFailures).toBe(WEBHOOK_DISABLE_AFTER - 1);
     status = 200;
     await dispatchWebhookEvents(store, personal, "link.created", [link], deps);
     status = 500;
     await dispatchWebhookEvents(store, personal, "link.created", [link], deps);
 
     expect(endpoints[0]).toMatchObject({ enabled: true, consecutiveFailures: 1 });
+    expect(disabled).toEqual([]);
+  });
+
+  test("a burst of failures from one bulk action counts once and keeps retrying", async () => {
+    let status = 503;
+    const { store, deliveries, endpoints } = memoryStore([endpoint(1, { ...personal })]);
+    const { deps, sent, disabled, advance } = fakeDeps(() => status);
+    const links = Array.from({ length: 100 }, (_, i) => toApiLink({ ...sampleLink, id: i + 1 }));
+
+    // A bulk delete while the receiver is briefly down: 50 immediate attempts fail together.
+    await dispatchWebhookEvents(store, personal, "link.deleted", links, deps);
+    expect(sent).toHaveLength(50);
+    expect(endpoints[0]).toMatchObject({ enabled: true, consecutiveFailures: 1 });
+    expect(disabled).toEqual([]);
+
+    // The rest go out on the next cron run, still failing: one more counted failure, not 50.
+    advance(MINUTE);
+    await runDueDeliveries(store, deps);
+    expect(endpoints[0]).toMatchObject({ enabled: true, consecutiveFailures: 2 });
+
+    // The receiver recovers and the retries deliver every event.
+    status = 200;
+    advance(HOUR);
+    await runDueDeliveries(store, deps);
+    expect(deliveries.every((d) => d.status === "succeeded")).toBe(true);
+    expect(endpoints[0]).toMatchObject({ enabled: true, consecutiveFailures: 0 });
     expect(disabled).toEqual([]);
   });
 

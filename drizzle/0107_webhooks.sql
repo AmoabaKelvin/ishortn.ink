@@ -8,6 +8,7 @@ CREATE TABLE `Webhook` (
 	`secret` varchar(80) NOT NULL,
 	`enabled` boolean NOT NULL DEFAULT true,
 	`consecutiveFailures` int NOT NULL DEFAULT 0,
+	`lastFailureAt` timestamp,
 	`disabledAt` timestamp,
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	`updatedAt` timestamp ON UPDATE CURRENT_TIMESTAMP,
