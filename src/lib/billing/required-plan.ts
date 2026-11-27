@@ -35,6 +35,7 @@ export function linkEditLimitSource(message: string): string {
  */
 export function planLimitKey(message: string): string {
   if (/monthly limit of .* links/i.test(message)) return "monthly_links";
+  if (/email reports/i.test(message)) return "scheduled_reports";
   if (/domain/i.test(message)) return "custom_domain";
   if (/password/i.test(message)) return "password";
   if (/\butm\b/i.test(message)) return "utm";

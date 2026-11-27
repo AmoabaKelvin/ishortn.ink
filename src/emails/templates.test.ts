@@ -12,6 +12,7 @@ import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pr
 import { eventUsageUpgrade } from "@/server/lib/notifications/event-usage";
 import { promoPausedNoticeUrl } from "@/server/lib/notifications/promo-paused-notice";
 import { renderEmail } from "@/server/lib/notifications/render-email";
+import { scheduledReportEmailProps } from "@/server/lib/notifications/scheduled-report";
 import { upgradeNudgeEmailProps } from "@/server/lib/notifications/upgrade-nudge";
 import {
   weeklySummaryEmailProps,
@@ -24,6 +25,7 @@ import EventUsageAlertEmail, { eventUsageSubject } from "./event-usage-alert";
 import FirstLinkNudgeEmail from "./first-link-nudge";
 import PlanGraceEmail, { type PlanGraceEmailProps } from "./plan-grace";
 import PromoPausedNoticeEmail, { promoPausedNoticeSubject } from "./promo-paused-notice";
+import ScheduledReportEmail, { comparePeriods, scheduledReportSubject } from "./scheduled-report";
 import UpgradeNudgeEmail, {
   UPGRADE_NUDGE_PREVIEWS,
   upgradeNudgeSubject,
@@ -46,7 +48,7 @@ const files = readdirSync(import.meta.dir).filter(
 
 describe("email templates", () => {
   test("every template is covered", () => {
-    expect(files.length).toBe(22);
+    expect(files.length).toBe(23);
   });
 
   for (const file of files) {
@@ -539,6 +541,78 @@ describe("upgrade nudge", () => {
       expect(rendered).not.toContain("isht.ink");
     } finally {
       Object.assign(env, { EMAIL_UNSUBSCRIBE_SECRET: secret });
+    }
+  });
+});
+
+describe("scheduled report", () => {
+  const props = ScheduledReportEmail.PreviewProps;
+
+  test("subject names the period type, target, clicks and change", () => {
+    expect(scheduledReportSubject(props)).toBe(
+      "Monthly report for Acme Studio client links: 4,812 clicks, up 23%",
+    );
+    expect(
+      scheduledReportSubject({ ...props, frequency: "weekly", clicks: 1, previousClicks: 0 }),
+    ).toBe("Weekly report for Acme Studio client links: 1 click");
+  });
+
+  test("compares with the period before in words", () => {
+    expect(comparePeriods(4_812, 3_907, "monthly")).toBe("Up 23% from 3,907 the month before.");
+    expect(comparePeriods(5, 10, "weekly")).toBe("Down 50% from 10 the week before.");
+    expect(comparePeriods(3, 3, "weekly")).toBe("The same as the week before.");
+    expect(comparePeriods(3, 0, "weekly")).toBe("No clicks the week before.");
+    expect(comparePeriods(0, 0, "monthly")).toBe("No clicks the month before either.");
+  });
+
+  test("a recipient gets an unsubscribe link and no account settings", async () => {
+    const html = await render(createElement(ScheduledReportEmail, props));
+    expect(html).toContain("Monthly folder report · October 2026");
+    expect(html).toContain("Ama Mensah set up a monthly report for Acme Studio client links.");
+    expect(html).toContain(">Unsubscribe</a>");
+    expect(html).not.toContain("Email settings");
+    expect(html).toContain("Top countries");
+    expect(html).toContain("go.acmestudio.com/menu");
+  });
+
+  test("links the public stats page only when sharing is on", async () => {
+    const without = await render(createElement(ScheduledReportEmail, props));
+    expect(without).not.toContain("View live stats");
+
+    const statsUrl = "https://ishortn.ink/stats/abc123";
+    const shared = await render(createElement(ScheduledReportEmail, { ...props, statsUrl }));
+    expect(shared).toContain("View live stats");
+    expect(shared).toContain(`href="${statsUrl}"`);
+  });
+
+  test("a period without clicks leaves out the breakdowns", async () => {
+    const html = await render(
+      createElement(ScheduledReportEmail, {
+        ...props,
+        clicks: 0,
+        previousClicks: 0,
+        topLinks: [],
+        countries: [],
+        devices: [],
+        sources: [],
+      }),
+    );
+    expect(html).toContain("0 clicks");
+    expect(html).not.toContain("Top countries");
+    expect(html).not.toContain("Top links");
+  });
+
+  test("each recipient's unsubscribe link is signed for that report and address", () => {
+    const previous = env.EMAIL_UNSUBSCRIBE_SECRET;
+    Object.assign(env, { EMAIL_UNSUBSCRIBE_SECRET: "s".repeat(32) });
+    try {
+      const { unsubscribeUrl } = scheduledReportEmailProps(12, "client@example.com", props);
+      expect(unsubscribeUrl).toStartWith(
+        "https://ishortn.ink/api/email/unsubscribe?token=12%3Aclient%40example.com.",
+      );
+      expect(unsubscribeUrl).toEndWith("&list=scheduled-report");
+    } finally {
+      Object.assign(env, { EMAIL_UNSUBSCRIBE_SECRET: previous });
     }
   });
 });

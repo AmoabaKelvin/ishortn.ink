@@ -8,13 +8,32 @@ export const NOTIFICATION_SETTINGS_PATH = "/dashboard/settings#notifications";
 export const UNSUBSCRIBE_PATH = "/api/email/unsubscribe";
 
 /**
- * What an unsubscribe link turns off: every product notification, or only the weekly summary.
- * The weekly summary's links carry `?list=weekly-summary`; links without it are product links.
+ * What an unsubscribe link turns off: every product notification, only the weekly summary, or
+ * one scheduled report for one recipient. Links carry `?list=<list>`; links without it are
+ * product links.
  */
-export type UnsubscribeList = "product-notifications" | "weekly-summary";
+export type UnsubscribeList = "product-notifications" | "weekly-summary" | "scheduled-report";
 
 export function parseUnsubscribeList(value: string | null): UnsubscribeList {
-  return value === "weekly-summary" ? value : "product-notifications";
+  return value === "weekly-summary" || value === "scheduled-report"
+    ? value
+    : "product-notifications";
+}
+
+/**
+ * The id a scheduled-report unsubscribe token is issued for: report and recipient, so the token
+ * removes only that address from only that report. Report recipients have no account.
+ */
+export function scheduledReportRecipientId(reportId: number, email: string): string {
+  return `${reportId}:${email}`;
+}
+
+export function parseScheduledReportRecipientId(
+  id: string,
+): { reportId: number; email: string } | null {
+  const match = /^(\d+):(.+)$/.exec(id);
+  if (!match?.[1] || !match[2]) return null;
+  return { reportId: Number(match[1]), email: match[2] };
 }
 
 // Scoped so the key can't be replayed as a signature for anything else, and a weekly-summary

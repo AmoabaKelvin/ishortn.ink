@@ -1,3 +1,5 @@
+import { SUPPORT_EMAIL } from "@/lib/constants/app";
+
 import type { UnsubscribeList } from "@/server/lib/notifications/unsubscribe";
 
 // Marks the confirm form's POST so the route can tell it from a mail client's one-click POST.
@@ -10,6 +12,7 @@ export type UnsubscribePageState = "confirm" | "done" | "invalid";
 const LIST_NAMES = {
   "product-notifications": "iShortn product and update emails",
   "weekly-summary": "the iShortn weekly summary email",
+  "scheduled-report": "this scheduled iShortn report",
 } satisfies Record<UnsubscribeList, string>;
 
 // Dashboard palette (neutral / blue-600 in light, the globals.css theme tokens in dark), inlined
@@ -37,9 +40,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--link);outline-offse
 `;
 
 const COPY = {
-  confirm: (listName) => ({
+  confirm: (listName, scope) => ({
     title: "Unsubscribe",
-    body: `<p>Stop ${listName} for this account?</p><form method="post"><input type="hidden" name="${CONFIRM_NAME}" value="${CONFIRM_VALUE}"><button type="submit">Unsubscribe</button></form>`,
+    body: `<p>Stop ${listName} ${scope}?</p><form method="post"><input type="hidden" name="${CONFIRM_NAME}" value="${CONFIRM_VALUE}"><button type="submit">Unsubscribe</button></form>`,
     meta: "Account, billing and team emails are always sent. Manage every email in your {settings}.",
   }),
   done: (listName) => ({
@@ -54,8 +57,22 @@ const COPY = {
   }),
 } satisfies Record<
   UnsubscribePageState,
-  (listName: string) => { title: string; body: string; meta: string }
+  (listName: string, scope: string) => { title: string; body: string; meta: string }
 >;
+
+// What the unsubscribe applies to: the account, or one report recipient's address.
+const LIST_SCOPES = {
+  "product-notifications": "for this account",
+  "weekly-summary": "for this account",
+  "scheduled-report": "for this address",
+} satisfies Record<UnsubscribeList, string>;
+
+// Report recipients have no account, so their footer line never points at notification settings.
+const REPORT_META = {
+  confirm: "Only this report stops. Anything else sent to this address isn't affected.",
+  done: "Any other report sent to this address has its own unsubscribe link.",
+  invalid: `Write to <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a> and we'll take you off it.`,
+} satisfies Record<UnsubscribePageState, string>;
 
 /**
  * HTML for people who follow the link in an email footer. It never shows account details, so
@@ -67,8 +84,10 @@ export function renderUnsubscribePage(
   list: UnsubscribeList,
   settingsUrl: string,
 ): string {
-  const { title, body, meta } = COPY[state](LIST_NAMES[list]);
+  const copy = COPY[state](LIST_NAMES[list], LIST_SCOPES[list]);
   const settingsLink = `<a href="${settingsUrl}">notification settings</a>`;
+  const { title, body } = copy;
+  const meta = list === "scheduled-report" ? REPORT_META[state] : copy.meta;
 
   return (
     `<!doctype html><html lang="en"><head><meta charset="utf-8">` +

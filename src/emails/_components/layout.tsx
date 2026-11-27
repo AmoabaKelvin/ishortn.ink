@@ -34,7 +34,7 @@ type EmailLayoutProps = {
   notificationSettingsUrl?: string;
   /** Why the recipient got it, shown after "Sent to …"; lifecycle emails default to notifications. */
   footerReason?: string;
-  /** One-click unsubscribe page for this email alone. */
+  /** One-click unsubscribe page for this email alone; shown with or without the settings link. */
   unsubscribeUrl?: string | null;
 } & (
   | {
@@ -123,21 +123,17 @@ export function EmailLayout(props: EmailLayoutProps) {
           <Section className="email-footer" style={footer}>
             <Text style={footerText}>
               Sent to {RECIPIENT_TOKEN}. {reason}
+              {(unsubscribeUrl || notificationSettingsUrl) && " "}
+              {unsubscribeUrl && (
+                <Link href={unsubscribeUrl} style={footerLink}>
+                  Unsubscribe
+                </Link>
+              )}
+              {unsubscribeUrl && notificationSettingsUrl && <> &middot; </>}
               {notificationSettingsUrl && (
-                <>
-                  {" "}
-                  {unsubscribeUrl && (
-                    <>
-                      <Link href={unsubscribeUrl} style={footerLink}>
-                        Unsubscribe
-                      </Link>{" "}
-                      &middot;{" "}
-                    </>
-                  )}
-                  <Link href={notificationSettingsUrl} style={footerLink}>
-                    Email settings
-                  </Link>
-                </>
+                <Link href={notificationSettingsUrl} style={footerLink}>
+                  Email settings
+                </Link>
               )}
             </Text>
             <Text style={footerText}>

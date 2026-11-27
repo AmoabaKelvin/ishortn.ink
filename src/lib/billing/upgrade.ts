@@ -60,6 +60,7 @@ const UPGRADE_REASONS = new Map(
     milestones: "Click milestone notifications are on {plan}",
     qr_create_limit: "More QR codes are on {plan}",
     qr_limit: "More QR codes are on {plan}",
+    scheduled_report: "Scheduled email reports are on {plan}",
     teams: "Teams are on {plan}",
     utm_templates: "UTM templates are on {plan}",
   }),

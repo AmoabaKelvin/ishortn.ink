@@ -520,6 +520,39 @@ export const weeklySummaryEmail = mysqlTable(
   }),
 );
 
+// Emailed analytics report for a link, folder or campaign, sent weekly (Mondays, the previous
+// week) or monthly (the 1st, the previous calendar month) to addresses that need no account.
+// lastPeriodKey ("w:2026-11-16" / "m:2026-10-01") is claimed with a conditional update before a
+// period is sent, so a retried or overlapping run never sends it twice.
+export const scheduledReport = mysqlTable(
+  "ScheduledReport",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    teamId: int("teamId"), // null = personal workspace, non-null = team workspace
+    // Who set the report up: in a team, the report only covers links in folders they can see.
+    createdBy: varchar("createdBy", { length: 32 }),
+    targetType: mysqlEnum("targetType", ["link", "folder", "campaign"]).notNull(),
+    targetId: int("targetId").notNull(),
+    frequency: mysqlEnum("frequency", ["weekly", "monthly"]).notNull(),
+    recipients: json("recipients").$type<string[]>().notNull(),
+    // Addresses that used the unsubscribe link: kept so editing this schedule can't add them back.
+    unsubscribed: json("unsubscribed").$type<string[]>(),
+    lastPeriodKey: varchar("lastPeriodKey", { length: 16 }),
+    lastSentAt: timestamp("lastSentAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").onUpdateNow(),
+  },
+  (table) => ({
+    userIdIdx: index("scheduledReport_userId_idx").on(table.userId),
+    teamIdIdx: index("scheduledReport_teamId_idx").on(table.teamId),
+    targetIdx: index("scheduledReport_target_idx").on(table.targetType, table.targetId),
+    dueIdx: index("scheduledReport_due_idx").on(table.frequency, table.lastPeriodKey),
+  }),
+);
+
+export type ScheduledReport = typeof scheduledReport.$inferSelect;
+
 export const linkMilestone = mysqlTable(
   "LinkMilestone",
   {

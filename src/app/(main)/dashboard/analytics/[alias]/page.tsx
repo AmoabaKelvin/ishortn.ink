@@ -13,6 +13,7 @@ import { analyticsRangeEnum } from "@/server/api/routers/link/link.input";
 import { isNotFoundError } from "@/trpc/errors";
 import { api } from "@/trpc/server";
 
+import { ScheduledReportsButton } from "../../_components/scheduled-reports/scheduled-reports-button";
 import { AnalyticsTracker } from "../_components/analytics-tracker";
 import { ExportClicksButton } from "../_components/export-clicks-button";
 import { LimitedAnalyticsNotice } from "../_components/limited-analytics-notice";
@@ -141,6 +142,7 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
             fileName={`clicks-${params.alias}-${range}`}
           />
           <ShareStatsButton linkId={linkId} />
+          <ScheduledReportsButton targetType="link" targetId={linkId} />
         </div>
       </div>
 

@@ -67,6 +67,9 @@ export const listWebhooks = async (ctx: WorkspaceTRPCContext) => {
   };
 };
 
+const WEBHOOKS_PLAN_REQUIRED =
+  "Webhooks are available on Pro and Ultra plans. Upgrade to add an endpoint.";
+
 export const createWebhook = async (ctx: WorkspaceTRPCContext, input: CreateWebhookInput) => {
   requirePermission(ctx.workspace, "team.settings", MANAGE_ACTION);
   const plan = ctx.workspace.plan;
@@ -75,7 +78,7 @@ export const createWebhook = async (ctx: WorkspaceTRPCContext, input: CreateWebh
     await recordPlanLimitHit({ userId: ctx.auth.userId, limitKey: "webhooks", plan });
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Webhooks are available on Pro and Ultra plans. Upgrade to add an endpoint.",
+      message: WEBHOOKS_PLAN_REQUIRED,
     });
   }
   await assertValidUrl(input.url);
@@ -158,6 +161,10 @@ export const rollWebhookSecret = async (ctx: WorkspaceTRPCContext, input: Webhoo
 /** Sends one `webhook.test` event now and returns how the endpoint answered. */
 export const sendTestWebhook = async (ctx: WorkspaceTRPCContext, input: WebhookIdInput) => {
   requirePermission(ctx.workspace, "team.settings", MANAGE_ACTION);
+  // Endpoints kept after a downgrade stay visible, but the plan no longer sends to them.
+  if (getWebhookEndpointLimit(ctx.workspace.plan) === 0) {
+    throw new TRPCError({ code: "FORBIDDEN", message: WEBHOOKS_PLAN_REQUIRED });
+  }
   const existing = await getOwnedWebhook(ctx, input.id);
   const now = new Date();
   const event = buildWebhookEvent(

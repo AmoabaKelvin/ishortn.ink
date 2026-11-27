@@ -93,7 +93,12 @@ export function Webhooks({ webhooks }: { webhooks: WebhookList }) {
     <div className="space-y-3">
       <div className="divide-y divide-neutral-300/60 rounded-lg border border-neutral-200 bg-white dark:divide-border dark:border-border dark:bg-card">
         {endpoints.map((endpoint) => (
-          <WebhookRow key={endpoint.id} endpoint={endpoint} canManage={canManage} />
+          <WebhookRow
+            key={endpoint.id}
+            endpoint={endpoint}
+            canManage={canManage}
+            canSend={limit > 0}
+          />
         ))}
       </div>
       {limit === 0 ? (

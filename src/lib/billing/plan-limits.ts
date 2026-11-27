@@ -13,6 +13,7 @@ export const PLAN_LIMIT_KEYS = [
   "api_keys",
   "api_v1",
   "webhooks",
+  "scheduled_reports",
 ] as const;
 
 /** Gated screens shown to a free user; logged via `planLimits.recordView`. */

@@ -154,7 +154,7 @@ export function weeklySummaryUpgrade(
 }
 
 // Values the click pipeline stores when it couldn't resolve a location.
-const UNKNOWN_COUNTRIES = new Set(["", "Unknown", "undefined", "N/A"]);
+export const UNKNOWN_COUNTRIES = new Set(["", "Unknown", "undefined", "N/A"]);
 
 const byClicks = <T extends { clicks: number }>(a: T, b: T) => b.clicks - a.clicks;
 

@@ -83,7 +83,16 @@ function EndpointStatus({ endpoint }: { endpoint: Endpoint }) {
   );
 }
 
-export function WebhookRow({ endpoint, canManage }: { endpoint: Endpoint; canManage: boolean }) {
+export function WebhookRow({
+  endpoint,
+  canManage,
+  canSend,
+}: {
+  endpoint: Endpoint;
+  canManage: boolean;
+  // False when the plan has no webhooks (endpoints kept after a downgrade).
+  canSend: boolean;
+}) {
   const [editOpen, setEditOpen] = useState(false);
   const [deliveriesOpen, setDeliveriesOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -174,14 +183,16 @@ export function WebhookRow({ endpoint, canManage }: { endpoint: Endpoint; canMan
           </DropdownMenuItem>
           {canManage && (
             <>
-              <DropdownMenuItem
-                className="text-[13px]"
-                disabled={sendTest.isLoading}
-                onClick={() => sendTest.mutate({ id: endpoint.id })}
-              >
-                <IconSend size={14} stroke={1.5} className="mr-2" />
-                {sendTest.isLoading ? "Sending..." : "Send test event"}
-              </DropdownMenuItem>
+              {canSend && (
+                <DropdownMenuItem
+                  className="text-[13px]"
+                  disabled={sendTest.isLoading}
+                  onClick={() => sendTest.mutate({ id: endpoint.id })}
+                >
+                  <IconSend size={14} stroke={1.5} className="mr-2" />
+                  {sendTest.isLoading ? "Sending..." : "Send test event"}
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem className="text-[13px]" onClick={() => setEditOpen(true)}>
                 <IconPencil size={14} stroke={1.5} className="mr-2" />
                 Edit
