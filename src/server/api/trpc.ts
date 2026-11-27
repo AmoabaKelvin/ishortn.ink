@@ -146,7 +146,7 @@ export const workspaceProcedure = protectedProcedure.use(async ({ ctx, next, typ
 });
 
 // Mutations a read-only team still allows: leaving or winding the team down,
-// and ones that only read (members can still get their links out).
+// revoking its API keys, and ones that only read (members can still get their links out).
 const READ_ONLY_TEAM_MUTATIONS = new Set([
   "link.exportUserLinks",
   "link.validateTransfer",
@@ -155,6 +155,7 @@ const READ_ONLY_TEAM_MUTATIONS = new Set([
   "team.transferOwnership",
   "team.removeMember",
   "team.revokeInvite",
+  "token.deleteTeam",
 ]);
 
 /**

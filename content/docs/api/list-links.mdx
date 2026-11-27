@@ -1,14 +1,14 @@
 ---
 title: List links
-description: List the short links in your personal workspace, newest first, one page at a time.
+description: List the short links in the key's workspace, newest first, one page at a time.
 endpoint:
   method: GET
   path: /api/v1/links
 ---
 
-Returns the short links in your personal workspace, newest first. Each page holds up to `limit` links and a `nextCursor` to fetch the next one. Pages stay stable while you create links: a new link appears at the top of the first page and never shifts later pages, so you see each link once.
+Returns the short links in the key's workspace, newest first. Each page holds up to `limit` links and a `nextCursor` to fetch the next one. Pages stay stable while you create links: a new link appears at the top of the first page and never shifts later pages, so you see each link once.
 
-The list covers the links that [Get a link](/docs/api/get-link) can find: links in your personal workspace on a [platform domain](/docs/platform-domains) or on a [custom domain](/docs/custom-domains) that is active in that workspace.
+The list covers the links that [Get a link](/docs/api/get-link) can find: links in the key's workspace on a [platform domain](/docs/platform-domains) or on a [custom domain](/docs/custom-domains) that is active in that workspace (the creator's personal workspace, or the team for a [team key](/docs/teams#api-access)).
 
 ## Request
 
@@ -16,7 +16,7 @@ The list covers the links that [Get a link](/docs/api/get-link) can find: links 
 | --- | --- | --- | --- | --- |
 | `limit` | query | integer | No | Links per page, from 1 to 100. Defaults to 25. |
 | `cursor` | query | string | No | The `nextCursor` from the previous page. Leave it out to get the first page. Treat it as opaque: don't build or change it. |
-| `domain` | query | string | No | Only list links on this domain. It must be a platform domain or an active custom domain in your personal workspace. See [Domains](/docs/api#domains). Leave it out to list links on all of them. |
+| `domain` | query | string | No | Only list links on this domain. It must be a platform domain or an active custom domain in the key's workspace. See [Domains](/docs/api#domains). Leave it out to list links on all of them. |
 
 <CodeGroup>
 
@@ -127,5 +127,5 @@ Error bodies use the [standard error shape](/docs/api#responses-and-errors), exc
 | `400` | `validation_failed` | `Query parameters are invalid` | `limit` isn't a whole number from 1 to 100, or `cursor` isn't a `nextCursor` from this endpoint. `details` names the parameter. |
 | `401` | `unauthorized` | `Invalid or missing API key` | See [Authentication](/docs/api#authentication). |
 | `403` | | `{"error": "API access requires Pro", "upgrade_url": "https://ishortn.ink/pricing"}` (whole body) | The key's account isn't on Pro or Ultra and its notice period has ended. See [API access by plan](/docs/api#api-access-by-plan). |
-| `403` | `forbidden` | `Domain not available for this API key` | `domain` isn't a platform domain or an active custom domain in your personal workspace. |
+| `403` | `forbidden` | `Domain not available for this API key` | `domain` isn't a platform domain or an active custom domain in the key's workspace. |
 | `429` | `rate_limited` | `Rate limit exceeded. Retry in N seconds.` | See [Rate limits](/docs/api#rate-limits). |

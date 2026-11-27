@@ -40,7 +40,7 @@ export type UserPlanContext = {
   linksLimit: number | undefined;
 };
 
-const getMonthStart = () => {
+export const getMonthStart = () => {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), 1);
 };

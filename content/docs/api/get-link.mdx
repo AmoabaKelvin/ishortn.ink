@@ -1,6 +1,6 @@
 ---
 title: Get a link
-description: Look up a short link in your personal workspace by its alias.
+description: Look up a short link in the key's workspace by its alias.
 endpoint:
   method: GET
   path: /api/v1/links/{alias}
@@ -92,6 +92,6 @@ Error bodies use the [standard error shape](/docs/api#responses-and-errors), exc
 | --- | --- | --- | --- |
 | `401` | `unauthorized` | `Invalid or missing API key` | See [Authentication](/docs/api#authentication). |
 | `403` | | `{"error": "API access requires Pro", "upgrade_url": "https://ishortn.ink/pricing"}` (whole body) | The key's account isn't on Pro or Ultra and its notice period has ended. See [API access by plan](/docs/api#api-access-by-plan). |
-| `403` | `forbidden` | `Domain not available for this API key` | `domain` isn't a platform domain or an active custom domain in your personal workspace. |
-| `404` | `not_found` | `Link not found` | No link with that alias on that domain in your personal workspace. |
+| `403` | `forbidden` | `Domain not available for this API key` | `domain` isn't a platform domain or an active custom domain in the key's workspace. |
+| `404` | `not_found` | `Link not found` | No link with that alias on that domain in the key's workspace. |
 | `429` | `rate_limited` | `Rate limit exceeded. Retry in N seconds.` | See [Rate limits](/docs/api#rate-limits). |

@@ -4,6 +4,7 @@ import { db } from "@/server/db";
 
 import { apiError } from "../../errors";
 import {
+  apiLinkFilter,
   getApiDomainParamsFromSearchParams,
   resolveApiDomainForUser,
   withApiKey,
@@ -18,7 +19,7 @@ export const GET = withApiKey(
     const alias = params.alias;
 
     const domain = await resolveApiDomainForUser(
-      token.userId,
+      token,
       getApiDomainParamsFromSearchParams(request.nextUrl.searchParams),
     );
     if (!domain) {
@@ -30,15 +31,10 @@ export const GET = withApiKey(
     const from = window.from;
 
     const link = await db.query.link.findFirst({
-      // Same ownership rule as the links endpoint: API tokens only reach links in
-      // the owner's personal workspace.
-      where: (table, { eq, and, isNull }) =>
-        and(
-          eq(table.alias, alias),
-          eq(table.domain, domain),
-          eq(table.userId, token.userId),
-          isNull(table.teamId),
-        ),
+      // Same ownership rule as the links endpoint: API keys only reach links in
+      // their own workspace.
+      where: (table, { eq, and }) =>
+        and(eq(table.alias, alias), eq(table.domain, domain), apiLinkFilter(token)),
       columns: { id: true },
     });
 

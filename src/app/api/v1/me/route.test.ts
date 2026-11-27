@@ -92,6 +92,7 @@ describe.skipIf(!testDatabaseUrl)("GET /api/v1/me (MySQL)", () => {
       email: "api-me@example.com",
       name: "Ada Lovelace",
       plan: "pro",
+      workspace: { type: "personal" },
       defaultDomain: "isht.ink",
       usage: { linksThisMonth: 12, linksLimit: 1000 },
       rateLimits: API_RATE_LIMITS.pro,
