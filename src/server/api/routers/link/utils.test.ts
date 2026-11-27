@@ -66,6 +66,18 @@ describe("parseLinkCsv", () => {
     ]);
   });
 
+  test("reads a title (or name) column as the link name", () => {
+    expect(
+      parseLinkCsv(`url,alias,title\nhttps://a.example,a, Spring sale \nhttps://b.example,b,`),
+    ).toEqual([
+      { row: 2, url: "https://a.example", alias: "a", name: "Spring sale" },
+      { row: 3, url: "https://b.example", alias: "b", name: undefined },
+    ]);
+    expect(parseLinkCsv(`url,Name\nhttps://a.example,${"x".repeat(300)}`)[0]?.name).toBe(
+      "x".repeat(255),
+    );
+  });
+
   test("refuses files without a url header", () => {
     expect(() => parseLinkCsv("https://a.example,alias\n")).toThrow('"url" column');
     expect(() => parseLinkCsv("")).toThrow('"url" column');

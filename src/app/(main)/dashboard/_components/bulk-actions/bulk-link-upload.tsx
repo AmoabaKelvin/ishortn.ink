@@ -1,6 +1,6 @@
 import { IconFileSpreadsheet, IconFileZip, IconQrcode, IconUpload } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 
@@ -35,6 +35,7 @@ import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { nextPlanFor } from "@/lib/billing/upgrade";
 import { clientLogger } from "@/lib/logger/client";
 import { cn } from "@/lib/utils";
+import { isBitlyExport, readCsvHeaders } from "@/lib/utils/link-csv-headers";
 import { api } from "@/trpc/react";
 
 import type { Plan } from "@/lib/billing/plans";
@@ -50,7 +51,11 @@ type BulkLinkUploadDialogProps = {
   bulkQrLimit: number | null;
 };
 
+type ImportError = { message: string; upgrade: boolean };
+
 const DEFAULT_STYLE = "default";
+// Enough of the file to hold its header row.
+const HEADER_SAMPLE_BYTES = 4096;
 
 export function BulkLinkUploadDialog({
   open,
@@ -60,12 +65,14 @@ export function BulkLinkUploadDialog({
 }: BulkLinkUploadDialogProps) {
   const proMembership = plan !== "free";
   const [file, setFile] = useState<File | null>(null);
-  const [keepBitlyCodes, setKeepBitlyCodes] = useState(true);
+  const [keepBitlyCodes, setKeepBitlyCodes] = useState(false);
   const [createQrCodes, setCreateQrCodes] = useState(false);
   const [qrStyle, setQrStyle] = useState(DEFAULT_STYLE);
   const [result, setResult] = useState<ImportResult | null>(null);
-  const [limitError, setLimitError] = useState<string | null>(null);
+  // Shown inline rather than as a toast: on narrow screens a toast covers the dialog's buttons.
+  const [importError, setImportError] = useState<ImportError | null>(null);
   const [isZipping, setIsZipping] = useState(false);
+  const selectedFile = useRef<File | null>(null);
 
   const utils = api.useUtils();
   const presets = api.qrCode.listPresets.useQuery(undefined, {
@@ -79,12 +86,28 @@ export function BulkLinkUploadDialog({
     maxFiles: 1,
     multiple: false,
     onDrop: (acceptedFiles) => {
-      setFile(acceptedFiles[0] ?? null);
+      const dropped = acceptedFiles[0] ?? null;
+      selectedFile.current = dropped;
+      setFile(dropped);
       setResult(null);
-      setLimitError(null);
+      setImportError(null);
+      if (!dropped) return;
+      // Bitly's codes only matter for a Bitly export, so the option follows the file.
+      void dropped
+        .slice(0, HEADER_SAMPLE_BYTES)
+        .text()
+        .then((start) => {
+          if (selectedFile.current === dropped) {
+            setKeepBitlyCodes(isBitlyExport(readCsvHeaders(start)));
+          }
+        })
+        .catch(() => setKeepBitlyCodes(false));
     },
     onDropRejected: () => {
-      toast.error("Unsupported file type. Please upload a CSV file.");
+      setImportError({
+        message: "Unsupported file type. Please upload a CSV file.",
+        upgrade: false,
+      });
     },
   });
 
@@ -98,25 +121,23 @@ export function BulkLinkUploadDialog({
       if (result.qrCodes.length > 0) await revalidateRoute("/dashboard/qrcodes");
       if (result.failed === 0 && result.notices.length === 0 && result.qrCodes.length === 0) {
         toast.success(result.message);
-        setOpen(false);
+        handleOpenChange(false);
         return;
       }
-      // Keep the dialog open so the per-row reasons, notices and QR code ZIP stay reachable.
-      if (result.created > 0 || result.alreadyImported > 0) toast.success(result.message);
-      else toast.error(result.message);
+      // Keep the dialog open so the per-row reasons, notices and QR code ZIP stay reachable;
+      // the summary shows in the dialog instead of a toast.
       setResult(result);
     },
     onError: (error) => {
       // Plan limits (links per month, QR codes per import) get the upgrade prompt below.
-      if (error.data?.code === "FORBIDDEN") setLimitError(error.message);
-      toast.error(error.message);
+      setImportError({ message: error.message, upgrade: error.data?.code === "FORBIDDEN" });
     },
   });
 
   const handleUpload = async () => {
     if (!file) return;
 
-    setLimitError(null);
+    setImportError(null);
     const csv = await file.text();
     uploadMutation.mutate({
       csv,
@@ -145,7 +166,7 @@ export function BulkLinkUploadDialog({
         { err: error instanceof Error ? error : String(error) },
         "bulk QR code ZIP failed",
       );
-      toast.error("Couldn't create the ZIP. Please try again.");
+      setImportError({ message: "Couldn't create the ZIP. Please try again.", upgrade: false });
     } finally {
       setIsZipping(false);
     }
@@ -154,9 +175,11 @@ export function BulkLinkUploadDialog({
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
     if (!nextOpen) {
+      selectedFile.current = null;
       setFile(null);
+      setKeepBitlyCodes(false);
       setResult(null);
-      setLimitError(null);
+      setImportError(null);
     }
   };
 
@@ -172,7 +195,7 @@ export function BulkLinkUploadDialog({
           <DialogTitle>Import links from CSV</DialogTitle>
           <DialogDescription>
             {proMembership
-              ? "Upload a CSV with a url column (alias, domain and note optional), or a link export from Bitly as-is. Up to 1,000 links per file."
+              ? "Upload a CSV with a url column (alias, domain, title and note optional), or a link export from Bitly as-is. Up to 1,000 links per file."
               : "Importing links from a CSV file is available on paid plans."}
           </DialogDescription>
         </DialogHeader>
@@ -252,7 +275,7 @@ export function BulkLinkUploadDialog({
                   checked={createQrCodes}
                   onCheckedChange={(value) => {
                     setCreateQrCodes(value === true);
-                    setLimitError(null);
+                    setImportError(null);
                   }}
                   className="mt-0.5"
                 />
@@ -325,10 +348,16 @@ export function BulkLinkUploadDialog({
               )}
             </div>
 
-            {limitError && (
+            {importError && !importError.upgrade && (
+              <p role="alert" className="break-words text-[12px] text-red-500">
+                {importError.message}
+              </p>
+            )}
+
+            {importError?.upgrade && (
               <div className="flex flex-col items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-800 dark:bg-amber-500/10 sm:flex-row sm:items-center sm:justify-between">
                 <p className="min-w-0 text-[12px] text-amber-700 dark:text-amber-400">
-                  {limitError}
+                  {importError.message}
                 </p>
                 <UpgradeCta
                   requiredPlan={nextPlanFor(plan)}
@@ -381,9 +410,9 @@ export function BulkLinkUploadDialog({
 
             {result && (
               <div className="space-y-3">
-                <p className="text-[13px] text-neutral-700 dark:text-neutral-300">
+                <output className="block text-[13px] text-neutral-700 dark:text-neutral-300">
                   {result.message}
-                </p>
+                </output>
 
                 {result.domainNotices.length > 0 && (
                   <ul className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-700 dark:border-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
