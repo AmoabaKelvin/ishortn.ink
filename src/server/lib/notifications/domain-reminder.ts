@@ -1,7 +1,8 @@
 import DomainReminderEmail from "@/emails/domain-reminder";
 import { getAppUrl } from "@/lib/constants/domains";
+import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 
-import { sendEmail } from "./send-email";
+import { EMAIL_FROM_SYSTEM, sendEmail } from "./send-email";
 import { productNotificationOptions } from "./unsubscribe";
 
 type Challenge = {
@@ -34,6 +35,7 @@ export function sendDomainReminderEmail({
 
   return sendEmail({
     template: "domain-reminder",
+    from: EMAIL_FROM_SYSTEM,
     recipientId: userId,
     to: email,
     essential: false,
@@ -43,7 +45,10 @@ export function sendDomainReminderEmail({
       domain,
       daysMisconfigured,
       challenges,
-      dashboardUrl: getAppUrl("/dashboard/domains", teamSlug),
+      // Team domains live on the team's subdomain, which a fixed short link can't point at.
+      dashboardUrl: teamSlug
+        ? getAppUrl("/dashboard/domains", teamSlug)
+        : emailLinkUrl(EMAIL_LINKS.domainReminder.domains),
       notificationSettingsUrl,
     }),
     headers,

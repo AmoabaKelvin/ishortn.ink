@@ -3,7 +3,7 @@ import TransferCompletedEmail from "@/emails/transfer-completed";
 import TransferDeclinedEmail from "@/emails/transfer-declined";
 import { getAppUrl } from "@/lib/constants/domains";
 
-import { sendEmail } from "./send-email";
+import { EMAIL_FROM_SYSTEM, sendEmail } from "./send-email";
 
 import type { ResourceCounts } from "@/server/api/routers/account-transfer/account-transfer.service";
 
@@ -29,6 +29,7 @@ export function sendAccountTransferEmail({
 }: SendAccountTransferEmailInput): Promise<boolean> {
   return sendEmail({
     template: "account-transfer",
+    from: EMAIL_FROM_SYSTEM,
     recipientId: toUserId,
     to: toEmail,
     essential: true,
@@ -62,6 +63,7 @@ export function sendTransferCompletedEmail({
 }: SendTransferCompletedEmailInput): Promise<boolean> {
   return sendEmail({
     template: "transfer-completed",
+    from: EMAIL_FROM_SYSTEM,
     recipientId: toUserId,
     to: toEmail,
     essential: true,
@@ -93,6 +95,7 @@ export function sendTransferDeclinedEmail({
 }: SendTransferDeclinedEmailInput): Promise<boolean> {
   return sendEmail({
     template: "transfer-declined",
+    from: EMAIL_FROM_SYSTEM,
     recipientId: toUserId,
     to: toEmail,
     essential: true,

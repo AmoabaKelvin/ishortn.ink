@@ -118,7 +118,7 @@ The Clerk variables aren't in `src/env.mjs`; the Clerk SDK reads them directly.
 | Feature | Variables |
 | --- | --- |
 | Image uploads (Cloudflare R2) | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL`. `R2_ENDPOINT` is only for a local S3 stand-in. |
-| Email (Resend) | `RESEND_API_KEY`, `EMAIL_FROM` (an address on a domain verified in Resend), `EMAIL_FROM_LIFECYCLE` (optional sender for the weekly click summary and the upgrade nudge, ideally on its own sending subdomain; unset disables both), `RESEND_WEBHOOK_SECRET` (bounce and complaint webhook), `EMAIL_UNSUBSCRIBE_SECRET` (random, at least 32 characters, for one-click unsubscribe links) |
+| Email (Resend) | `RESEND_API_KEY`, `EMAIL_FROM` (an address on a domain verified in Resend), `EMAIL_FROM_LIFECYCLE` (optional sender for the weekly click summary and the upgrade nudge, ideally on its own sending subdomain; unset disables both), `EMAIL_FROM_SYSTEM` (optional sender for system notices such as cap alerts, plan grace and team emails; defaults to `iShortn <notifications@ishortn.ink>`), `EMAIL_REPLY_TO` (optional inbox that replies to every product email go to), `RESEND_WEBHOOK_SECRET` (bounce and complaint webhook), `EMAIL_UNSUBSCRIBE_SECRET` (random, at least 32 characters, for one-click unsubscribe links) |
 | Billing (Lemon Squeezy) | `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_STORE_ID`, `LEMONSQUEEZY_WEBHOOK_SECRET` |
 | Custom domains for users (Cloudflare for SaaS) | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_SAAS_ZONE_ID`, `CUSTOM_DOMAIN_CNAME_TARGET`, and `NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE` (only shown in a notice about moving existing domains) |
 | AI alias suggestions and phishing classification | `OPENAI_API_KEY` |

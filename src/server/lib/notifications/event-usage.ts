@@ -1,12 +1,9 @@
 import { promoBannerState } from "@/app/(main)/dashboard/_components/promo-banner-state";
-import {
-  eventsUpgradeTarget,
-  pricingHighlightHref,
-} from "@/app/(main)/dashboard/_components/tracking-paused";
+import { eventsUpgradeTarget } from "@/app/(main)/dashboard/_components/tracking-paused";
 import EventUsageAlertEmail from "@/emails/event-usage-alert";
-import { getAppUrl } from "@/lib/constants/domains";
+import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 
-import { sendEmail } from "./send-email";
+import { EMAIL_FROM_SYSTEM, sendEmail } from "./send-email";
 import { productNotificationOptions } from "./unsubscribe";
 
 import type { Plan, SubscriptionMode } from "@/lib/billing/plans";
@@ -46,19 +43,15 @@ export function eventUsagePromo(
 }
 
 /**
- * The plan that raises the cap and a pricing link that preselects it. `source` and the UTM params
- * let upgrades be attributed to the 80% and 100% emails, and to the promo while one runs. Null
- * for Ultra, which has no cap.
+ * The plan that raises the cap and a tracked link to pricing that preselects it, one per alert
+ * level, so upgrades can be attributed to each email. Null for Ultra, which has no cap.
  */
-export function eventUsageUpgrade(plan: Plan, threshold: number, promo: Promo | null = null) {
+export function eventUsageUpgrade(plan: Plan, threshold: number) {
   const target = eventsUpgradeTarget(plan);
   if (!target) return null;
-  const path = pricingHighlightHref(target.plan, `events_email_${threshold}`, {
-    utm_source: "ishortn",
-    utm_medium: "email",
-    utm_campaign: promo?.utmCampaign ?? "event-cap",
-  });
-  return { plan: target.plan, label: target.label, url: getAppUrl(path) };
+  const links = EMAIL_LINKS.eventUsage[target.plan];
+  const link = threshold >= 100 ? links[100] : threshold >= 90 ? links[90] : links[80];
+  return { plan: target.plan, label: target.label, url: emailLinkUrl(link) };
 }
 
 export async function sendEventUsageEmail({
@@ -73,12 +66,13 @@ export async function sendEventUsageEmail({
   resetsAt,
 }: SendEventUsageEmailInput) {
   const promo = eventUsagePromo(plan, subscriptionMode);
-  const upgrade = eventUsageUpgrade(plan, threshold, promo);
+  const upgrade = eventUsageUpgrade(plan, threshold);
   if (!upgrade) return;
   const { notificationSettingsUrl, headers } = productNotificationOptions(userId);
 
   await sendEmail({
     template: "event-usage-alert",
+    from: EMAIL_FROM_SYSTEM,
     recipientId: userId,
     to: email,
     essential: false,
