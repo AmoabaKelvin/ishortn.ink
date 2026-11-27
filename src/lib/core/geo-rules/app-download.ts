@@ -112,15 +112,51 @@ export function buildAppDownloadPreset(input: AppDownloadInput): AppDownloadPres
   };
 }
 
+type AppStoreRuleCandidate = {
+  type: string;
+  condition: string;
+  values: string[];
+  destination?: string | null;
+};
+
 /**
  * True for an OS rule that only sends iOS and/or Android somewhere, which the preset replaces
  * when it is applied again instead of stacking duplicates.
  */
-export function isAppStoreRule(rule: { type: string; condition: string; values: string[] }) {
+export function isAppStoreRule(rule: AppStoreRuleCandidate) {
   return (
     rule.type === "os" &&
     rule.condition === "in" &&
     rule.values.length > 0 &&
     rule.values.every((value) => value === STORE_OS.appStore || value === STORE_OS.playStore)
   );
+}
+
+/**
+ * The store links of an app download setup already in the rules, so the preset can be edited
+ * instead of added again. Null until both an iPhone and an Android rule point at their store.
+ */
+export function findAppDownloadRules(
+  rules: AppStoreRuleCandidate[],
+): Pick<AppDownloadInput, "appStoreUrl" | "playStoreUrl"> | null {
+  let appStoreUrl: string | undefined;
+  let playStoreUrl: string | undefined;
+  for (const rule of rules) {
+    if (!isAppStoreRule(rule) || !rule.destination) continue;
+    if (rule.values.includes(STORE_OS.appStore) && parseStoreUrl("appStore", rule.destination)) {
+      appStoreUrl ??= rule.destination;
+    }
+    if (rule.values.includes(STORE_OS.playStore) && parseStoreUrl("playStore", rule.destination)) {
+      playStoreUrl ??= rule.destination;
+    }
+  }
+  return appStoreUrl && playStoreUrl ? { appStoreUrl, playStoreUrl } : null;
+}
+
+/** Applying the preset again replaces its earlier store rules instead of stacking duplicates. */
+export function replaceAppStoreRules<T extends AppStoreRuleCandidate>(
+  rules: T[],
+  presetRules: T[],
+): T[] {
+  return [...rules.filter((rule) => !isAppStoreRule(rule)), ...presetRules];
 }
