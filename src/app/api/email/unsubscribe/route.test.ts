@@ -81,6 +81,30 @@ describe("GET /api/email/unsubscribe", () => {
   });
 });
 
+describe("scheduled-report unsubscribe links", () => {
+  const reportUrl = (id: string) =>
+    urlFor(createUnsubscribeToken(id, SECRET, "scheduled-report"), "scheduled-report");
+
+  test("ask the recipient about this address, without pointing at account settings", async () => {
+    const html = await GET(new Request(reportUrl("12:client@example.com"))).text();
+    expect(html).toContain("Stop this scheduled iShortn report for this address?");
+    expect(html).toContain("Only this report stops.");
+    expect(html).not.toContain("notification settings");
+    expect(html).not.toContain("client@example.com");
+  });
+
+  test("a report token can't be used for another report or another list", async () => {
+    const token = createUnsubscribeToken("12:client@example.com", SECRET, "scheduled-report");
+    for (const url of [
+      urlFor(token.replace("12:", "13:"), "scheduled-report"),
+      urlFor(token),
+      urlFor(createUnsubscribeToken("12:client@example.com", SECRET), "scheduled-report"),
+    ]) {
+      expect(GET(new Request(url)).status).toBe(400);
+    }
+  });
+});
+
 describe("POST /api/email/unsubscribe with an invalid token", () => {
   test("a mail client gets a plain 400", async () => {
     const response = await POST(oneClickPost(urlFor("bad.token")));
@@ -147,6 +171,34 @@ describe.skipIf(!testDatabaseUrl)("unsubscribe preferences (MySQL)", () => {
   test("a weekly-summary link only turns off the weekly summary", async () => {
     await POST(oneClickPost(validUrl("weekly-summary")));
     expect(await preferences()).toEqual({ product: true, weekly: false });
+  });
+
+  test("a scheduled-report link removes that recipient from that report", async () => {
+    const [inserted] = await db.insert(schema.scheduledReport).values({
+      userId: USER_ID,
+      targetType: "link",
+      targetId: 1,
+      frequency: "weekly",
+      recipients: ["client@example.com", "boss@example.com"],
+    });
+    const id = inserted.insertId;
+    try {
+      const url = urlFor(
+        createUnsubscribeToken(`${id}:client@example.com`, SECRET, "scheduled-report"),
+        "scheduled-report",
+      );
+      const response = await POST(pagePost(url));
+      expect(await response.text()).toContain("You won't get this scheduled iShortn report");
+      await POST(oneClickPost(url));
+
+      const row = await db.query.scheduledReport.findFirst({
+        where: eq(schema.scheduledReport.id, id),
+      });
+      expect(row?.unsubscribed).toEqual(["client@example.com"]);
+      expect(await preferences()).toEqual({ product: true, weekly: true });
+    } finally {
+      await db.delete(schema.scheduledReport).where(eq(schema.scheduledReport.id, id));
+    }
   });
 
   test("an invalid token changes nothing", async () => {
