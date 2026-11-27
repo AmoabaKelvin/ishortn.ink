@@ -129,6 +129,10 @@ describe("eventKind", () => {
     expect(eventKind("subscription.updated", cancelled)).toBe("cancelled");
   });
 
+  test("an update into the expired status is an expiry", () => {
+    expect(eventKind("subscription.updated", { status: "expired" })).toBe("expired");
+  });
+
   test("other events carry nothing to apply", () => {
     expect(eventKind("subscription.something_new", active)).toBeNull();
   });
@@ -300,6 +304,24 @@ describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/paddle (MySQL)", () => {
       canceled_at: "2026-11-21T00:00:00Z",
     });
     expect((await deliver(body)).status).toBe(200);
+
+    const row = await storedSubscription();
+    expect(row?.status).toBe("expired");
+    expect(row?.plan).toBe("free");
+    const account = await db.query.user.findFirst({ where: eq(schema.user.id, USER_ID) });
+    expect(account?.planGracePlan).toBe("pro");
+    expect(account?.planGraceReason).toBe("lapsed");
+    expect(account?.planGraceEndsAt).not.toBeNull();
+  });
+
+  test("an update to canceled followed by canceled resets the row to free once", async () => {
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+    const canceled = { status: "canceled", canceled_at: "2026-11-21T00:00:00Z" };
+
+    const update = event("subscription.updated", "2026-11-21T00:00:00Z", canceled);
+    expect((await deliver(update)).status).toBe(200);
+    const final = event("subscription.canceled", "2026-11-21T00:00:00Z", canceled);
+    expect((await deliver(final)).status).toBe(200);
 
     const row = await storedSubscription();
     expect(row?.status).toBe("expired");

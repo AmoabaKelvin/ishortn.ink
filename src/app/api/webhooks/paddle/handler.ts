@@ -16,6 +16,8 @@ import type { SubscriptionEventKind } from "@/server/lib/billing/apply-subscript
 
 const log = logger.child({ webhook: "paddle" });
 
+const CUSTOMER_LOOKUP_TIMEOUT_MS = 3_000;
+
 const envelopeSchema = z.object({
   event_id: z.string(),
   event_type: z.string(),
@@ -50,6 +52,9 @@ export function eventKind(
   }
   if (eventType === "subscription.canceled") return "expired";
   if (UPDATE_EVENTS.has(eventType)) {
+    // Paddle sends `subscription.updated` with status `canceled` before `subscription.canceled`,
+    // with the same updated_at, so the second is dropped as stale; the first must do the reset.
+    if (normalized.status === "expired") return "expired";
     // A scheduled cancel arrives as an update; routing it to `cancelled` sends the email.
     return normalized.status === "cancelled" ? "cancelled" : "updated";
   }
@@ -190,7 +195,10 @@ async function resolveUserId(
   });
   if (byCustomer) return byCustomer.userId;
 
-  const customer = await client.getCustomer(normalized.providerCustomerId);
+  // Paddle drops deliveries not answered within 5s; time out first so the retry can succeed.
+  const customer = await client.getCustomer(normalized.providerCustomerId, {
+    timeoutMs: CUSTOMER_LOOKUP_TIMEOUT_MS,
+  });
   const byEmail = await db.query.user.findFirst({
     where: eq(user.email, customer.email),
     columns: { id: true },
