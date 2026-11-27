@@ -137,6 +137,7 @@ export function orderCompletedEvent(transaction: PaddleTransaction, config: Padd
       currency,
       test_mode: config.environment === "sandbox",
       provider: "paddle",
+      billing_env: config.environment,
     }),
   };
 }

@@ -1,4 +1,13 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  spyOn,
+  test,
+} from "bun:test";
 import crypto from "node:crypto";
 
 import { eq } from "drizzle-orm";
@@ -44,6 +53,21 @@ const config = buildPaddleConfig({
   PADDLE_CHECKOUT_USER_IDS: undefined,
 });
 
+// The same account in the live environment; only it sends order_completed.
+const productionConfig = buildPaddleConfig({
+  BILLING_PROVIDER: undefined,
+  PADDLE_ENVIRONMENT: "production",
+  PADDLE_API_KEY: "pdl_live_route_test",
+  PADDLE_WEBHOOK_SECRET: SECRET,
+  PADDLE_CLIENT_TOKEN: "live_route_test",
+  PADDLE_PRICE_PRO_MONTHLY: PRICES.proMonthly,
+  PADDLE_PRICE_PRO_ANNUAL: PRICES.proAnnual,
+  PADDLE_PRICE_ULTRA_MONTHLY: PRICES.ultraMonthly,
+  PADDLE_PRICE_ULTRA_ANNUAL: PRICES.ultraAnnual,
+  PADDLE_PRICE_PRO_LEGACY_MONTHLY: undefined,
+  PADDLE_CHECKOUT_USER_IDS: undefined,
+});
+
 const customerLookups: string[] = [];
 let customerEmail = USER_EMAIL;
 const deps: PaddleWebhookDeps = {
@@ -55,6 +79,7 @@ const deps: PaddleWebhookDeps = {
     },
   },
 };
+const productionDeps: PaddleWebhookDeps = { ...deps, config: productionConfig };
 
 function sign(body: string, ts = Math.floor(Date.now() / 1000)) {
   const h1 = crypto.createHmac("sha256", SECRET).update(`${ts}:${body}`).digest("hex");
@@ -217,6 +242,36 @@ describe("POST /api/webhooks/paddle without a database", () => {
   test("acknowledges a completed transaction that isn't a subscription payment", async () => {
     expect((await deliver(transactionEvent({ origin: "subscription_charge" }))).status).toBe(200);
     expect((await deliver(transactionEvent({ subscription_id: null }))).status).toBe(200);
+  });
+
+  describe("with PostHog configured", () => {
+    const posthog = {
+      NEXT_PUBLIC_POSTHOG_KEY: env.NEXT_PUBLIC_POSTHOG_KEY,
+      NEXT_PUBLIC_POSTHOG_HOST: env.NEXT_PUBLIC_POSTHOG_HOST,
+    };
+    let fetchSpy: Mock<typeof fetch>;
+
+    // A fake PostHog with fetch intercepted, so nothing leaves the process.
+    beforeEach(() => {
+      Object.assign(env, {
+        NEXT_PUBLIC_POSTHOG_KEY: "phc_test",
+        NEXT_PUBLIC_POSTHOG_HOST: "https://posthog.invalid",
+      });
+      fetchSpy = spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }));
+    });
+    afterEach(() => {
+      fetchSpy.mockRestore();
+      Object.assign(env, posthog);
+    });
+
+    // Without a card there is no row to update, so this reaches order_completed without MySQL.
+    test("a sandbox first payment sends no order_completed", async () => {
+      const paypal = transactionEvent({
+        payments: [{ status: "captured", method_details: { type: "paypal", card: null } }],
+      });
+      expect((await deliver(paypal)).status).toBe(200);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
   });
 
   test("rejects a malformed transaction with 400", async () => {
@@ -468,7 +523,9 @@ describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/paddle (MySQL)", () => {
     async (origin) => {
       await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
 
-      expect((await deliver(transactionEvent({ origin }))).status).toBe(200);
+      expect((await deliver(transactionEvent({ origin }), undefined, productionDeps)).status).toBe(
+        200,
+      );
 
       expect(await storedSubscription()).toMatchObject({ cardBrand: "visa", cardLastFour: "4242" });
       expect(captureSpy).toHaveBeenCalledTimes(1);
@@ -483,12 +540,22 @@ describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/paddle (MySQL)", () => {
           order_id: "txn_01routetest932",
           amount: 59.9,
           currency: "USD",
-          test_mode: true,
+          test_mode: false,
           provider: "paddle",
+          billing_env: "production",
         },
       );
     },
   );
+
+  test("a sandbox first payment records the card without an order_completed", async () => {
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+    expect((await deliver(transactionEvent())).status).toBe(200);
+
+    expect((await storedSubscription())?.cardLastFour).toBe("4242");
+    expect(captureSpy).not.toHaveBeenCalled();
+  });
 
   test("a renewal records the card without an order_completed", async () => {
     await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
@@ -523,24 +590,23 @@ describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/paddle (MySQL)", () => {
   test("a payment without a card emits order_completed and leaves the card alone", async () => {
     await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
     await deliver(transactionEvent());
-    captureSpy.mockClear();
 
     const paypal = transactionEvent({
       id: "txn_01routetest932b",
       payments: [{ status: "captured", method_details: { type: "paypal", card: null } }],
     });
-    expect((await deliver(paypal)).status).toBe(200);
+    expect((await deliver(paypal, undefined, productionDeps)).status).toBe(200);
 
     expect((await storedSubscription())?.cardLastFour).toBe("4242");
     expect(captureSpy).toHaveBeenCalledTimes(1);
   });
 
   test("a first payment before subscription.created is retried without emitting", async () => {
-    expect((await deliver(transactionEvent())).status).toBe(500);
+    expect((await deliver(transactionEvent(), undefined, productionDeps)).status).toBe(500);
     expect(captureSpy).not.toHaveBeenCalled();
 
     await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
-    expect((await deliver(transactionEvent())).status).toBe(200);
+    expect((await deliver(transactionEvent(), undefined, productionDeps)).status).toBe(200);
     expect((await storedSubscription())?.cardLastFour).toBe("4242");
     expect(captureSpy).toHaveBeenCalledTimes(1);
   });
