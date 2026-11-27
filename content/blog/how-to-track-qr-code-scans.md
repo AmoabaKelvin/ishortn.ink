@@ -48,7 +48,7 @@ Because the code contains the short link, you can also change the destination la
 
 On the [free plan](/pricing) you get 5 dynamic QR codes. They don't expire, have no ads and include scan analytics with a 7-day view. Scans count toward the free plan's 1,000 tracked clicks a month; above that, codes keep redirecting but new scans aren't recorded until the month resets. Pro ($8/month) keeps 1 year of detailed scan history and adds a world map view.
 
-**Use this method when** the destination isn't your website: a Google Business review link, a WhatsApp chat, an app store page, a YouTube video or a PDF. You can't add Google Analytics to those pages, so the scan count is the only data you'll get.
+**Use this method when** the destination isn't your website: [a Google Business review link](/blog/qr-code-for-google-reviews), a WhatsApp chat, an app store page, a YouTube video or a PDF. You can't add Google Analytics to those pages, so the scan count is the only data you'll get.
 
 ## Method 2: Add UTM parameters and read them in Google Analytics 4
 
