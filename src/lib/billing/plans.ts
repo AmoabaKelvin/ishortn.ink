@@ -59,6 +59,37 @@ export function getIntervalFromVariantId(variantId?: number | null): BillingInte
   return variantId && ANNUAL_VARIANT_IDS.has(variantId) ? "annual" : "monthly";
 }
 
+type ProviderSubscriptionFields = {
+  billingProvider?: string | null;
+  subscriptionId?: number | null;
+  providerSubscriptionId?: string | null;
+  variantId?: number | null;
+  billingInterval?: BillingInterval | null;
+};
+
+// Partial rows without the column read as Lemon Squeezy, matching the column default.
+function isPaddle(subscription: ProviderSubscriptionFields): boolean {
+  return subscription.billingProvider === "paddle";
+}
+
+/** Whether the row is backed by a subscription the provider knows about. */
+export function hasProviderSubscription(subscription?: ProviderSubscriptionFields | null): boolean {
+  if (!subscription) return false;
+  if (isPaddle(subscription)) return !!subscription.providerSubscriptionId;
+  return (subscription.subscriptionId ?? 0) > 0;
+}
+
+/**
+ * The billing interval of a subscription: Lemon Squeezy rows map their variant, Paddle rows have
+ * no variant and read the stored `billingInterval`.
+ */
+export function subscriptionInterval(
+  subscription?: ProviderSubscriptionFields | null,
+): BillingInterval {
+  if (subscription && isPaddle(subscription)) return subscription.billingInterval ?? "monthly";
+  return getIntervalFromVariantId(subscription?.variantId);
+}
+
 type PlanCapsByPlan = { [P in Plan]: PlanCaps };
 
 export const PLAN_CAPS: PlanCapsByPlan = {
@@ -163,17 +194,27 @@ export function resolvePlan(subscription?: Subscription | null, nowMs = Date.now
 /**
  * How a plan change applies to a user's subscription:
  * - `checkout`: no paid subscription, so start a new hosted checkout.
- * - `update`: a live paid subscription, changed in place on Lemon Squeezy.
+ * - `update`: a live paid subscription, changed in place with the provider.
  * - `resume`: cancelled but still inside the paid period, or paused; it must be
- *   resumed rather than replaced, or the user would end up with two subscriptions.
+ *   resumed rather than replaced, or the user would end up with two subscriptions. A Paddle
+ *   subscription with a scheduled pause is also resumed first.
  */
 export type SubscriptionMode = "checkout" | "update" | "resume";
 
 export function getSubscriptionMode(subscription?: Subscription | null): SubscriptionMode {
-  if (!subscription?.subscriptionId || subscription.subscriptionId <= 0) return "checkout";
+  if (!subscription || !hasProviderSubscription(subscription)) return "checkout";
   // A paused subscription grants only Free access but still exists with the provider.
   if (subscription.status === "paused") return "resume";
   if (resolvePlan(subscription) === "free") return "checkout";
+  // Paddle refuses item changes while a scheduled change exists, so a scheduled pause has to be
+  // removed (resumed) before the plan can change.
+  if (
+    subscription.billingProvider === "paddle" &&
+    subscription.status === "active" &&
+    subscription.pausedUntil
+  ) {
+    return "resume";
+  }
 
   return subscription.status === "cancelled" ? "resume" : "update";
 }
@@ -186,17 +227,12 @@ export const PAUSE_MONTH_OPTIONS = [1, 2, 3] as const;
  * its paid features away.
  */
 export function canOfferPause(
-  subscription?: {
-    status?: string | null;
-    subscriptionId?: number | null;
-    variantId?: number | null;
-  } | null,
+  subscription?: (ProviderSubscriptionFields & { status?: string | null }) | null,
 ): boolean {
   return (
-    !!subscription?.subscriptionId &&
-    subscription.subscriptionId > 0 &&
-    subscription.status === "active" &&
-    getIntervalFromVariantId(subscription.variantId) === "monthly"
+    hasProviderSubscription(subscription) &&
+    subscription?.status === "active" &&
+    subscriptionInterval(subscription) === "monthly"
   );
 }
 

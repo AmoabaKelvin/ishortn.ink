@@ -1,7 +1,7 @@
 import { APP_BASE_DOMAIN } from "@/lib/constants/domains";
 
 import { effectivePlan } from "./entitlements";
-import { getPlanFromIds } from "./plans";
+import { getPlanFromIds, hasProviderSubscription } from "./plans";
 
 import type { PlanGrace } from "./entitlements";
 import type { Plan } from "./plans";
@@ -43,7 +43,7 @@ export function parseApiSunset(value: string | undefined | null): Date | null {
  * When an account that is no longer entitled to a paid plan lost it: the end
  * of its paid-plan grace period when one was granted, else the end of the
  * paid period, else the provider's last update. Null for accounts that never
- * paid. Only checkout-created rows carry a provider `subscriptionId`; the plan
+ * paid. Only checkout-created rows carry a provider subscription id; the plan
  * and variant can't be used here because the webhook resets them to free/0
  * on `subscription_expired`.
  */
@@ -52,7 +52,7 @@ function lapsedAt(subscription: Subscription | null, grace: PlanGrace): Date | n
     grace.planGracePlan && grace.planGracePlan !== "free" ? grace.planGraceEndsAt : null;
   const wasPaid =
     !!subscription &&
-    ((subscription.subscriptionId ?? 0) !== 0 ||
+    (hasProviderSubscription(subscription) ||
       getPlanFromIds(subscription.variantId, subscription.productId) !== null ||
       subscription.plan === "pro" ||
       subscription.plan === "ultra");

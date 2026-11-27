@@ -99,4 +99,52 @@ describe("annualSwitchDismissKey", () => {
   test("is scoped to the user", () => {
     expect(annualSwitchDismissKey("user_1")).toBe("ishortn:annual-switch-dismissed:user_1");
   });
+
+  describe("Paddle rows", () => {
+    const paddleMonthlyPriceIds = { pro: "pri_pro_monthly", ultra: "pri_ultra_monthly" };
+    const paddlePro = {
+      ...monthlyPro,
+      variantId: 0,
+      billingProvider: "paddle",
+      providerPriceId: "pri_pro_monthly",
+    };
+
+    test("offers annual Pro on the configured Pro monthly price", () => {
+      expect(
+        annualSwitchOffer({ ...base, subscription: paddlePro, paddleMonthlyPriceIds }),
+      ).toMatchObject({ plan: "pro", saving: 16 });
+    });
+
+    test("offers annual Ultra on the configured Ultra monthly price", () => {
+      const subscription = { ...paddlePro, providerPriceId: "pri_ultra_monthly" };
+      expect(annualSwitchOffer({ ...base, subscription, paddleMonthlyPriceIds })).toMatchObject({
+        plan: "ultra",
+      });
+    });
+
+    test("is hidden for a legacy or unknown price", () => {
+      const subscription = { ...paddlePro, providerPriceId: "pri_pro_legacy_monthly" };
+      expect(annualSwitchOffer({ ...base, subscription, paddleMonthlyPriceIds })).toBeNull();
+    });
+
+    test("is hidden when Paddle isn't configured or the row has no price", () => {
+      expect(
+        annualSwitchOffer({
+          ...base,
+          subscription: { ...paddlePro, providerPriceId: null },
+          paddleMonthlyPriceIds: { pro: null, ultra: null },
+        }),
+      ).toBeNull();
+      expect(annualSwitchOffer({ ...base, subscription: paddlePro })).toBeNull();
+    });
+
+    test("ignores a Lemon Squeezy variant on a Paddle row", () => {
+      const subscription = {
+        ...paddlePro,
+        variantId: PLAN_VARIANT_IDS.pro.monthly,
+        providerPriceId: null,
+      };
+      expect(annualSwitchOffer({ ...base, subscription, paddleMonthlyPriceIds })).toBeNull();
+    });
+  });
 });

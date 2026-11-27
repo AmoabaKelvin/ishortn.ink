@@ -251,6 +251,17 @@ describe("paymentUpdateEmailAllowed", () => {
       true,
     );
   });
+
+  test("sends it for a Paddle row without asking the Lemon Squeezy lookup", async () => {
+    const { check: unused } = check(new Error("not called"));
+    const paddle = {
+      ...unpaid,
+      subscriptionId: 0,
+      billingProvider: "paddle",
+      providerSubscriptionId: "sub_01h8",
+    };
+    expect(await paymentUpdateEmailAllowed(paddle, NOW, unused)).toBe(true);
+  });
 });
 
 // Runs against a disposable MySQL with the schema pushed (test/setup.ts points

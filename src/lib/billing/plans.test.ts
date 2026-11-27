@@ -5,8 +5,10 @@ import {
   canUseLinkUtmParams,
   getSubscriptionMode,
   isSubscriptionEntitled,
+  hasProviderSubscription,
   pauseResumesAt,
   resolvePlan,
+  subscriptionInterval,
 } from "./plans";
 
 import type { Subscription } from "@/server/db/schema";
@@ -34,8 +36,25 @@ function sub(overrides: Partial<Subscription>): Subscription {
     pausedUntil: null,
     cardBrand: "visa",
     cardLastFour: "4242",
+    billingProvider: "lemonsqueezy",
+    providerSubscriptionId: null,
+    providerCustomerId: null,
+    providerPriceId: null,
     ...overrides,
   };
+}
+
+function paddleSub(overrides: Partial<Subscription>): Subscription {
+  return sub({
+    billingProvider: "paddle",
+    subscriptionId: 0,
+    customerId: 0,
+    variantId: 0,
+    providerSubscriptionId: "sub_01h8",
+    providerCustomerId: "ctm_01h8",
+    providerPriceId: "pri_pro_monthly",
+    ...overrides,
+  });
 }
 
 const inPeriod = new Date(Date.now() + 5 * DAY);
@@ -146,6 +165,76 @@ describe("canOfferPause", () => {
     expect(canOfferPause(sub({ variantId: 1809620 }))).toBe(false);
     expect(canOfferPause(sub({ subscriptionId: 0 }))).toBe(false);
     expect(canOfferPause(null)).toBe(false);
+  });
+});
+
+describe("Paddle subscriptions", () => {
+  test("a row with a provider subscription id has a subscription without a Lemon Squeezy id", () => {
+    expect(hasProviderSubscription(paddleSub({}))).toBe(true);
+    expect(hasProviderSubscription(paddleSub({ providerSubscriptionId: null }))).toBe(false);
+    // A stray Lemon Squeezy id doesn't count on a Paddle row.
+    expect(
+      hasProviderSubscription(paddleSub({ providerSubscriptionId: null, subscriptionId: 100 })),
+    ).toBe(false);
+  });
+
+  test("an active row is changed in place, not checked out again", () => {
+    expect(getSubscriptionMode(paddleSub({ status: "active" }))).toBe("update");
+  });
+
+  test("a row without a provider subscription id starts a checkout", () => {
+    expect(getSubscriptionMode(paddleSub({ providerSubscriptionId: null }))).toBe("checkout");
+  });
+
+  test("cancelled within the paid period must be resumed", () => {
+    expect(getSubscriptionMode(paddleSub({ status: "cancelled", endsAt: inPeriod }))).toBe(
+      "resume",
+    );
+    expect(getSubscriptionMode(paddleSub({ status: "cancelled", endsAt: pastPeriod }))).toBe(
+      "checkout",
+    );
+  });
+
+  test("an active row with a scheduled pause must be resumed before a plan change", () => {
+    expect(getSubscriptionMode(paddleSub({ status: "active", pausedUntil: inPeriod }))).toBe(
+      "resume",
+    );
+  });
+
+  test("the interval comes from the stored column", () => {
+    expect(subscriptionInterval(paddleSub({ billingInterval: "annual" }))).toBe("annual");
+    expect(subscriptionInterval(paddleSub({ billingInterval: "monthly" }))).toBe("monthly");
+    expect(subscriptionInterval(paddleSub({ billingInterval: null }))).toBe("monthly");
+  });
+
+  test("an annual row gets no pause offer; a monthly one does", () => {
+    expect(canOfferPause(paddleSub({ billingInterval: "annual" }))).toBe(false);
+    expect(canOfferPause(paddleSub({ billingInterval: "monthly" }))).toBe(true);
+    expect(canOfferPause(paddleSub({ providerSubscriptionId: null }))).toBe(false);
+  });
+});
+
+describe("Lemon Squeezy rows", () => {
+  test("the interval comes from the variant, not the stored column", () => {
+    expect(subscriptionInterval(sub({ variantId: 1809620, billingInterval: "monthly" }))).toBe(
+      "annual",
+    );
+    expect(subscriptionInterval(sub({ billingInterval: "annual" }))).toBe("monthly");
+    expect(subscriptionInterval(null)).toBe("monthly");
+  });
+
+  test("a scheduled pause on an active row doesn't change the mode", () => {
+    expect(getSubscriptionMode(sub({ pausedUntil: inPeriod }))).toBe("update");
+  });
+
+  test("partial rows without a provider column read as Lemon Squeezy", () => {
+    expect(hasProviderSubscription({ subscriptionId: 100 })).toBe(true);
+    expect(hasProviderSubscription({ subscriptionId: 0, providerSubscriptionId: "sub_1" })).toBe(
+      false,
+    );
+    expect(canOfferPause({ status: "active", subscriptionId: 100, variantId: 1809620 })).toBe(
+      false,
+    );
   });
 });
 

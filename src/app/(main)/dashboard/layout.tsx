@@ -4,6 +4,7 @@ import { Funnel_Sans } from "next/font/google";
 
 import { ChangelogBanner } from "@/components/changelog/changelog-banner";
 import { purgeDateFor } from "@/lib/account-deletion/constants";
+import { paddlePriceId } from "@/lib/paddle/config";
 import { cn } from "@/lib/utils";
 import { displayName } from "@/lib/utils/user-name";
 import { ensureUser } from "@/server/lib/ensure-user";
@@ -164,6 +165,10 @@ export default async function DashboardLayout({ children }: Props) {
     graceActive: !!graceNotice,
     otherBannerShown: emailBounced || !!trackingPaused || !!promo,
     dismissedAt: null,
+    paddleMonthlyPriceIds: {
+      pro: paddlePriceId("pro", "monthly"),
+      ultra: paddlePriceId("ultra", "monthly"),
+    },
   });
 
   return (

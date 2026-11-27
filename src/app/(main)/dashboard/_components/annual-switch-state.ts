@@ -18,10 +18,12 @@ export type AnnualSwitchOffer = {
 };
 
 type AnnualSwitchInput = {
-  subscription: Pick<
-    Subscription,
-    "userId" | "status" | "variantId" | "billingInterval" | "createdAt"
-  > | null;
+  subscription:
+    | (Pick<Subscription, "userId" | "status" | "variantId" | "billingInterval" | "createdAt"> &
+        Partial<Pick<Subscription, "billingProvider" | "providerPriceId">>)
+    | null;
+  /** Configured Paddle monthly price ids (`paddlePriceId`); null when Paddle isn't configured. */
+  paddleMonthlyPriceIds?: Record<PaidPlan, string | null>;
   /** Billing acts on the personal subscription; team workspaces show the owner's plan instead. */
   isTeamWorkspace: boolean;
   restricted: boolean;
@@ -33,14 +35,30 @@ type AnnualSwitchInput = {
   now?: Date;
 };
 
+function monthlyPlan(
+  subscription: NonNullable<AnnualSwitchInput["subscription"]>,
+  paddleMonthlyPriceIds: AnnualSwitchInput["paddleMonthlyPriceIds"],
+): PaidPlan | null {
+  if (subscription.billingProvider === "paddle") {
+    const priceId = subscription.providerPriceId;
+    if (!priceId || !paddleMonthlyPriceIds) return null;
+    if (priceId === paddleMonthlyPriceIds.pro) return "pro";
+    if (priceId === paddleMonthlyPriceIds.ultra) return "ultra";
+    return null;
+  }
+  if (subscription.variantId === PLAN_VARIANT_IDS.pro.monthly) return "pro";
+  if (subscription.variantId === PLAN_VARIANT_IDS.ultra.monthly) return "ultra";
+  return null;
+}
+
 export function isAnnualSwitchDismissed(dismissedAt: number | null, now = new Date()) {
   return dismissedAt !== null && now.getTime() - dismissedAt < DISMISS_FOR_MS;
 }
 
 /**
  * The annual-billing offer for a monthly subscriber, or null when the card is hidden. Only the
- * current $8 Pro and $15 Ultra monthly variants qualify: the legacy $5 Pro variant would pay more
- * on annual Pro than it does today.
+ * current $8 Pro and $15 Ultra monthly variants (or Paddle prices) qualify: the legacy $5 Pro
+ * price would pay more on annual Pro than it does today.
  */
 export function annualSwitchOffer({
   subscription,
@@ -49,6 +67,7 @@ export function annualSwitchOffer({
   graceActive,
   otherBannerShown,
   dismissedAt,
+  paddleMonthlyPriceIds,
   now = new Date(),
 }: AnnualSwitchInput): AnnualSwitchOffer | null {
   if (!subscription || isTeamWorkspace || restricted || graceActive || otherBannerShown) {
@@ -56,12 +75,7 @@ export function annualSwitchOffer({
   }
   if (subscription.status !== "active" || subscription.billingInterval === "annual") return null;
 
-  const plan =
-    subscription.variantId === PLAN_VARIANT_IDS.pro.monthly
-      ? "pro"
-      : subscription.variantId === PLAN_VARIANT_IDS.ultra.monthly
-        ? "ultra"
-        : null;
+  const plan = monthlyPlan(subscription, paddleMonthlyPriceIds);
   if (!plan) return null;
 
   if (!subscription.createdAt) return null;

@@ -18,6 +18,7 @@ import {
   getVariantId,
   pauseResumesAt,
   resolvePlan,
+  subscriptionInterval,
 } from "@/lib/billing/plans";
 import { checkoutDiscountCode } from "@/lib/billing/promo";
 import { configureLemonSqueezy } from "@/lib/config/lemonsqueezy";
@@ -135,7 +136,8 @@ async function recordCancellation(
       userId: ctx.auth.userId,
       subscriptionId: userSubscription.subscriptionId ?? 0,
       fromPlan,
-      billingInterval: getIntervalFromVariantId(userSubscription.variantId),
+      providerSubscriptionId: userSubscription.providerSubscriptionId,
+      billingInterval: subscriptionInterval(userSubscription),
       variantId: userSubscription.variantId,
       ...record,
     });
@@ -505,7 +507,7 @@ export const lemonsqueezyRouter = createTRPCRouter({
       // Downgrade to Pro (from Ultra), keeping the current interval. Lemon
       // Squeezy switches the variant now and credits the unused time on the
       // next invoice (invoiceImmediately: false), so the plan changes now.
-      const interval = getIntervalFromVariantId(userSubscription.variantId);
+      const interval = subscriptionInterval(userSubscription);
       const variantId = getVariantId(targetPlan, interval);
 
       const updatedSub = await updateSubscription(subscriptionId, {

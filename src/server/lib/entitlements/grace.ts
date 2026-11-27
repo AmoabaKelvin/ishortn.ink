@@ -23,7 +23,7 @@ import {
   teamGraceAction,
   updatePaymentPath,
 } from "@/lib/billing/entitlements";
-import { getPlanCaps } from "@/lib/billing/plans";
+import { getPlanCaps, hasProviderSubscription } from "@/lib/billing/plans";
 import { getAppUrl } from "@/lib/constants/domains";
 import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 import { logger } from "@/lib/logger";
@@ -477,10 +477,11 @@ export async function paymentUpdateEmailAllowed(
   now: Date,
   check: ProviderCheck = PROVIDER_CHECK,
 ): Promise<boolean> {
-  // Rows from before subscription ids were stored can't be checked.
-  if (!sub.subscriptionId) return true;
+  // Rows from before subscription ids were stored can't be checked, and the lookup only knows
+  // Lemon Squeezy subscriptions.
+  if (sub.billingProvider === "paddle" || !hasProviderSubscription(sub)) return true;
   try {
-    const provider = await check.lookup(sub.subscriptionId);
+    const provider = await check.lookup(sub.subscriptionId ?? 0);
     if (!isEndedProviderStatus(provider.status)) return true;
     await check.sync(sub, provider, now);
     log.info(

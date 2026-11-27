@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { subscribedPlan } from "@/lib/billing/entitlements";
-import { getIntervalFromVariantId, PLAN_CAPS } from "@/lib/billing/plans";
+import { PLAN_CAPS, subscriptionInterval } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -95,7 +95,7 @@ export default function Billing({ subscriptions, promo }: BillingProps) {
   // A paused subscription has Free access but still holds its plan until billing restarts.
   const isPaused = subscriptionMode === "resume" && subscription?.status === "paused";
   const currentPlan = isPaused ? subscribedPlan(subscription) : (subscriptions?.plan ?? "free");
-  const currentInterval = getIntervalFromVariantId(subscription?.variantId);
+  const currentInterval = subscriptionInterval(subscription);
   // A row that resolves to Free (expired, or never paid) has no live status worth showing.
   const isPaid = currentPlan !== "free";
   const statusDisplay = subscription && isPaid ? getStatusDisplay(subscription) : null;
