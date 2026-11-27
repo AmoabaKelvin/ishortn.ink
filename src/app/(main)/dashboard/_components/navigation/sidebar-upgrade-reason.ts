@@ -13,7 +13,7 @@ export type SidebarUpgradeReason = {
 
 export const EVENTS_PAUSED_SOURCE = "sidebar_events_paused";
 
-/** Share of the monthly visit cap from which the sidebar leads with visits. */
+/** Share of the monthly tracked-click cap from which the sidebar leads with it. */
 const VISITS_REASON_SHARE = 0.6;
 
 const formatCount = (value: number) => value.toLocaleString("en-US");
@@ -28,7 +28,7 @@ export function visitsUpgradeReason(
   const used = Math.min(events.count, events.limit);
   return {
     source: events.paused ? EVENTS_PAUSED_SOURCE : "sidebar_visits_cap",
-    label: `${formatCount(used)} of ${formatCount(events.limit)} visits used`,
+    label: `${formatCount(used)}/${formatCount(events.limit)} tracked clicks used`,
   };
 }
 

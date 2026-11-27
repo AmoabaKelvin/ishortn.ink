@@ -195,7 +195,7 @@ export const competitors = {
     pricing: "Free, paid plans from Essentials",
     whySwitch: [
       "Rebrandly Free gives 10 links a month and detailed stats on 100 clicks. iShortn Free gives 30 links a month and stats on up to 1,000 clicks and scans",
-      "Rebrandly Free includes 1 custom domain and 10 links a month. iShortn Pro includes 3 custom domains, 1,000 links a month and 10,000 tracked events for $8/month",
+      "Rebrandly Free includes 1 custom domain and 10 links a month. iShortn Pro includes 3 custom domains, 1,000 links a month and 10,000 tracked clicks for $8/month",
       "Rebrandly QR codes have watermarks on free — iShortn QR codes are clean on all plans",
       "iShortn Pro adds geo and device targeting for $8/month, and AI-powered phishing detection checks links on every plan",
       "Rebrandly is the better fit if you want a custom domain on a free plan: Rebrandly Free includes one, and iShortn's start on Pro",
@@ -355,7 +355,7 @@ export const competitors = {
       {
         question: "What does Dub's free plan include?",
         answer:
-          "Dub Free includes 25 new links a month, 1,000 tracked events, 30 days of analytics and 3 custom domains for 1 user. iShortn Free includes 30 links a month, 1,000 tracked clicks and scans, 7 days of analytics and 5 dynamic QR codes; custom domains start on Pro. Dub figures from dub.co/pricing/links, checked 23 November 2026.",
+          "Dub Free includes 25 new links a month, 1,000 events, 30 days of analytics and 3 custom domains for 1 user. iShortn Free includes 30 links a month, 1,000 tracked clicks and scans, 7 days of analytics and 5 dynamic QR codes; custom domains start on Pro. Dub figures from dub.co/pricing/links, checked 23 November 2026.",
       },
       {
         question: "What are the best Dub.co alternatives?",

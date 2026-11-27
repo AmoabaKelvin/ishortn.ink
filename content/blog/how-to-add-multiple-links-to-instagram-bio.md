@@ -63,7 +63,7 @@ With a short link, you can:
 - **Change where a link goes without editing your profile.** Point "Weekend menu" at a new page on Friday, and the link in your bio stays the same.
 - **Use the same link elsewhere**, so you can compare Instagram with your other channels.
 
-iShortn's free plan includes 30 new short links a month, 1,000 tracked events a month, which covers clicks and bio page views, and a 7-day analytics view. You can edit a link's destination on every plan. Our guide to [how to track link clicks](/blog/how-to-track-link-clicks) explains what the numbers mean, and [short links for social media marketing](/blog/short-links-social-media-marketing) covers tagging links per platform.
+iShortn's free plan includes 30 new short links a month, 1,000 tracked clicks a month, which include bio page views, and a 7-day analytics view. You can edit a link's destination on every plan. Our guide to [how to track link clicks](/blog/how-to-track-link-clicks) explains what the numbers mean, and [short links for social media marketing](/blog/short-links-social-media-marketing) covers tagging links per platform.
 
 ## Option 4: An iShortn bio page
 

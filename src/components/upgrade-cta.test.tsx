@@ -130,7 +130,7 @@ describe("promo offer in upgrade prompts", () => {
         shown
       />,
     );
-    expect(visits).toContain("720 of 1,000 visits used");
+    expect(visits).toContain("720/1,000 tracked clicks used");
     expect(hrefs(visits)).toEqual(["/dashboard/pricing?highlight=pro&source=sidebar_visits_cap"]);
 
     const qr = render(

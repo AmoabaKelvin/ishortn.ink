@@ -64,9 +64,9 @@ export function NotificationSettings({
             Product notification emails
           </label>
           <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
-            Link click milestones, monthly analytics usage alerts, reminders to finish setting up a
-            custom domain, one reminder to create your first link, and occasional product updates
-            and offers. Account, billing and team emails are always sent.
+            Link click milestones, monthly tracked-click usage alerts, reminders to finish setting
+            up a custom domain, one reminder to create your first link, and occasional product
+            updates and offers. Account, billing and team emails are always sent.
           </p>
         </div>
         <Switch

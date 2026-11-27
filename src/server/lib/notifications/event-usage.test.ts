@@ -46,10 +46,8 @@ describe("event usage alert email", () => {
       utm_content: "pro_100",
     });
     expect(url.searchParams.has("plan")).toBe(false);
-    expect(html).toContain("new visits aren&#x27;t recorded until your cap resets on");
-    expect(html).toContain(
-      `${PLAN_CAPS.pro.eventsLimit?.toLocaleString()} analytics events a month`,
-    );
+    expect(html).toContain("new clicks aren&#x27;t recorded until your cap resets on");
+    expect(html).toContain(`${PLAN_CAPS.pro.eventsLimit?.toLocaleString()} tracked clicks a month`);
   });
 
   test("a Pro user is sent to Ultra", async () => {
@@ -57,7 +55,7 @@ describe("event usage alert email", () => {
     expect(html).toContain("Upgrade to Ultra");
     expect(url.searchParams.get("highlight")).toBe("ultra");
     expect(url.searchParams.get("source")).toBe("events_email_80");
-    expect(html).toContain("The Ultra plan has no monthly event cap.");
+    expect(html).toContain("The Ultra plan has no monthly cap on tracked clicks.");
   });
 
   test("Ultra has no cap, so there is no upgrade to offer", () => {

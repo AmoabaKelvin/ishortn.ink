@@ -12,7 +12,7 @@ export const PLAN_FEATURES = {
     tagline: "For tinkering and side projects.",
     features: [
       `${fmt(free.linksLimit ?? 0)} links per month`,
-      `${fmt(free.eventsLimit ?? 0)} tracked events`,
+      `${fmt(free.eventsLimit ?? 0)} tracked clicks`,
       `${free.analyticsRangeLimitDays}-day analytics window`,
       "5 dynamic QR codes: edit anytime, never expire, no ads",
       `1 link-in-bio page (up to ${free.bioLinkBlocksPerPageLimit} link blocks)`,
@@ -24,7 +24,7 @@ export const PLAN_FEATURES = {
     tagline: "For creators, indie makers, and growing teams.",
     features: [
       `${fmt(pro.linksLimit ?? 0)} links per month`,
-      `${fmt(pro.eventsLimit ?? 0)} tracked events`,
+      `${fmt(pro.eventsLimit ?? 0)} tracked clicks`,
       "1 year of detailed analytics (daily totals kept beyond that)",
       `${pro.domainLimit} custom domains`,
       "Branded + dynamic QR codes",
@@ -42,7 +42,7 @@ export const PLAN_FEATURES = {
     tagline: "For studios, agencies, and whoever wants no ceilings.",
     features: [
       "Everything in Pro",
-      "Unlimited links & events",
+      "Unlimited links & tracked clicks",
       "Unlimited custom domains",
       "Unlimited targeting rules & milestones",
       "Link cloaking",

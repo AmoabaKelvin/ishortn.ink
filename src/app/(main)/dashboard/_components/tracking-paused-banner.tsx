@@ -78,7 +78,7 @@ export function TrackingPausedBanner({ pause, target, promo }: TrackingPausedBan
         <p className="min-w-0">
           Tracking paused on {formatResetDay(pause.pausedAt)}:{" "}
           <span className="font-medium tabular-nums">{pause.dropped.toLocaleString()}</span>{" "}
-          {pause.dropped === 1 ? "visit" : "visits"} went through but{" "}
+          {pause.dropped === 1 ? "click" : "clicks"} went through but{" "}
           {pause.dropped === 1 ? "wasn't" : "weren't"} recorded. Resets{" "}
           {formatResetDay(pause.resetsAt)}.
           {promo && (

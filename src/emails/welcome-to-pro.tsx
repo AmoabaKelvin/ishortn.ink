@@ -33,7 +33,7 @@ const pro = PLAN_CAPS.pro;
 const planBenefits = {
   pro: [
     `${(pro.linksLimit ?? 0).toLocaleString()} short links per month`,
-    `${(pro.eventsLimit ?? 0).toLocaleString()} tracked events per month`,
+    `${(pro.eventsLimit ?? 0).toLocaleString()} tracked clicks per month`,
     "1 year of detailed analytics",
     `${pro.domainLimit} custom domains`,
     `${pro.folderLimit} folders`,
@@ -41,7 +41,7 @@ const planBenefits = {
   ],
   ultra: [
     "Team workspaces to share links, domains and analytics with your team",
-    "Unlimited links & tracked events",
+    "Unlimited links & tracked clicks",
     "Unlimited analytics history",
     "Unlimited custom domains and folders",
     "Unlimited targeting rules, milestones, bio pages and campaigns",

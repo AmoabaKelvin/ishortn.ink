@@ -29,7 +29,7 @@ export const PromoPausedNoticeEmail = ({
 }: PromoPausedNoticeEmailProps) => {
   const planName = PLAN_NAMES[upgrade.plan];
   const upgradeLimit = PLAN_CAPS[upgrade.plan].eventsLimit;
-  const visits = `${dropped.toLocaleString()} ${dropped === 1 ? "visit" : "visits"}`;
+  const visits = `${dropped.toLocaleString()} ${dropped === 1 ? "click" : "clicks"}`;
 
   return (
     <EmailLayout
@@ -40,8 +40,8 @@ export const PromoPausedNoticeEmail = ({
 
       <Text style={text}>
         Analytics on your iShortn links have been paused since {pausedOn}, when the Free plan&apos;s
-        monthly event allowance ran out. Since then, {visits} went through to your links but{" "}
-        {dropped === 1 ? "wasn't" : "weren't"} recorded. Your links keep redirecting as normal.
+        monthly allowance of tracked clicks ran out. Since then, {visits} went through to your links
+        but {dropped === 1 ? "wasn't" : "weren't"} recorded. Your links keep redirecting as normal.
       </Text>
 
       <Text style={text}>
@@ -50,8 +50,8 @@ export const PromoPausedNoticeEmail = ({
 
       <Text style={text}>
         {upgradeLimit === undefined
-          ? `${planName} has no monthly event cap`
-          : `${planName} includes ${upgradeLimit.toLocaleString()} analytics events a month`}{" "}
+          ? `${planName} has no monthly cap on tracked clicks`
+          : `${planName} includes ${upgradeLimit.toLocaleString()} tracked clicks a month`}{" "}
         and restores tracking as soon as the subscription starts. {promoOfferLine(promo, planName)}
       </Text>
 

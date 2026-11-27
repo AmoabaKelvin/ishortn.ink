@@ -25,8 +25,8 @@ export type SendEventUsageEmailInput = {
 
 export function eventUsageSubject(threshold: number): string {
   return threshold >= 100
-    ? "You've reached your monthly analytics cap"
-    : `You're ${threshold}% through your monthly analytics cap`;
+    ? "You've used all your tracked clicks for this month"
+    : `You're ${threshold}% through your monthly tracked clicks`;
 }
 
 /** The running promo when this account's upgrade is a new Free-plan checkout, else null. */

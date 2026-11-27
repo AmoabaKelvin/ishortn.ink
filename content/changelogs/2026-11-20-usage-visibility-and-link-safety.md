@@ -10,7 +10,7 @@ Four changes that make your plan limits clearer and shared links safer.
 
 ## Know when analytics tracking pauses
 
-The Free plan includes 1,000 tracked events a month, and both link clicks and bio-page views count toward it. Your sidebar now shows an **event meter** on the Free plan too, not just on Pro.
+The Free plan includes 1,000 tracked clicks a month, and both link clicks and bio-page views count toward it. Your sidebar now shows an **event meter** on the Free plan too, not just on Pro.
 
 If you go over the limit, your links keep redirecting as normal, but new visits aren't recorded until the month resets. When that happens, link analytics and your bio page's Analytics tab show a banner with the date tracking paused, how many visits went through without being recorded, and when it resets. The pricing FAQ now spells out what counts as an event on each plan.
 

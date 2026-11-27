@@ -56,7 +56,7 @@ Here's how in iShortn. Other dynamic QR tools work the same way.
 4. Pick colours, a pixel style and corner shape, and add your logo if you like. Keep the code dark on a light background. Phones struggle with light codes on dark backgrounds and low contrast.
 5. Download the PNG.
 
-The free plan includes 5 dynamic QR codes. They don't expire and show no ads. Each one also uses one of your 30 free links for that month. Free scan analytics show the last 7 days and record up to 1,000 events a month. Codes keep redirecting past that limit, but new scans aren't counted until the month resets. [Pro](/pricing) is $8/month if you want the full history or more codes.
+The free plan includes 5 dynamic QR codes. They don't expire and show no ads. Each one also uses one of your 30 free links for that month. Free scan analytics show the last 7 days and record up to 1,000 tracked clicks a month. Codes keep redirecting past that limit, but new scans aren't counted until the month resets. [Pro](/pricing) is $8/month if you want the full history or more codes.
 
 **One code per placement.** If you print the same code on the counter sign and the receipt, you can't tell which one gets scanned. Make a separate code for each place: counter, receipt, invoice, table, packaging. Five free codes cover most small shops.
 

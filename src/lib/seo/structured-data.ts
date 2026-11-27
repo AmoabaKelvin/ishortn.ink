@@ -83,7 +83,7 @@ export const softwareApplicationSchema = {
       priceCurrency: "USD",
       name: "Ultra",
       url: PRICING_URL,
-      description: "Unlimited links, events and custom domains, team workspaces",
+      description: "Unlimited links, tracked clicks and custom domains, team workspaces",
     },
   ],
 };

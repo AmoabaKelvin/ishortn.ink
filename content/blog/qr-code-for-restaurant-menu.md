@@ -67,7 +67,7 @@ In iShortn:
 4. Style it: colours, pixel and corner shapes, and your logo in the middle if you like. Keep dark on light and good contrast. A pale code on a dark wooden table card is the most common reason menu codes fail to scan.
 5. Download the PNG and send it to your printer or drop it into your table card design.
 
-On the free plan you get 5 dynamic QR codes. They never expire and show no ads, and you can edit the destination whenever you like. Each code also uses one of your 30 free links that month. Free scan analytics show the last 7 days and count up to 1,000 events a month; codes keep working past that, but new scans aren't recorded until the month resets. [Pro](/pricing) is $8/month if you need more codes or the full scan history.
+On the free plan you get 5 dynamic QR codes. They never expire and show no ads, and you can edit the destination whenever you like. Each code also uses one of your 30 free links that month. Free scan analytics show the last 7 days and count up to 1,000 tracked clicks a month; codes keep working past that, but new scans aren't recorded until the month resets. [Pro](/pricing) is $8/month if you need more codes or the full scan history.
 
 ## Step 4: Print it so it scans
 

@@ -34,7 +34,7 @@ TinyURL's paid plans start with Pro, which is $9 a month billed annually ($108 a
 
 | | Free links | Free click stats | Edit links on Free | Free custom domain | Cheapest paid plan |
 |---|---|---|---|---|---|
-| **iShortn** | 30 a month | Yes, 1,000 events a month, 7-day view | Yes | No | Pro, $8/month |
+| **iShortn** | 30 a month | Yes, 1,000 tracked clicks a month, 7-day view | Yes | No | Pro, $8/month |
 | **Short.io** | 1,000 in total | Yes, 50,000 clicks a month | Yes | Yes, up to 5 | Hobby |
 | **Rebrandly** | 10 a month | 100 clicks a month in detail | No | 1 custom domain (your own or a free `.bio` domain) | Essentials |
 | **Bitly** | 5 a month | No | No | No | Core, $10/month billed annually |
@@ -46,7 +46,7 @@ Sources: [Short.io pricing](https://short.io/pricing) and [help center](https://
 
 iShortn gives you the same 30 new links a month as TinyURL Free, and adds what TinyURL keeps for paid plans:
 
-- Click and scan analytics on every link, covering countries, devices and referrers. Free shows the last 7 days and counts up to 1,000 events a month, adding up clicks, QR scans and bio page views. Above that, links keep redirecting, but extra visits aren't counted until the next month.
+- Click and scan analytics on every link, covering countries, devices and referrers. Free shows the last 7 days and counts up to 1,000 tracked clicks a month, adding up clicks, QR scans and bio page views. Above that, links keep redirecting, but extra visits aren't counted until the next month.
 - You can change a link's destination at any time, delete links, and set a custom alias.
 - 5 dynamic QR codes. You can change where they point after printing, they don't expire, and scans are counted. Make one with the [free QR code generator](/qr-code-generator).
 - One link-in-bio page.
@@ -54,7 +54,7 @@ iShortn gives you the same 30 new links a month as TinyURL Free, and adds what T
 
 Free links use our `isht.app` short domain. Every QR code uses one of your 30 monthly links, because each code points at a tracked short link.
 
-**When you need more:** [Pro](/pricing) is $8 a month, or $80 a year, with 1,000 links and 10,000 tracked events a month, a full year of detailed analytics, 3 custom domains, branded QR codes, password-protected links and the REST API. Compared with TinyURL Pro at $9 a month billed annually for 125 links, it costs a little less and includes eight times as many links. Ultra is $15 a month for unlimited links and domains, plus team workspaces.
+**When you need more:** [Pro](/pricing) is $8 a month, or $80 a year, with 1,000 links and 10,000 tracked clicks a month, a full year of detailed analytics, 3 custom domains, branded QR codes, password-protected links and the REST API. Compared with TinyURL Pro at $9 a month billed annually for 125 links, it costs a little less and includes eight times as many links. Ultra is $15 a month for unlimited links and domains, plus team workspaces.
 
 **Where iShortn falls short:** free analytics only goes back 7 days, there's no custom domain on Free, and the API needs Pro. See the full [TinyURL vs iShortn comparison](/compare/tinyurl).
 
