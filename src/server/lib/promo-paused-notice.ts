@@ -106,7 +106,6 @@ export async function sendPromoPausedNotices({
       .select({
         id: user.id,
         email: user.email,
-        name: user.name,
         banned: user.banned,
         restrictedAt: user.restrictedAt,
         deletedAt: user.deletedAt,
@@ -161,7 +160,6 @@ export async function sendPromoPausedNotices({
       const accepted = await send({
         userId: row.id,
         email: row.email,
-        name: row.name,
         dropped,
         pausedAt: row.eventTrackingPausedAt,
         resetsAt,

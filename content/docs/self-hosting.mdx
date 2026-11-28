@@ -5,6 +5,8 @@ description: Run your own iShortn instance on Cloudflare Workers with a MySQL da
 
 iShortn is MIT-licensed, and the code that runs the hosted service is the code you deploy. This guide takes you from a fresh Cloudflare account to a working instance: create a link, follow it, see the click in analytics.
 
+Comparing open-source shorteners? See [Open-source URL shorteners compared](/open-source-url-shortener).
+
 ## What you're deploying
 
 A Next.js app built with [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare) and deployed as **one Cloudflare Worker**. `custom-worker.ts` is the entry point. It serves every page and short link, runs the cron jobs, and consumes the click queue.
@@ -116,7 +118,7 @@ The Clerk variables aren't in `src/env.mjs`; the Clerk SDK reads them directly.
 | Feature | Variables |
 | --- | --- |
 | Image uploads (Cloudflare R2) | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL`. `R2_ENDPOINT` is only for a local S3 stand-in. |
-| Email (Resend) | `RESEND_API_KEY`, `EMAIL_FROM` (an address on a domain verified in Resend), `EMAIL_FROM_LIFECYCLE` (optional sender for the weekly click summary and the upgrade nudge, ideally on its own sending subdomain; unset disables both), `RESEND_WEBHOOK_SECRET` (bounce and complaint webhook), `EMAIL_UNSUBSCRIBE_SECRET` (random, at least 32 characters, for one-click unsubscribe links) |
+| Email (Resend) | `RESEND_API_KEY`, `EMAIL_FROM` (an address on a domain verified in Resend), `EMAIL_FROM_LIFECYCLE` (optional sender for the weekly click summary and the upgrade nudge, ideally on its own sending subdomain; unset disables both), `EMAIL_FROM_SYSTEM` (optional sender for system notices such as cap alerts, plan grace and team emails; defaults to `iShortn <notifications@ishortn.ink>`), `EMAIL_REPLY_TO` (optional inbox that replies to every product email go to), `RESEND_WEBHOOK_SECRET` (bounce and complaint webhook), `EMAIL_UNSUBSCRIBE_SECRET` (random, at least 32 characters, for one-click unsubscribe links) |
 | Billing (Lemon Squeezy) | `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_STORE_ID`, `LEMONSQUEEZY_WEBHOOK_SECRET` |
 | Custom domains for users (Cloudflare for SaaS) | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_SAAS_ZONE_ID`, `CUSTOM_DOMAIN_CNAME_TARGET`, and `NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE` (only shown in a notice about moving existing domains) |
 | AI alias suggestions and phishing classification | `OPENAI_API_KEY` |
@@ -251,7 +253,7 @@ Creating a team needs Ultra, and team workspaces always get Ultra limits.
   1. On the zone, enable **SSL/TLS → Custom Hostnames** and set up [a Worker as the fallback origin](https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/start/advanced-settings/worker-as-origin/): a proxied DNS record for the fallback origin (such as `cname.example.com`) and a Worker route `*/*` on the zone pointing at this Worker.
   2. Set `CLOUDFLARE_SAAS_ZONE_ID` to the zone's ID, `CUSTOM_DOMAIN_CNAME_TARGET` to the fallback hostname, and `CLOUDFLARE_API_TOKEN` to a token with **SSL and Certificates: Edit** on the zone.
 - **Image uploads** (QR code logos, bio page avatars, link preview images). Create an R2 bucket, make it public through a custom domain or its `r2.dev` URL (that's `R2_PUBLIC_URL`), and create an R2 API token with read and write access for `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY`.
-- **Email** (team invites, domain reminders, account notices). Verify a sending domain in Resend and set `RESEND_API_KEY` and `EMAIL_FROM`. For bounce and complaint tracking, add a Resend webhook at `https://links.example.com/api/webhooks/resend` and set `RESEND_WEBHOOK_SECRET`. Without a key, emails are skipped and logged.
+- **Email** (team invites, domain reminders, account notices). Verify a sending domain in Resend and set `RESEND_API_KEY` and `EMAIL_FROM`. For bounce and complaint tracking, add a Resend webhook at `https://links.example.com/api/webhooks/resend` and set `RESEND_WEBHOOK_SECRET`. Without a key, emails are skipped and logged. Buttons in the lifecycle and notice emails (welcome, nudges, weekly summary, cap alerts, plan grace) link to fixed short links such as `https://links.example.com/e-welcome-link`, so your app domain must serve short links, and you need to create those links once (and again after upgrades that add new ones) with `bun scripts/email/seed-email-links.ts --user <userId> --write` against your database. Use an account on a plan without a monthly cap on tracked clicks (Ultra), so email clicks keep being recorded and don't trigger cap emails on that account.
 
 ## Health check
 

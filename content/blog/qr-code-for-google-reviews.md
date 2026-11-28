@@ -1,8 +1,9 @@
 ---
 title: "QR Code for Google Reviews: How to Make One, Print It and Track It"
-seoTitle: "QR Code for Google Reviews: Make, Print, Track"
-description: "Get your Google review link, turn it into a QR code, print it where customers will scan it, and count scans per placement. Step by step, free."
+seoTitle: "How to Create a QR Code for Google Reviews (Free)"
+description: "How to create a QR code for Google reviews: copy your review link, make a free code, download it for print, and count scans for each placement."
 date: "2026-11-23"
+updated: "2026-11-27"
 author: "Kelvin Amoaba"
 tags: ["qr code", "google reviews", "small business", "local seo", "guide"]
 published: true
@@ -11,6 +12,15 @@ published: true
 Most happy customers would leave you a review if it took ten seconds. The trouble is the ten seconds. They have to find your business on Google, scroll to the reviews, find the button and sign in. By then they've put the phone away.
 
 A QR code takes them straight to the "write a review" box. One scan, pick the stars, type a sentence, done. This guide shows how to get your Google review link, turn it into a QR code, where to print it, and how to see which placement gets scanned.
+
+## How to create a QR code for Google reviews
+
+1. On a computer, open your Google Business Profile, click **Read reviews**, then **Get more reviews**, and copy the review link.
+2. If the code is going on one sign and you don't need scan counts, save the QR code Google shows in that same window. You're done.
+3. If it's going in more than one place, or you want to know whether anyone scans it, paste the review link into a dynamic QR code. iShortn's free plan includes 5.
+4. Download a PNG for receipts and screens, or an SVG or print PDF for signs and table tents. Then scan the printed copy with an iPhone and an Android phone.
+
+The rest of this guide goes through each step in detail.
 
 We make iShortn, a link shortener with free dynamic QR codes, so the tracking steps use it. Steps 1 and 3 work no matter which tool you pick.
 
@@ -54,9 +64,9 @@ Here's how in iShortn. Other dynamic QR tools work the same way.
 2. Click to create a new code and paste your Google review link as the destination.
 3. Give it a name that says where it will go, like "Reviews - front counter". You'll thank yourself when you have three of them.
 4. Pick colours, a pixel style and corner shape, and add your logo if you like. Keep the code dark on a light background. Phones struggle with light codes on dark backgrounds and low contrast.
-5. Download the PNG.
+5. Download it. A PNG is fine for receipts, invoices and screens. For a counter sign, table tent or anything a printer will resize, choose **Download SVG** or **Download PDF for print**. Both are vector files that stay sharp at any size, and the PDF lets you pick the exact print size.
 
-The free plan includes 5 dynamic QR codes. They don't expire and show no ads. Each one also uses one of your 30 free links for that month. Free scan analytics show the last 7 days and record up to 1,000 events a month. Codes keep redirecting past that limit, but new scans aren't counted until the month resets. [Pro](/pricing) is $8/month if you want the full history or more codes.
+The free plan includes 5 dynamic QR codes. They don't expire and show no ads. Each one also uses one of your 30 free links for that month. Free scan analytics show the last 7 days and record up to 1,000 tracked clicks a month. Codes keep redirecting past that limit, but new scans aren't counted until the month resets. [Pro](/pricing) is $8/month if you want a year of scan history or more codes.
 
 **One code per placement.** If you print the same code on the counter sign and the receipt, you can't tell which one gets scanned. Make a separate code for each place: counter, receipt, invoice, table, packaging. Five free codes cover most small shops.
 
@@ -67,15 +77,15 @@ A review takes a minute or two. Put the code where customers are waiting, not wh
 **Places that tend to work:**
 
 - **Counter or till sign**, while the card machine processes.
-- **Table tents** in cafes and restaurants, read while waiting for the bill.
+- **[Table tents](/blog/qr-code-for-restaurant-menu)** in cafes and restaurants, read while waiting for the bill.
 - **Receipts and invoices.** Service businesses (plumbers, cleaners, photographers) can add the code to the PDF invoice footer.
-- **Thank-you cards** in delivery or e-commerce packages.
+- **[Thank-you cards](/blog/qr-code-on-product-packaging)** in delivery or e-commerce packages.
 - **Waiting areas** at salons, clinics and garages.
-- **The back of your business card**, handed over at the end of a job.
+- **[The back of your business card](/blog/qr-code-on-business-cards)**, handed over at the end of a job.
 
 **Print checklist:**
 
-- **Size.** A common rule of thumb is a scanning distance of about ten times the code's width. A code 2 to 3 cm wide is fine on a receipt or card held in the hand. A wall sign read from a metre or two away needs a code of 10 cm or more.
+- **Size.** A common rule of thumb is a scanning distance of about ten times the code's width. A code 2 to 3 cm wide is fine on a receipt or card held in the hand. A wall sign read from a metre or two away needs a code of 10 cm or more. For anything bigger than a receipt, download the SVG or the print PDF rather than enlarging the PNG.
 - **Quiet zone.** Leave a blank margin around the code. Text or borders that touch the edge make it harder to scan.
 - **A line of text above it.** "Enjoyed your visit? Scan to leave us a Google review" works better than a bare square. People scan more when they know what they'll get.
 - **Test the printed copy**, not the file on your screen. Scan it with an iPhone and an Android phone, in the light where it will hang.
@@ -84,7 +94,7 @@ A review takes a minute or two. Put the code where customers are waiting, not wh
 
 The code does half the work. The other half is someone saying, "If you were happy with this, a Google review helps us a lot. The code's right there." A personal ask at the right moment does more than any sign. Ask once, kindly, and leave it there. Google's policy doesn't allow pressuring customers to review while they're on the premises.
 
-Google is strict about how you ask:
+Google is strict about how you ask. Its [review content policy](https://support.google.com/contributionpolicy/answer/7400114) spells it out:
 
 - **No incentives.** Discounts, freebies or prize draws in exchange for reviews count as fake engagement under Google's policy. Reviews collected that way can be removed and your profile can be penalised. Don't print "10% off for a review" next to the code.
 - **Don't filter for happy customers.** Google's policy also bans selectively asking for positive reviews only. "Scan to tell us how we did" is fine. A page that sends 5-star ratings to Google and everyone else to a private form is "review gating" and breaks the rules.
@@ -114,15 +124,35 @@ In iShortn, open the QR code, edit the destination URL and save. The next scan g
 
 If you're setting up menu and table codes at the same time, see [QR codes for restaurants and bars](/solutions/restaurants). For shops and market stalls that also want codes on packaging and receipts, see [QR codes for small businesses and shops](/solutions/small-business).
 
-## Quick answers
+## Common questions
 
-**Is a QR code for Google reviews free?** Yes. Google's own code is free and never expires. A dynamic code is free on iShortn's free plan (5 codes), and those don't expire either. If you only need a static code with no tracking, our [free QR code generator](/qr-code-generator) makes one without an account.
+### How do I create a QR code for a Google review?
 
-**Can I see who left a review from the QR code?** No. Google doesn't share that, and scan analytics don't identify people. You see scan counts and new reviews, and compare the two.
+Copy your review link from your Google Business Profile on a computer (Read reviews, then Get more reviews, then Copy). Then either save the QR code Google shows in the same window, or paste the link into a dynamic QR code if you want to count scans or change the destination later.
 
-**Will the code stop working if I cancel?** Google's code won't. Codes from many paid QR generators stop when the subscription ends. iShortn's free dynamic codes keep working without a paid plan.
+### Can I make a Google review QR code on my phone?
 
-**How is this different from Bitly's QR codes?** Bitly's free plan currently limits QR codes to 2 a month, and custom domains need a paid plan. Our [iShortn vs Bitly](/compare/bitly) page has the full comparison.
+Not from Google. Google only generates its review QR code in a computer browser. You can copy the review link on a computer, then make a dynamic code for it in iShortn on any device.
+
+### Is a QR code for Google reviews free?
+
+Yes. Google's own code is free and never expires. A dynamic code is free on iShortn's free plan (5 codes), and those don't expire either. If you only need a static code with no tracking, our [free QR code generator](/qr-code-generator) makes one without an account and downloads it as a PNG or SVG.
+
+### What size should a Google review QR code be?
+
+About 2 to 3 cm wide on a receipt, invoice or card that people hold in their hand. At least 10 cm on a wall sign read from a metre or two away. Use the SVG or print PDF for larger sizes so the code stays sharp.
+
+### Can I see who left a review from the QR code?
+
+No. Google doesn't share that, and scan analytics don't identify people. You see scan counts and new reviews, and compare the two.
+
+### Will the code stop working if I cancel?
+
+Google's code won't. Codes from many paid QR generators stop when the subscription ends. iShortn's free dynamic codes keep working without a paid plan.
+
+### How is this different from Bitly's QR codes?
+
+Bitly's free plan allows 2 QR codes a month, and custom domains need a paid plan. Our [iShortn vs Bitly](/compare/bitly) page has the full comparison.
 
 ## Make your review code
 

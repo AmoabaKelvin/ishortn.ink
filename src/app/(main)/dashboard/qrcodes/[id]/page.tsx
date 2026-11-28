@@ -34,6 +34,7 @@ import {
   RangeTransitionProvider,
 } from "../../analytics/_components/range-transition";
 import { ShareStatsButton } from "../../analytics/_components/share-stats-button";
+import { qrPreviewSrc } from "../utils";
 
 import type { RouterOutputs } from "@/trpc/shared";
 import type { Metadata } from "next";
@@ -70,7 +71,7 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
     <nav className="mb-6 flex min-w-0 items-center gap-1.5 text-[13px]">
       <Link
         href="/dashboard/qrcodes"
-        className="shrink-0 text-neutral-400 transition-colors hover:text-neutral-900 dark:text-neutral-500 dark:hover:text-foreground"
+        className="shrink-0 text-neutral-400 transition-colors hover:text-neutral-900 dark:text-muted-foreground dark:hover:text-foreground"
       >
         QR Codes
       </Link>
@@ -100,6 +101,7 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
 
   const alias = qrCode.link.alias!;
   const domain = qrCode.link.domain ?? DEFAULT_PLATFORM_DOMAIN;
+  const previewSrc = qrPreviewSrc(qrCode);
 
   // The QR code's link can be gone or outside this workspace; that is a 404, not a crash.
   const visits = await api.link.linkVisits
@@ -134,10 +136,10 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
       {/* QR Code Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex min-w-0 items-center gap-4">
-          {qrCode.qrCode && (
+          {previewSrc && (
             <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-neutral-100 bg-white p-1.5 dark:border-border/50">
               {/* eslint-disable-next-line next/no-img-element -- generated QR data: URL */}
-              <img src={qrCode.qrCode} alt="QR Code" className="h-full w-full object-contain" />
+              <img src={previewSrc} alt="QR Code" className="h-full w-full object-contain" />
             </div>
           )}
           <div className="flex min-w-0 flex-col gap-1">
@@ -145,7 +147,7 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
               {qrCode.title || "Untitled QR Code"}
             </h1>
             <p
-              className="truncate text-[13px] text-neutral-400 dark:text-neutral-500"
+              className="truncate text-[13px] text-neutral-400 dark:text-muted-foreground"
               title={qrCode.link.url ?? undefined}
             >
               {qrCode.link.url}

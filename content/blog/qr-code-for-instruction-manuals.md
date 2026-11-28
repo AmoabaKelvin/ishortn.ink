@@ -109,7 +109,7 @@ Will we still be around in ten years? We plan to be, but you shouldn't have to t
 - **You can export your links** (alias, domain, destination) as CSV or JSON at any time. That list is what you'd need to rebuild the same paths somewhere else.
 - **The code is MIT-licensed.** If you'd rather run it yourself, the [self-hosting guide](/docs/self-hosting) explains how.
 
-[Pro](/pricing) costs $8 a month, or $80 a year, and includes 3 custom domains, unlimited QR codes and the full scan history. The free plan includes 5 dynamic QR codes on an iShortn domain, which is enough to test a code on a prototype label before you commit. If you just need a static code for a page that won't move, our [free QR code generator](/qr-code-generator) makes one with no account.
+[Pro](/pricing) costs $8 a month, or $80 a year, and includes 3 custom domains, unlimited QR codes and 1 year of detailed scan history. The free plan includes 5 dynamic QR codes on an iShortn domain, which is enough to test a code on a prototype label before you commit. If you just need a static code for a page that won't move, our [free QR code generator](/qr-code-generator) makes one with no account.
 
 For codes on packaging and product labels, see [QR codes on product packaging and labels](/blog/qr-code-on-product-packaging). For swing tags, receipts and counter signs in a shop, see [QR codes for small businesses](/solutions/small-business).
 

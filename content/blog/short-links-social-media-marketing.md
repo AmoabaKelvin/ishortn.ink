@@ -1,13 +1,33 @@
 ---
 title: "How to Use Short Links in Social Media Marketing"
-description: "Maximize your social media impact with short links. Learn strategies for using URL shorteners on Twitter, Instagram, LinkedIn, and TikTok."
+seoTitle: "Best URL Shortener for Instagram and TikTok (2026)"
+description: "Which URL shorteners work best for Instagram, TikTok, LinkedIn and X: free plans compared on click stats and editable links, plus how to track each post."
 date: "2026-03-02"
+updated: "2026-11-26"
 author: "Kelvin Amoaba"
-tags: ["social media", "marketing", "short links", "guide"]
+tags: ["social media", "marketing", "short links", "guide", "instagram", "tiktok"]
 published: true
 ---
 
 Every social media marketer faces the same tension: you need to pack as much value as possible into a limited space. Long, cluttered URLs eat into character counts, look unprofessional, and give you no visibility into what happens after someone clicks. Short links solve all three problems while opening the door to advanced tracking and attribution that raw URLs simply cannot provide.
+
+## Which URL shortener is best for Instagram and TikTok?
+
+For a bio link or a Story sticker, pick a shortener whose free plan does two things: shows you the clicks, and lets you change where the link points without changing the link. Then you can keep one link in your bio and swap the page behind it for each campaign.
+
+We make iShortn, so weigh our view accordingly. Here's how the free plans compare, from each company's pricing page, checked 24 November 2026:
+
+| Free plan | New links | Click stats | Change where a link points |
+| --- | --- | --- | --- |
+| iShortn | 30 a month | Yes: country, device, referrer (last 7 days) | Yes |
+| Short.io | 1,000 in total | Yes (50,000 tracked clicks a month) | Yes |
+| Rebrandly | 10 a month | Detailed stats on 100 clicks a month | No |
+| TinyURL | 30 a month | No | No |
+| Bitly | 5 a month | No | No |
+
+- **One link in your bio that you update often:** iShortn or Short.io. Both let you change the destination on the free plan and show clicks.
+- **A bio page with several links:** a link-in-bio page. iShortn Free includes one bio page (up to 3 link blocks), and every link on it is tracked. Linktree is the best-known option; see [iShortn vs Linktree](/compare/linktree).
+- **Your own domain on the link:** custom domains are paid on iShortn (Pro, $8 a month, 3 domains) and free on Short.io (5 domains). See [the best free URL shorteners](/blog/best-free-url-shorteners) for the full comparison.
 
 ## Why Short Links Matter for Social Media
 
@@ -47,7 +67,7 @@ If you are running a thread, use distinct short links for each tweet so you can 
 
 ### Instagram
 
-Instagram does not allow clickable links in post captions, which makes your bio link the most valuable piece of real estate on the platform. A link-in-bio strategy using short links lets you rotate the destination URL as campaigns change without altering the link itself. Point your bio to a single short link, then update the destination behind it whenever you launch a new campaign, product, or piece of content. If you need a full landing page with several links rather than a single redirect, see how [iShortn compares to Linktree](/compare/linktree).
+Instagram does not allow clickable links in post captions, which makes your bio link the most valuable piece of real estate on the platform. A link-in-bio strategy using short links lets you rotate the destination URL as campaigns change without altering the link itself. Point your bio to a single short link, then update the destination behind it whenever you launch a new campaign, product, or piece of content. If you need a full landing page with several links rather than a single redirect, see how [iShortn compares to Linktree](/compare/linktree). Instagram lets you add up to five links to your bio, but only the first shows on your profile without a tap, so the order matters.
 
 For Stories, the link sticker (available to all accounts since swipe-up was retired) is a natural place for a short link as well. Each story can use a unique short link so you can compare performance across individual stories.
 
@@ -55,11 +75,11 @@ For Stories, the link sticker (available to all accounts since swipe-up was reti
 
 LinkedIn audiences tend to be more professional and detail-oriented. Branded short links with descriptive aliases perform well here because they signal credibility. A link like `ishortn.ink/2026-report` carries more weight than a generic shortened URL.
 
-LinkedIn also truncates long URLs in posts, which can strip UTM parameters before users even reach your site. Short links avoid this problem entirely because the redirect preserves the full destination URL, including all tracking parameters.
+LinkedIn's post analytics only count clicks that happen inside LinkedIn. A short link of your own counts every click, including reshares and links copied into messages, and the UTM tags you set on it reach your web analytics, so the visit is credited to LinkedIn.
 
 ### TikTok
 
-TikTok limits creators to a single bio link, making it function much like Instagram in that regard. Use a short link in your TikTok bio and update its destination to match whatever you are currently promoting. This keeps your profile link consistent and recognizable to returning visitors while allowing you to direct traffic wherever it is needed most.
+TikTok gives your profile one website link, and not every account can add one: TikTok decides eligibility by account type and follower count, so check under Edit profile. Use a short link in your TikTok bio and update its destination to match whatever you are currently promoting. This keeps your profile link consistent and recognizable to returning visitors while allowing you to direct traffic wherever it is needed most.
 
 In video descriptions, short links are also easier for viewers to read on screen and type manually if they choose not to navigate through the bio.
 
@@ -87,7 +107,7 @@ All three can point to the same destination, but each one gives you isolated cli
 
 UTM parameters are the standard method for attributing traffic in tools like Google Analytics. The problem is that UTM-tagged URLs are long and ugly. Short links fix this by hiding the full URL behind a clean alias.
 
-Build your destination URL with proper UTM tags:
+Build your destination URL with proper UTM tags, for example with our free [UTM builder](/utm-builder):
 
 ```
 https://yoursite.com/launch?utm_source=twitter&utm_medium=social&utm_campaign=spring2026
@@ -119,7 +139,7 @@ Avoid random character strings. An alias like `ishortn.ink/pricing` tells the us
 
 ### Maintain a Link-in-Bio Strategy
 
-For platforms that restrict where you can place clickable links, such as Instagram and TikTok, your bio link is critical. Use a single short link that you control, and update its destination as your priorities shift. This way, your bio always stays current without requiring you to edit your profile every time a campaign changes.
+For platforms that restrict where you can place clickable links, such as Instagram and TikTok, your bio link is critical. Use a single short link that you control, and update its destination as your priorities shift. If you need several links, use a [link-in-bio page](/docs/bio-pages) instead. This way, your bio always stays current without requiring you to edit your profile every time a campaign changes.
 
 ### Organize Links by Campaign
 
@@ -142,6 +162,16 @@ Always click your short link before sharing it publicly. A redirect to a broken 
 ### Letting Old Links Rot
 
 If a short link points to a page that no longer exists or a campaign that has ended, update the destination or disable the link. Users who encounter dead ends are unlikely to trust your links in the future.
+
+## Common questions
+
+### Can I put a clickable link in an Instagram caption?
+
+No. Links in Instagram captions aren't clickable. Use your bio links or the link sticker in Stories, and say "link in bio" in the caption.
+
+### Do short links hurt reach on social media?
+
+There's no published rule from Instagram, TikTok or LinkedIn that penalises short links. Links from shared shortener domains are sometimes flagged because spammers use the same domains, which is one reason brands put short links on their own domain.
 
 ## How iShortn Helps Social Media Marketers
 

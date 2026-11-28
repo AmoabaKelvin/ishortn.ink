@@ -1,14 +1,25 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  spyOn,
+  test,
+} from "bun:test";
 import crypto from "node:crypto";
 
 import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 
 import { env } from "@/env.mjs";
+import { API_RATE_LIMITS } from "@/lib/billing/plans";
 import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { EXTENSION_UPGRADE_URL } from "@/lib/extension/connect";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
+import * as posthogServer from "@/server/lib/analytics/posthog-server";
 import { monthlyLinkLimitMessage } from "@/server/lib/user-plan";
 
 import { GET as v1ListLinks, POST as v1CreateLink } from "../v1/links/route";
@@ -34,6 +45,7 @@ describe.skipIf(!testDatabaseUrl)("/api/extension (MySQL)", () => {
 
   async function cleanup() {
     await db.delete(schema.link).where(eq(schema.link.userId, USER_ID));
+    await db.delete(schema.customDomain).where(eq(schema.customDomain.userId, USER_ID));
     await db.delete(schema.token).where(eq(schema.token.userId, USER_ID));
     await db.delete(schema.subscription).where(eq(schema.subscription.userId, USER_ID));
     await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
@@ -77,7 +89,14 @@ describe.skipIf(!testDatabaseUrl)("/api/extension (MySQL)", () => {
     );
   }
 
-  beforeEach(() => reset());
+  // Stands in for the PostHog client, so no test sends an event even with a real key in the env.
+  let captureSpy: ReturnType<typeof spyOn<typeof posthogServer, "captureServerEvent">>;
+
+  beforeEach(() => {
+    captureSpy = spyOn(posthogServer, "captureServerEvent").mockImplementation(() => {});
+    return reset();
+  });
+  afterEach(() => captureSpy.mockRestore());
   afterAll(cleanup);
 
   test("creates a link on the free plan and counts it", async () => {
@@ -92,6 +111,20 @@ describe.skipIf(!testDatabaseUrl)("/api/extension (MySQL)", () => {
     expect(user?.monthlyLinkCount).toBe(1);
   });
 
+  test("reports the create steps in Server-Timing and exposes the header", async () => {
+    const response = await shorten();
+    expect(response.status).toBe(201);
+    const names = response.headers
+      .get("server-timing")
+      ?.split(", ")
+      .map((metric) => metric.split(";")[0]);
+    expect(names).toEqual(
+      expect.arrayContaining(["auth", "domain", "alias", "safety", "db", "total"]),
+    );
+    expect(response.headers.get("access-control-expose-headers")).toBe("Server-Timing");
+    expect(response.headers.get("timing-allow-origin")).toBe("*");
+  });
+
   test("answers the free monthly limit with 403 and the upgrade URL", async () => {
     await reset({ monthlyLinkCount: 29 });
     expect((await shorten()).status).toBe(201);
@@ -102,6 +135,34 @@ describe.skipIf(!testDatabaseUrl)("/api/extension (MySQL)", () => {
       error: monthlyLinkLimitMessage("free", 30),
       upgradeUrl: EXTENSION_UPGRADE_URL,
     });
+    expect(response.headers.get("server-timing")).toMatch(/^auth;dur=\d+, domain;dur=\d+, /);
+    expect(response.headers.get("server-timing")).toContain("db;dur=");
+    expect(captureSpy).toHaveBeenLastCalledWith(
+      { id: USER_ID, email: "extension@example.com" },
+      "extension_limit_hit",
+      { plan: "free", limit_key: "monthly_links" },
+    );
+  });
+
+  test("records nothing in PostHog for a refused create from an internal account", async () => {
+    await reset({ email: "qa@euploading.com", monthlyLinkCount: 30 });
+    captureSpy.mockRestore();
+    const { NEXT_PUBLIC_POSTHOG_KEY, NEXT_PUBLIC_POSTHOG_HOST } = env;
+    Object.assign(env, {
+      NEXT_PUBLIC_POSTHOG_KEY: "phc_test",
+      NEXT_PUBLIC_POSTHOG_HOST: "https://posthog.invalid",
+    });
+    const fetchSpy = spyOn(globalThis, "fetch");
+    try {
+      expect((await shorten()).status).toBe(403);
+      const posthogCalls = fetchSpy.mock.calls.filter(([input]) =>
+        String(input instanceof Request ? input.url : input).includes("posthog.invalid"),
+      );
+      expect(posthogCalls).toEqual([]);
+    } finally {
+      fetchSpy.mockRestore();
+      Object.assign(env, { NEXT_PUBLIC_POSTHOG_KEY, NEXT_PUBLIC_POSTHOG_HOST });
+    }
   });
 
   test("refuses API keys", async () => {
@@ -139,11 +200,28 @@ describe.skipIf(!testDatabaseUrl)("/api/extension (MySQL)", () => {
     expect(response.status).toBe(401);
   });
 
-  test("refuses banned and deleted accounts with 401", async () => {
+  test("refuses banned and deleted accounts and unknown tokens with 401", async () => {
     await reset({ banned: true });
     expect((await shorten()).status).toBe(401);
     await reset({ deletedAt: new Date() });
     expect((await getMe(extensionRequest("/me"))).status).toBe(401);
+    await reset();
+    const unknown = await getMe(extensionRequest("/me", {}, "not-a-token"));
+    expect(unknown.status).toBe(401);
+    expect(unknown.headers.get("x-ratelimit-limit")).toBeNull();
+  });
+
+  test("counts each request against the plan's rate limit in the headers", async () => {
+    const first = await getMe(extensionRequest("/me"));
+    const second = await getMe(extensionRequest("/me"));
+    expect(second.status).toBe(200);
+    // The minute window is closest to its limit, so it is the one reported.
+    expect(second.headers.get("x-ratelimit-limit")).toBe(String(API_RATE_LIMITS.free.perMinute));
+    expect(Number(second.headers.get("x-ratelimit-remaining"))).toBe(
+      Number(first.headers.get("x-ratelimit-remaining")) - 1,
+    );
+    expect(Number(second.headers.get("x-ratelimit-reset")) % 60).toBe(0);
+    expect(second.headers.get("access-control-allow-origin")).toBe("*");
   });
 
   test("refuses link creation from a restricted account with 403", async () => {
@@ -182,6 +260,25 @@ describe.skipIf(!testDatabaseUrl)("/api/extension (MySQL)", () => {
     const { links } = await response.json();
     expect(links).toHaveLength(1);
     expect(links[0].url).toBe(TARGET_URL);
+  });
+
+  test("lists links on active personal custom domains but not on inactive ones", async () => {
+    await db.insert(schema.customDomain).values([
+      { userId: USER_ID, domain: "go.extension-active.test", status: "active" },
+      { userId: USER_ID, domain: "go.extension-lapsed.test", status: "invalid" },
+    ]);
+    await db.insert(schema.link).values([
+      { userId: USER_ID, url: TARGET_URL, alias: "ext-platform", domain: "ishortn.ink" },
+      { userId: USER_ID, url: TARGET_URL, alias: "ext-active", domain: "go.extension-active.test" },
+      { userId: USER_ID, url: TARGET_URL, alias: "ext-lapsed", domain: "go.extension-lapsed.test" },
+    ]);
+    const response = await listLinks(extensionRequest("/links?limit=20"));
+    expect(response.status).toBe(200);
+    const { links } = await response.json();
+    expect(links.map((l: { shortUrl: string }) => l.shortUrl).sort()).toEqual([
+      "https://go.extension-active.test/ext-active",
+      "https://ishortn.ink/ext-platform",
+    ]);
   });
 
   test("sign out deletes the calling token only", async () => {

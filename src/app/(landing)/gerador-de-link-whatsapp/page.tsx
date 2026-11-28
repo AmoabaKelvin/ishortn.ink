@@ -238,11 +238,11 @@ export default function WhatsAppLinkGeneratorPtBrPage() {
           </div>
           <div className="mt-12 sm:mt-14">
             <WhatsAppLinkGenerator locale="pt-BR" defaultRegion="BR" campaign={CAMPAIGN} />
-            <p className="mx-auto mt-4 max-w-4xl text-pretty text-center text-sm text-neutral-500">
+            <p className="mx-auto mt-4 max-w-4xl text-pretty text-center text-sm text-neutral-600">
               WhatsApp é uma marca da WhatsApp LLC. O iShortn não tem vínculo com o WhatsApp nem com
               a Meta, e não é endossado por eles.
             </p>
-            <p className="mx-auto mt-2 max-w-4xl text-center text-sm text-neutral-500">
+            <p className="mx-auto mt-2 max-w-4xl text-center text-sm text-neutral-600">
               <Link
                 href="/whatsapp-link-generator"
                 hrefLang="en"

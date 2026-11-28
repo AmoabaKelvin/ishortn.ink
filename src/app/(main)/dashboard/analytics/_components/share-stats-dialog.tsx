@@ -153,7 +153,7 @@ export function ShareStatsDialog({ linkId, open, onOpenChange }: ShareStatsDialo
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex h-9 items-center rounded-lg border border-dashed border-neutral-200 px-3 text-[13px] text-neutral-400 dark:border-border dark:text-neutral-500">
+                  <div className="flex h-9 items-center rounded-lg border border-dashed border-neutral-200 px-3 text-[13px] text-neutral-400 dark:border-border dark:text-muted-foreground">
                     Sharing is off
                   </div>
                 )}

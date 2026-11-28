@@ -34,3 +34,14 @@ export async function resolveLink(domain: string, alias: string): Promise<Link |
   await runBackgroundTask(setInCache(cacheKey, link, ttl));
   return link;
 }
+
+/**
+ * Full link row by alias, cache-first. Server-only: the row carries the
+ * destination, password hash and owner fields, so it must never be returned
+ * from a public procedure as-is (see `retrieveOriginalUrl` in link.service.ts).
+ */
+export async function findLinkByAlias(input: { alias: string; domain: string }) {
+  // The same lookup as the redirect, so previews and metadata also follow moved links.
+  const found = await resolveLink(input.domain, input.alias);
+  return found?.alias ? found : null;
+}

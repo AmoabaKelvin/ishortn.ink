@@ -1,7 +1,7 @@
 import LinkMilestoneEmail from "@/emails/link-milestone";
 import { getAppUrl } from "@/lib/constants/domains";
 
-import { sendEmail } from "./send-email";
+import { EMAIL_FROM_SYSTEM, sendEmail } from "./send-email";
 import { productNotificationOptions } from "./unsubscribe";
 
 type SendLinkMilestoneEmailInput = {
@@ -33,6 +33,7 @@ export async function sendLinkMilestoneEmail({
 
   await sendEmail({
     template: "link-milestone",
+    from: EMAIL_FROM_SYSTEM,
     recipientId: userId,
     to: email,
     essential: false,

@@ -114,7 +114,7 @@ export function EditFolderModal({ folder, open, onOpenChange }: EditFolderModalP
                 className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300"
               >
                 Description
-                <span className="ml-1.5 text-[12px] font-normal text-neutral-400 dark:text-neutral-500">
+                <span className="ml-1.5 text-[12px] font-normal text-neutral-400 dark:text-muted-foreground">
                   optional
                 </span>
               </Label>

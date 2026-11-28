@@ -1,9 +1,10 @@
 import { ext } from "./browser.ts";
 import type { LinkCache } from "./link-cache.ts";
+import type { MeCache } from "./me-cache.ts";
 
 export type ConnectStatus = { status: "pending" | "error"; message?: string; at: number };
 
-type LocalShape = { token?: string; autoShorten?: boolean };
+type LocalShape = { token?: string; autoShorten?: boolean; meCache?: MeCache };
 type SessionShape = { linkCache?: LinkCache; connectStatus?: ConnectStatus };
 
 // The token lives in storage.local only: never storage.sync, so it doesn't leave this browser.

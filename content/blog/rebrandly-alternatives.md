@@ -43,7 +43,7 @@ A banner on the same page says Rebrandly and IntelligenceBank have merged to for
 
 | | Free plan | Cheapest plan with your own domain | Edit links after creating them |
 |---|---|---|---|
-| **iShortn** | 30 links/mo, 1,000 tracked events/mo, 5 dynamic QR codes | Pro, $8/mo (3 domains) | Yes, on every plan |
+| **iShortn** | 30 links/mo, 1,000 tracked clicks/mo, 5 dynamic QR codes | Pro, $8/mo (3 domains) | Yes, on every plan |
 | **Short.io** | 1,000 links total, 50,000 tracked clicks/mo, 5 domains | Free | Yes, on Free |
 | **Bitly** | 5 links and 2 QR codes/mo, no analytics history | Growth, $29/mo billed annually | Not on Free |
 | **TinyURL** | 30 links/mo, no click stats | Pro, from $9/mo billed annually | Not on Free |
@@ -57,18 +57,18 @@ Sources: [Short.io pricing](https://short.io/pricing), [Bitly pricing](https://b
 
 **Free plan:**
 - 30 new links a month on our `isht.app` short domain, with no ad page
-- 1,000 tracked events a month (clicks, QR scans and bio page views), with a 7-day analytics view
+- 1,000 tracked clicks a month (clicks, QR scans and bio page views), with a 7-day analytics view
 - 5 dynamic QR codes with no watermark. You can change where they point at any time, and they don't expire.
 - Edit any link's destination as often as you like
 - 1 link-in-bio page and 1 campaign to group links
 
 **Pro, $8 a month ($80 a year, which works out to $6.67 a month):**
-- 1,000 links and 10,000 tracked events a month
+- 1,000 links and 10,000 tracked clicks a month
 - 3 custom domains
-- Full analytics history, password-protected links, geo and device targeting, scheduled links
+- A full year of detailed analytics, password-protected links, geo and device targeting, scheduled links
 - REST API access
 
-**Ultra, $15 a month:** unlimited links, events and domains, UTM fields and templates in the link editor, link cloaking and team workspaces.
+**Ultra, $15 a month:** unlimited links, tracked clicks and domains, UTM fields and templates in the link editor, link cloaking and team workspaces.
 
 **Where iShortn falls short of Rebrandly:** we don't have conversion tracking yet, the API is on Pro and up (Rebrandly offers it on Free), and team workspaces need Ultra. Free analytics only shows the last 7 days.
 

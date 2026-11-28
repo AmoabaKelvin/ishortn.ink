@@ -203,7 +203,7 @@ export function AnalyticsFilter() {
             <IconFilter
               size={14}
               stroke={1.5}
-              className="shrink-0 text-neutral-400 dark:text-neutral-500"
+              className="shrink-0 text-neutral-400 dark:text-muted-foreground"
             />
             <span className="truncate font-medium">{getFilterLabel()}</span>
           </div>
@@ -211,14 +211,14 @@ export function AnalyticsFilter() {
             <IconX
               size={14}
               stroke={1.5}
-              className="shrink-0 text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
+              className="shrink-0 text-neutral-400 dark:text-muted-foreground transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
               onClick={clearFilter}
             />
           ) : (
             <IconChevronRight
               size={14}
               stroke={1.5}
-              className="shrink-0 text-neutral-400 dark:text-neutral-500"
+              className="shrink-0 text-neutral-400 dark:text-muted-foreground"
             />
           )}
         </Button>
@@ -248,7 +248,7 @@ export function AnalyticsFilter() {
                         <Icon
                           size={14}
                           stroke={1.5}
-                          className="text-neutral-400 dark:text-neutral-500"
+                          className="text-neutral-400 dark:text-muted-foreground"
                         />
                         <span className="text-[13px] font-medium">{category.label}</span>
                       </div>
@@ -256,7 +256,7 @@ export function AnalyticsFilter() {
                         <IconChevronRight
                           size={14}
                           stroke={1.5}
-                          className="text-neutral-400 dark:text-neutral-500"
+                          className="text-neutral-400 dark:text-muted-foreground"
                         />
                       )}
                     </CommandItem>
@@ -270,12 +270,12 @@ export function AnalyticsFilter() {
                     <IconLoader2
                       size={18}
                       stroke={1.5}
-                      className="animate-spin text-neutral-400 dark:text-neutral-500"
+                      className="animate-spin text-neutral-400 dark:text-muted-foreground"
                     />
                   </div>
                 ) : (
                   <>
-                    <CommandEmpty className="py-8 text-[13px] text-neutral-400 dark:text-neutral-500">
+                    <CommandEmpty className="py-8 text-[13px] text-neutral-400 dark:text-muted-foreground">
                       No {selectedCategory} found.
                     </CommandEmpty>
                     <CommandGroup className="p-1.5">
@@ -289,7 +289,7 @@ export function AnalyticsFilter() {
                           <div className="flex flex-col gap-0.5">
                             <span className="text-[13px] font-medium">{item.label}</span>
                             {item.subtitle && (
-                              <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                              <span className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                                 {item.subtitle}
                               </span>
                             )}

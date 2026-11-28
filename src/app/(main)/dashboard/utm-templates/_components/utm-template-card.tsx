@@ -68,12 +68,16 @@ export function UtmTemplateCard({ template, index, onEdit }: UtmTemplateCardProp
                   utmParams.map((param, i) => (
                     <span key={param.label} className="inline-flex items-center gap-x-1.5">
                       {i > 0 && <span className="text-neutral-300">&middot;</span>}
-                      <span className="text-neutral-400 dark:text-neutral-500">{param.label}:</span>
+                      <span className="text-neutral-400 dark:text-muted-foreground">
+                        {param.label}:
+                      </span>
                       <span className="text-neutral-500 dark:text-neutral-400">{param.value}</span>
                     </span>
                   ))
                 ) : (
-                  <span className="text-neutral-400 dark:text-neutral-500">No parameters set</span>
+                  <span className="text-neutral-400 dark:text-muted-foreground">
+                    No parameters set
+                  </span>
                 )}
               </div>
             </div>
@@ -83,7 +87,7 @@ export function UtmTemplateCard({ template, index, onEdit }: UtmTemplateCardProp
                 type="button"
                 onClick={() => onEdit(template)}
                 aria-label={`Edit ${template.name}`}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-muted-foreground transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
               >
                 <IconPencil size={14} stroke={1.5} />
               </button>
@@ -91,7 +95,7 @@ export function UtmTemplateCard({ template, index, onEdit }: UtmTemplateCardProp
                 type="button"
                 onClick={() => setDeleteDialogOpen(true)}
                 aria-label={`Delete ${template.name}`}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-muted-foreground transition-colors hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600"
               >
                 <IconTrash size={14} stroke={1.5} />
               </button>

@@ -50,26 +50,31 @@ export function buildLlmsTxt({
 > iShortn (ishortn.ink) is a URL shortener with click analytics, custom domains, dynamic QR codes and link-in-bio pages, for small businesses, creators, freelancers and small teams. It has a free plan; paid plans are Pro at $${prices.pro} a month and Ultra at $${prices.ultra} a month. The code is open source under the MIT licence.`,
     `## Plans (prices in USD, from ${SITE}/pricing)
 
-- Free, $${prices.free}: ${fmt(free.linksLimit)} links a month, ${fmt(free.eventsLimit)} tracked events a month, ${free.analyticsRangeLimitDays}-day analytics window, ${freeQrCodeLimit} dynamic QR codes (edit anytime, never expire, no ads), ${plural(free.bioPageLimit, "link-in-bio page")} with up to ${plural(free.bioLinkBlocksPerPageLimit, "link block")}, ${plural(free.campaignLimit, "campaign")}. Short links use isht.app. No custom domains, no API.
-- Pro, $${prices.pro} a month or $${annualPrices.pro} a year: ${fmt(pro.linksLimit)} links a month, ${fmt(pro.eventsLimit)} tracked events, unlimited analytics history, ${plural(pro.domainLimit, "custom domain")}, branded and dynamic QR codes, ${plural(pro.bioPageLimit, "link-in-bio page")} on a custom domain without branding, geo and device targeting, password protection, scheduled links, REST API.
-- Ultra, $${prices.ultra} a month or $${annualPrices.ultra} a year: unlimited links, events and custom domains, team workspaces, link cloaking, UTM templates, unlimited bio pages and campaigns, priority support.`,
+- Free, $${prices.free}: ${fmt(free.linksLimit)} links a month, ${fmt(free.eventsLimit)} tracked clicks a month, ${free.analyticsRangeLimitDays}-day analytics window, ${freeQrCodeLimit} dynamic QR codes (edit anytime, never expire, no ads), ${plural(free.bioPageLimit, "link-in-bio page")} with up to ${plural(free.bioLinkBlocksPerPageLimit, "link block")}, ${plural(free.campaignLimit, "campaign")}. Short links use isht.app. No custom domains, no API.
+- Pro, $${prices.pro} a month or $${annualPrices.pro} a year: ${fmt(pro.linksLimit)} links a month, ${fmt(pro.eventsLimit)} tracked clicks, 1 year of detailed analytics, ${plural(pro.domainLimit, "custom domain")}, branded and dynamic QR codes, ${plural(pro.bioPageLimit, "link-in-bio page")} on a custom domain without branding, geo and device targeting, password protection, scheduled links, UTM parameters on links, REST API and MCP server.
+- Ultra, $${prices.ultra} a month or $${annualPrices.ultra} a year: unlimited links, tracked clicks and custom domains, team workspaces, link cloaking, UTM templates, unlimited bio pages and campaigns, priority support.`,
     `## Facts
 
 - Links keep redirecting when a plan's monthly limit is reached; only new links or new event recording pause until the next month.
 - Analytics show clicks, countries, cities, devices and referrers, with known bots and crawlers filtered out.
 - Bitly links on a custom domain can be imported from Bitly's CSV export and keep their addresses.
-- Every link is scanned for phishing and malware.`,
+- Every link is scanned for phishing and malware.
+- AI assistants (Claude, Cursor, Codex and other MCP clients) can create and manage links, read analytics and make QR codes through the remote MCP server at ${SITE}/mcp (streamable HTTP; the API key goes in an \`Authorization: Bearer\` header; Pro and Ultra).`,
     `## Key pages
 
 - [Pricing](${SITE}/pricing)
 - [Features](${SITE}/features)
 - [Compare iShortn with Bitly, TinyURL, Rebrandly, Short.io, Dub, Linktree, Beacons and Carrd](${SITE}/compare)
+- [Open-source URL shorteners compared: iShortn, Dub, YOURLS, Kutt, Shlink and Sink](${SITE}/open-source-url-shortener)
 - [Free QR code generator (no signup, no expiry)](${SITE}/qr-code-generator)
 - [UTM builder](${SITE}/utm-builder)
+- [URL expander: see where a short link goes, with a Google Safe Browsing check](${SITE}/url-expander)
+- [Chrome extension](${SITE}/extension)
 - [Documentation](${SITE}/docs)
 - [Plans and limits](${SITE}/docs/plans)
 - [Migrate from Bitly](${SITE}/docs/migrate-from-bitly)
 - [API reference](${SITE}/docs/api)
+- [MCP server setup for Claude, Cursor, VS Code, Windsurf, Gemini CLI and Codex](${SITE}/docs/integrations/mcp)
 - [Source code](https://github.com/AmoabaKelvin/ishortn.ink)`,
   ];
   if (guides.length > 0) sections.push(`## Guides\n\n${guides.join("\n")}`);

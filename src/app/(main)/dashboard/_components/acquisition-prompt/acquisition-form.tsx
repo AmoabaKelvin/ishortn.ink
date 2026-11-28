@@ -116,7 +116,7 @@ export function AcquisitionForm({ source, plan, variant, onDone }: AcquisitionFo
         <div className="space-y-1.5">
           <Label htmlFor={fieldId("detail")} className={LABEL_CLASS}>
             Where exactly?
-            <span className="ml-1.5 text-[12px] font-normal text-neutral-400 dark:text-neutral-500">
+            <span className="ml-1.5 text-[12px] font-normal text-neutral-400 dark:text-muted-foreground">
               optional
             </span>
           </Label>
@@ -140,7 +140,7 @@ export function AcquisitionForm({ source, plan, variant, onDone }: AcquisitionFo
         <div className="space-y-1.5">
           <Label htmlFor={fieldId("use-case")} className={LABEL_CLASS}>
             What will you mainly use it for?
-            <span className="ml-1.5 text-[12px] font-normal text-neutral-400 dark:text-neutral-500">
+            <span className="ml-1.5 text-[12px] font-normal text-neutral-400 dark:text-muted-foreground">
               optional
             </span>
           </Label>

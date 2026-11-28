@@ -1,6 +1,7 @@
 import { and, count, eq, isNull } from "drizzle-orm";
 
 import {
+  billingPlanMode,
   effectivePlan,
   graceAction,
   isGraceActive,
@@ -9,7 +10,9 @@ import {
   teamGraceAction,
 } from "@/lib/billing/entitlements";
 import { getPlanCaps, getSubscriptionMode } from "@/lib/billing/plans";
-import { folder } from "@/server/db/schema";
+import { freeAnalyticsWindowStart } from "@/lib/core/analytics";
+import { companyEmailDomain } from "@/lib/email/company-domain";
+import { customDomain, folder, link, user } from "@/server/db/schema";
 import { getEventTrackingPause, nextEventCountReset } from "@/server/lib/event-usage";
 import {
   getUserPlanContext,
@@ -19,7 +22,9 @@ import {
 import { workspaceFilter } from "@/server/lib/workspace";
 
 import { createTRPCRouter, workspaceProcedure } from "../../trpc";
-import { countWorkspaceQrCodes } from "../qrcode/qrcode.service";
+import { countClicksBefore } from "../link/link.service";
+import { countWorkspaceQrCodes } from "../qrcode/qrcode-bulk.service";
+import { workEmailDomain } from "./utils";
 
 export const subscriptionsRouter = createTRPCRouter({
   // Grace-period notice for the dashboard banner (see src/lib/billing/entitlements.ts).
@@ -183,10 +188,46 @@ export const subscriptionsRouter = createTRPCRouter({
       isTeamWorkspace,
       // Billing actions always act on the personal subscription.
       subscriptionMode: getSubscriptionMode(userRecord.subscriptions ?? null),
+      // Sent back with plan changes so the server can refuse one made from a stale screen.
+      planMode: billingPlanMode(userRecord.subscriptions ?? null),
       // Whether the user can create teams (based on personal subscription, not workspace)
       canCreateTeam: personalPlan === "ultra",
       // Read from the auth context (no query); hides billing offers on moderated accounts.
       isRestricted: ctx.restrictedAt !== null,
+      // Null for free-mail addresses; the link-ready dialog offers go.<domain> to the rest.
+      companyEmailDomain: companyEmailDomain(userRecord.email),
+    };
+  }),
+
+  // What the Free sidebar upgrade button needs beyond `get`'s usage. The sidebar streams this
+  // in behind Suspense, so these queries never hold up the dashboard.
+  upgradeSignals: workspaceProcedure.query(async ({ ctx }) => {
+    if (ctx.workspace.type === "team" || ctx.workspace.plan !== "free") return null;
+
+    const [hiddenClicks, userRecord, domains] = await Promise.all([
+      countClicksBefore(
+        ctx.db,
+        ctx.db
+          .select({ id: link.id })
+          .from(link)
+          .where(workspaceFilter(ctx.workspace, link.userId, link.teamId)),
+        freeAnalyticsWindowStart(new Date()),
+      ),
+      ctx.db.query.user.findFirst({
+        where: eq(user.id, ctx.auth.userId),
+        columns: { email: true },
+      }),
+      ctx.db
+        .select({ id: customDomain.id })
+        .from(customDomain)
+        .where(workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId))
+        .limit(1),
+    ]);
+
+    return {
+      hiddenClicks,
+      // Only suggested while the account has no custom domain of its own.
+      workDomain: domains.length > 0 ? null : workEmailDomain(userRecord?.email),
     };
   }),
 });

@@ -342,3 +342,32 @@ export async function sendAccountDeletionNotification(params: {
 
   return sendDiscordNotification({ embeds: [embed] });
 }
+
+export async function sendDuplicateSubscriptionAlert(params: {
+  userId: string;
+  storedSubscriptionId: string;
+  storedStatus: string;
+  newSubscriptionId: string;
+  eventType: string;
+}): Promise<boolean> {
+  const embed: DiscordEmbed = {
+    title: "Second live Paddle subscription",
+    description:
+      "A user with a live subscription started another one. The stored row was kept; the new subscription is billing untracked and needs to be cancelled or refunded in Paddle.",
+    color: DISCORD_COLORS.error,
+    fields: [
+      { name: "User", value: params.userId, inline: false },
+      {
+        name: "Kept subscription",
+        value: `${params.storedSubscriptionId} (${params.storedStatus})`,
+        inline: true,
+      },
+      { name: "New subscription", value: params.newSubscriptionId, inline: true },
+      { name: "Event", value: params.eventType, inline: true },
+    ],
+    timestamp: new Date().toISOString(),
+    footer: { text: "iShortn Billing" },
+  };
+
+  return sendDiscordNotification({ embeds: [embed] });
+}

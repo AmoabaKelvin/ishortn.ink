@@ -47,6 +47,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
 import type { EventUsage } from "./sidebar-stats";
+import type { SidebarUpgradeSignals } from "./sidebar-upgrade-reason";
 
 const sidebarWordmarkClass = "text-[17px] dark:text-foreground [&>svg]:size-5";
 
@@ -117,6 +118,8 @@ type AppSidebarProps = {
   linkLimit?: number | null;
   eventUsage?: EventUsage | undefined;
   folderUsage?: { count: number; limit: number | null } | undefined;
+  qrCodeUsage?: { count: number; limit: number | null } | undefined;
+  upgradeSignals?: Promise<SidebarUpgradeSignals | null> | null;
   plan?: "free" | "pro" | "ultra";
   teams?: Team[];
   currentWorkspace?: CurrentWorkspace;
@@ -131,6 +134,8 @@ export function AppSidebar({
   linkLimit = null,
   eventUsage,
   folderUsage,
+  qrCodeUsage,
+  upgradeSignals = null,
   plan = "free",
   teams = [],
   currentWorkspace = { type: "personal", plan: "free" },
@@ -264,7 +269,7 @@ export function AppSidebar({
             {currentWorkspace.type === "team" && (
               <>
                 <div className="my-3 h-px bg-neutral-100 dark:bg-border/50" />
-                <p className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                <p className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-muted-foreground">
                   Team
                 </p>
                 <ul className="space-y-0.5">
@@ -298,7 +303,7 @@ export function AppSidebar({
             {isAdmin && (
               <>
                 <div className="my-3 h-px bg-neutral-100 dark:bg-border/50" />
-                <p className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                <p className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-muted-foreground">
                   Admin
                 </p>
                 <ul className="space-y-0.5">
@@ -342,6 +347,8 @@ export function AppSidebar({
                   linkLimit={linkLimit}
                   eventUsage={eventUsage}
                   folderUsage={folderUsage}
+                  qrCodeUsage={qrCodeUsage}
+                  upgradeSignals={upgradeSignals}
                   plan={plan}
                   shown={isDesktop || isMobileMenuOpen}
                 />
@@ -388,14 +395,14 @@ export function AppSidebar({
                       <p className="truncate text-[13px] font-medium text-neutral-900 dark:text-foreground">
                         {displayName}
                       </p>
-                      <p className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">
+                      <p className="truncate text-[11px] text-neutral-400 dark:text-muted-foreground">
                         {user?.primaryEmailAddress?.emailAddress}
                       </p>
                     </div>
                     <IconChevronUp
                       size={14}
                       stroke={1.5}
-                      className="shrink-0 text-neutral-400 dark:text-neutral-500"
+                      className="shrink-0 text-neutral-400 dark:text-muted-foreground"
                     />
                   </button>
                 </PopoverTrigger>

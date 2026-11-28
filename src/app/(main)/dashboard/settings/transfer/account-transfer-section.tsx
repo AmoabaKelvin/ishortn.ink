@@ -163,7 +163,7 @@ export function AccountTransferSection() {
           )}
 
           {/* Info */}
-          <div className="space-y-2 text-[12px] text-neutral-400 dark:text-neutral-500">
+          <div className="space-y-2 text-[12px] text-neutral-400 dark:text-muted-foreground">
             <p>
               <strong className="text-neutral-600 dark:text-neutral-400">Transferred:</strong>{" "}
               Links, custom domains, QR codes, UTM templates, folders, tags, and analytics data.
@@ -183,7 +183,7 @@ export function AccountTransferSection() {
             <DialogTitle className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
               Confirm Transfer
             </DialogTitle>
-            <DialogDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+            <DialogDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
               You&apos;re about to transfer your resources to{" "}
               <span className="font-medium text-neutral-700 dark:text-neutral-300">
                 {targetEmail}
@@ -195,30 +195,30 @@ export function AccountTransferSection() {
             <DialogBody className="space-y-3">
               <div className="rounded-lg border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 p-3">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-[12px]">
-                  <span className="text-neutral-400 dark:text-neutral-500">Links</span>
+                  <span className="text-neutral-400 dark:text-muted-foreground">Links</span>
                   <span className="text-right font-medium tabular-nums text-neutral-700 dark:text-neutral-300">
                     {validationResult.resourceCounts.links}
                   </span>
-                  <span className="text-neutral-400 dark:text-neutral-500">Domains</span>
+                  <span className="text-neutral-400 dark:text-muted-foreground">Domains</span>
                   <span className="text-right font-medium tabular-nums text-neutral-700 dark:text-neutral-300">
                     {validationResult.resourceCounts.customDomains}
                   </span>
-                  <span className="text-neutral-400 dark:text-neutral-500">QR Codes</span>
+                  <span className="text-neutral-400 dark:text-muted-foreground">QR Codes</span>
                   <span className="text-right font-medium tabular-nums text-neutral-700 dark:text-neutral-300">
                     {validationResult.resourceCounts.qrCodes}
                   </span>
-                  <span className="text-neutral-400 dark:text-neutral-500">Folders</span>
+                  <span className="text-neutral-400 dark:text-muted-foreground">Folders</span>
                   <span className="text-right font-medium tabular-nums text-neutral-700 dark:text-neutral-300">
                     {validationResult.resourceCounts.folders}
                   </span>
-                  <span className="text-neutral-400 dark:text-neutral-500">Tags</span>
+                  <span className="text-neutral-400 dark:text-muted-foreground">Tags</span>
                   <span className="text-right font-medium tabular-nums text-neutral-700 dark:text-neutral-300">
                     {validationResult.resourceCounts.tags}
                   </span>
                 </div>
               </div>
 
-              <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+              <p className="text-[11px] text-neutral-400 dark:text-muted-foreground">
                 This action cannot be undone once accepted.
               </p>
             </DialogBody>

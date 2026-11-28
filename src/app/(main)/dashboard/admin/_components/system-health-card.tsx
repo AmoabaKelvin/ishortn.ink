@@ -47,7 +47,7 @@ function StatusRow({
       </div>
       <div className="flex items-center gap-2">
         {detail && (
-          <span className="text-[11px] text-neutral-400 dark:text-neutral-500">{detail}</span>
+          <span className="text-[11px] text-neutral-400 dark:text-muted-foreground">{detail}</span>
         )}
         <span className="min-w-[2rem] text-right text-[13px] font-semibold tabular-nums text-neutral-900 dark:text-foreground">
           {value}
@@ -87,7 +87,9 @@ export function SystemHealthCard({ data, isLoading }: SystemHealthCardProps) {
           </p>
         </div>
         <div className="flex items-center justify-center px-5 py-12">
-          <p className="text-[13px] text-neutral-400 dark:text-neutral-500">Failed to load data</p>
+          <p className="text-[13px] text-neutral-400 dark:text-muted-foreground">
+            Failed to load data
+          </p>
         </div>
       </Card>
     );
@@ -101,7 +103,7 @@ export function SystemHealthCard({ data, isLoading }: SystemHealthCardProps) {
         <p className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           System Health
         </p>
-        <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
           {data.totalLinks.toLocaleString()} links &middot; {data.totalUsers.toLocaleString()} users
         </p>
       </div>

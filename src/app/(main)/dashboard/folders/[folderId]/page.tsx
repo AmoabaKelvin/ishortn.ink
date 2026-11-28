@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { api } from "@/trpc/server";
 
+import { ScheduledReportsButton } from "../../_components/scheduled-reports/scheduled-reports-button";
 import { DeleteFolderButton } from "./_components/delete-folder-button";
 import { EditFolderButton } from "./_components/edit-folder-button";
 import { FolderLinks } from "./_components/folder-links";
@@ -32,7 +33,7 @@ export default async function FolderDetailPage({ params }: FolderDetailPageProps
       <nav className="mb-6 flex items-center gap-1.5 text-[13px]">
         <Link
           href="/dashboard"
-          className="text-neutral-400 transition-colors hover:text-neutral-900 dark:text-neutral-500 dark:hover:text-foreground"
+          className="text-neutral-400 transition-colors hover:text-neutral-900 dark:text-muted-foreground dark:hover:text-foreground"
         >
           Dashboard
         </Link>
@@ -43,7 +44,7 @@ export default async function FolderDetailPage({ params }: FolderDetailPageProps
         />
         <Link
           href="/dashboard/folders"
-          className="text-neutral-400 transition-colors hover:text-neutral-900 dark:text-neutral-500 dark:hover:text-foreground"
+          className="text-neutral-400 transition-colors hover:text-neutral-900 dark:text-muted-foreground dark:hover:text-foreground"
         >
           Folders
         </Link>
@@ -64,17 +65,22 @@ export default async function FolderDetailPage({ params }: FolderDetailPageProps
             {folder.name}
           </h2>
           {folder.description ? (
-            <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
               {folder.description}
             </p>
           ) : (
-            <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
               {folder.links.length} {folder.links.length === 1 ? "link" : "links"}
             </p>
           )}
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
+          <ScheduledReportsButton
+            targetType="folder"
+            targetId={folder.id}
+            className="h-auto rounded-md py-1.5 font-medium"
+          />
           <EditFolderButton folder={folder} />
           <DeleteFolderButton folder={folder} />
         </div>

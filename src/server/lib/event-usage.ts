@@ -112,7 +112,6 @@ export async function reserveEventUsage(
           plan,
           subscriptionMode: getSubscriptionMode(ctx.subscription),
           email: ctx.userRecord.email,
-          name: ctx.userRecord.name,
         }
       : null;
 

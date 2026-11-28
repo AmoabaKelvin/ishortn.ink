@@ -118,6 +118,35 @@ describe("promo offer in upgrade prompts", () => {
     ]);
   });
 
+  test("the Free sidebar CTA quotes the usage reason with its own source", () => {
+    const visits = render(
+      <SidebarStats
+        monthlyLinkCount={3}
+        userHasPaidPlan={false}
+        linkLimit={30}
+        eventUsage={{ count: 720, limit: 1000 }}
+        qrCodeUsage={{ count: 5, limit: 5 }}
+        plan="free"
+        shown
+      />,
+    );
+    expect(visits).toContain("720/1,000 tracked clicks used");
+    expect(hrefs(visits)).toEqual(["/dashboard/pricing?highlight=pro&source=sidebar_visits_cap"]);
+
+    const qr = render(
+      <SidebarStats
+        monthlyLinkCount={3}
+        userHasPaidPlan={false}
+        linkLimit={30}
+        qrCodeUsage={{ count: 5, limit: 5 }}
+        plan="free"
+        shown
+      />,
+    );
+    expect(qr).toContain("5/5 QR codes used");
+    expect(hrefs(qr)).toEqual(["/dashboard/pricing?highlight=pro&source=sidebar_qr_cap"]);
+  });
+
   test("the Pro sidebar CTA never shows the offer", () => {
     const html = withPromo(
       <SidebarStats monthlyLinkCount={3} userHasPaidPlan linkLimit={null} plan="pro" shown />,

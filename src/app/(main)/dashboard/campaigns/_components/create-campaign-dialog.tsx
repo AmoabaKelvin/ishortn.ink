@@ -108,7 +108,7 @@ export function CreateCampaignDialog({ trigger }: { trigger: React.ReactNode }) 
               placeholder="summer-launch"
               maxLength={100}
             />
-            <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
               Used as{" "}
               <code className="rounded bg-neutral-100 px-1 py-0.5 text-[11px] dark:bg-muted">
                 utm_campaign={effectiveSlug || "…"}

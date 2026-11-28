@@ -145,7 +145,7 @@ A link you can edit is a link someone else can edit too, if they run it. For the
 
 Most shorteners have a free plan that covers basic shortening, with caps on links per month and on how far back analytics go. Paid plans usually add custom domains, editable links, longer analytics history, API access and team features.
 
-For reference, iShortn's Free plan includes 30 new links a month, 1,000 tracked events (clicks and scans) a month, a 7-day analytics window and up to 5 QR codes. Pro is $8 a month (1,000 links and 10,000 tracked events a month, 3 custom domains, the [API](/docs/api) and password protection). Ultra is $15 a month, removes the link, event and domain caps, and adds team workspaces. Full limits are on the [plans page](/docs/plans) and [pricing](/pricing).
+For reference, iShortn's Free plan includes 30 new links a month, 1,000 tracked clicks (including scans) a month, a 7-day analytics window and up to 5 QR codes. Pro is $8 a month (1,000 links and 10,000 tracked clicks a month, 3 custom domains, the [API](/docs/api) and password protection). Ultra is $15 a month, removes the link, tracked-click and domain caps, and adds team workspaces. Full limits are on the [plans page](/docs/plans) and [pricing](/pricing).
 
 If you're choosing between services, the [comparison of free URL shorteners](/blog/best-free-url-shorteners) lines up the free plans, and the [compare pages](/compare) go through iShortn against [Bitly](/compare/bitly), [TinyURL](/compare/tinyurl), [Rebrandly](/compare/rebrandly) and [Dub](/compare/dub) one by one. If you're not sure you need more than a shortener, read [URL shortener vs link management platform](/blog/url-shortener-vs-link-management-platform).
 

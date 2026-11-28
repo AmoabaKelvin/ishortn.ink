@@ -1,7 +1,8 @@
-import { consumeApiRateLimit, rateLimitHeaders } from "../v1/rate-limit";
-import { validateAndGetToken } from "../v1/utils";
+import { applyApiRateLimit, rateLimitHeaders } from "../v1/rate-limit";
+import { authenticateToken } from "../v1/utils";
 
 import type { ApiToken } from "../v1/utils";
+import type { ServerTiming } from "@/server/lib/server-timing";
 
 // Any origin: auth is a bearer token, never a cookie, so a page that calls these routes gains
 // nothing without the token, and the extension needs no host permissions. Firefox extension
@@ -10,6 +11,9 @@ export const EXTENSION_CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Authorization, Content-Type",
   "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+  // Lets the extension read the create route's step timings.
+  "Access-Control-Expose-Headers": "Server-Timing",
+  "Timing-Allow-Origin": "*",
 };
 
 /** Every /api/extension error is `{ error, upgradeUrl? }`. */
@@ -37,16 +41,24 @@ function bearerToken(request: Request): string | null {
 
 /**
  * Wraps an /api/extension route with extension-token auth (API keys are refused, as extension
- * tokens are on /api/v1) and the plan's API rate limit. Cookies are never read.
+ * tokens are on /api/v1) and the plan's API rate limit. Cookies are never read. The auth time
+ * goes to `serverTiming` as `auth` when given.
  */
 export function withExtensionToken<Req extends Request, Args extends unknown[]>(
   handler: (request: Req, token: ApiToken, ...args: Args) => Promise<Response>,
+  serverTiming?: ServerTiming,
 ) {
   return async (request: Req, ...args: Args): Promise<Response> => {
-    const token = await validateAndGetToken(bearerToken(request), "extension");
-    if (!token) return extensionError(401, "Not connected. Connect the extension again.");
+    const started = Date.now();
+    const auth = await authenticateToken(bearerToken(request), "extension");
+    if (!auth) {
+      serverTiming?.add("auth", Date.now() - started);
+      return extensionError(401, "Not connected. Connect the extension again.");
+    }
+    const { token } = auth;
 
-    const decision = await consumeApiRateLimit(token.userId, token.plan);
+    const decision = applyApiRateLimit(await auth.counters, token.plan);
+    serverTiming?.add("auth", Date.now() - started);
     if (!decision.allowed) {
       return extensionError(
         429,

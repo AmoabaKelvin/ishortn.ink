@@ -18,6 +18,7 @@ import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
 import { Pricing } from "../_components/pricing";
 import { Eyebrow, h1Class, leadClass, Section } from "../_components/site-primitives";
+import { Testimonial } from "../_components/testimonial";
 
 import type { Metadata } from "next";
 
@@ -45,8 +46,8 @@ export const metadata: Metadata = {
 
 const pricingFaqs = [
   {
-    q: "What counts as a tracked event?",
-    a: "A single click or QR scan on one of your short links, or a view of one of your bio pages. Free includes 1,000 events per month, Pro 10,000, and Ultra is unlimited. Over the limit your links keep redirecting, but new events aren't recorded until the next month.",
+    q: "What counts as a tracked click?",
+    a: "A single click or QR scan on one of your short links, or a view of one of your bio pages. Free includes 1,000 tracked clicks per month, Pro 10,000, and Ultra is unlimited. Over the limit your links keep redirecting, but new clicks aren't recorded until the next month.",
   },
   {
     q: "Can I cancel anytime?",
@@ -103,6 +104,8 @@ export default function PricingPage() {
       </Section>
 
       <Pricing showHeading={false} promo={getActivePromo()} />
+
+      <Testimonial />
 
       <Faq faqs={pricingFaqs} />
 

@@ -273,7 +273,7 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
                     <IconUpload
                       size={20}
                       stroke={1.5}
-                      className="text-neutral-400 dark:text-neutral-500"
+                      className="text-neutral-400 dark:text-muted-foreground"
                     />
                   )}
                   <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
@@ -288,7 +288,7 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
                       </>
                     )}
                   </p>
-                  <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+                  <p className="text-[11px] text-neutral-400 dark:text-muted-foreground">
                     PNG, JPG, GIF, WebP up to 2MB ({MAX_IMAGES - images.length} remaining)
                   </p>
                 </button>

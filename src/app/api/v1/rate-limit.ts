@@ -32,7 +32,11 @@ const kvStore: CounterStore = { get: getStringsFromCache, put: setStringInCache 
 const localCounts = new Map<string, number>();
 const LOCAL_COUNTS_MAX = 5000;
 
-export function windowKeys(subject: string, window: RateLimitWindow, nowMs: number) {
+export function windowKeys(
+  subject: string,
+  window: Pick<RateLimitWindow, "windowSeconds">,
+  nowMs: number,
+) {
   const index = Math.floor(nowMs / 1000 / window.windowSeconds);
   const prefix = `ratelimit:api:${subject}:${window.windowSeconds}`;
   return { current: `${prefix}:${index}`, previous: `${prefix}:${index - 1}` };
@@ -92,36 +96,58 @@ export function pickDecision(decisions: RateLimitDecision[]): RateLimitDecision 
   return decisions.reduce((a, b) => (b.remaining < a.remaining ? b : a));
 }
 
+// Every plan counts over the same windows; only the limits differ. So the counters can be read
+// as soon as the user id is known, before the plan is resolved.
+const MINUTE_SECONDS = 60;
+const DAY_SECONDS = 60 * 60 * 24;
+const API_WINDOW_SECONDS = [MINUTE_SECONDS, DAY_SECONDS];
+
 export function planRateLimitWindows(plan: Plan): RateLimitWindow[] {
   const limits = getApiRateLimits(plan);
   return [
-    { limit: limits.perMinute, windowSeconds: 60 },
-    { limit: limits.perDay, windowSeconds: 60 * 60 * 24 },
+    { limit: limits.perMinute, windowSeconds: MINUTE_SECONDS },
+    { limit: limits.perDay, windowSeconds: DAY_SECONDS },
   ];
+}
+
+/** The stored counts of one subject's windows at `nowMs`, read before the limits are known. */
+export type RateLimitCounters = {
+  subject: string;
+  nowMs: number;
+  stored: Map<string, string | null>;
+};
+
+export async function readRateLimitCounters(
+  subject: string,
+  windowSeconds: number[],
+  { store = kvStore, nowMs = Date.now() }: { store?: CounterStore; nowMs?: number } = {},
+): Promise<RateLimitCounters> {
+  const keys = windowSeconds.flatMap((seconds) => {
+    const k = windowKeys(subject, { windowSeconds: seconds }, nowMs);
+    return [k.current, k.previous];
+  });
+  return { subject, nowMs, stored: await store.get(keys) };
 }
 
 /**
  * Counts one request against every window and returns the decision. Rejected
  * requests are not counted. Best effort: when KV is unavailable only the
- * isolate's own counts apply.
+ * isolate's own counts apply. `counters` must cover the same window lengths.
  */
-export async function consumeRateLimit(
-  subject: string,
+export function applyRateLimit(
+  { subject, nowMs, stored }: RateLimitCounters,
   windows: RateLimitWindow[],
   {
     store = kvStore,
     defer = (task: Promise<unknown>) => {
       void runBackgroundTask(task).catch(() => undefined);
     },
-    nowMs = Date.now(),
   }: {
     store?: CounterStore;
     defer?: (task: Promise<unknown>) => void;
-    nowMs?: number;
   } = {},
-): Promise<RateLimitDecision> {
+): RateLimitDecision {
   const keys = windows.map((window) => windowKeys(subject, window, nowMs));
-  const stored = await store.get(keys.flatMap((k) => [k.current, k.previous]));
   const countOf = (key: string) =>
     Math.max(Number(stored.get(key)) || 0, localCounts.get(key) ?? 0);
 
@@ -142,8 +168,29 @@ export async function consumeRateLimit(
   return decision;
 }
 
-export function consumeApiRateLimit(userId: string, plan: Plan) {
-  return consumeRateLimit(userId, planRateLimitWindows(plan));
+export async function consumeRateLimit(
+  subject: string,
+  windows: RateLimitWindow[],
+  options: {
+    store?: CounterStore;
+    defer?: (task: Promise<unknown>) => void;
+    nowMs?: number;
+  } = {},
+): Promise<RateLimitDecision> {
+  const counters = await readRateLimitCounters(
+    subject,
+    windows.map((window) => window.windowSeconds),
+    options,
+  );
+  return applyRateLimit(counters, windows, options);
+}
+
+export function readApiRateLimitCounters(userId: string) {
+  return readRateLimitCounters(userId, API_WINDOW_SECONDS);
+}
+
+export function applyApiRateLimit(counters: RateLimitCounters, plan: Plan) {
+  return applyRateLimit(counters, planRateLimitWindows(plan));
 }
 
 export function rateLimitHeaders(decision: RateLimitDecision) {

@@ -106,6 +106,7 @@ describe("card copy", () => {
     features: "features/page.tsx",
     solutions: "solutions/page.tsx",
     compare: "compare/page.tsx",
+    openSourceUrlShortener: "open-source-url-shortener/page.tsx",
     changelog: "changelog/page.tsx",
     blog: "blog/page.tsx",
     abuse: "abuse/page.tsx",
@@ -113,8 +114,11 @@ describe("card copy", () => {
     privacy: "privacy/page.tsx",
     qrCodeGenerator: "qr-code-generator/page.tsx",
     utmBuilder: "utm-builder/page.tsx",
+    urlExpander: "url-expander/page.tsx",
+    extension: "extension/page.tsx",
     whatsappLinkGenerator: "whatsapp-link-generator/page.tsx",
     whatsappLinkGeneratorPtBr: "gerador-de-link-whatsapp/page.tsx",
+    customerAiro: "customers/airo/_components/airo-story.tsx",
   } satisfies Record<keyof typeof pageCards, string>;
 
   for (const [key, file] of Object.entries(sources)) {
@@ -123,9 +127,11 @@ describe("card copy", () => {
       const card = pageCards[key as keyof typeof pageCards];
       const source = landing(file);
       expect(source).toContain(`>${card.title}<`);
-      // Home, pricing and compare write a card-length subtitle of their own (compare's lead is
-      // built from the plan constants, so it isn't a literal in the page source).
-      if (key !== "home" && key !== "pricing" && key !== "compare") {
+      // Home, pricing, compare and the open-source page write a card-length subtitle of their
+      // own (compare's lead is built from the plan constants, so it isn't a literal in the page
+      // source; the open-source lead is too long for a card).
+      const ownSubtitle = ["home", "pricing", "compare", "openSourceUrlShortener"];
+      if (!ownSubtitle.includes(key)) {
         expect(source).toContain(card.subtitle);
       }
     });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { readFileSync } from "node:fs";
 
 import {
   extractFaqs,
@@ -93,11 +94,13 @@ describe("extractFaqs", () => {
     ]);
   });
 
-  it("matches Common questions about X and Frequently asked questions", () => {
+  it("matches Common questions about X, Frequently asked questions and Questions", () => {
     const body = "\n\n### Q one?\n\nA one.\n\n### Q two?\n\nA two.\n";
     for (const heading of [
       "Common questions about Bitly alternatives",
       "Frequently Asked Questions",
+      "Questions",
+      "questions and answers",
     ]) {
       expect(extractFaqs(`## ${heading}${body}`)).toEqual([
         { question: "Q one?", answer: "A one." },
@@ -142,6 +145,17 @@ describe("extractFaqs", () => {
     expect(bitly!.faqs[0]!.question).toBe("Is there a free alternative to Bitly?");
     const whatIs = await getPostBySlug("what-is-a-url-shortener");
     expect(whatIs!.faqs.length).toBeGreaterThanOrEqual(2);
+    // Read from disk rather than getPostBySlug so scheduled posts are covered before their date.
+    const faqsOf = (slug: string) => extractFaqs(readFileSync(`content/blog/${slug}.md`, "utf8"));
+    const packaging = faqsOf("qr-code-on-product-packaging");
+    expect(packaging.length).toBe(5);
+    expect(packaging[0]!.question).toBe("What size should a QR code on a product label be?");
+    const cancel = faqsOf("cancel-bitly-subscription");
+    expect(cancel.length).toBe(5);
+    expect(cancel[0]!.question).toBe("Do Bitly links stop working if I cancel?");
+    const googleReviews = faqsOf("qr-code-for-google-reviews");
+    expect(googleReviews.length).toBe(7);
+    expect(googleReviews[0]!.question).toBe("How do I create a QR code for a Google review?");
   });
 });
 

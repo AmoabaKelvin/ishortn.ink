@@ -19,7 +19,7 @@ export default async function AdminEmailHealthPage() {
         <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Email Health
         </h1>
-        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
           Addresses that hard-bounced or marked our email as spam. Only security and billing email
           is still sent to them.
         </p>
@@ -42,7 +42,7 @@ export default async function AdminEmailHealthPage() {
         <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
           Recent events
         </h2>
-        <p className="mt-0.5 mb-3 text-[12px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-0.5 mb-3 text-[12px] text-neutral-400 dark:text-muted-foreground">
           The {EMAIL_SUPPRESSION_RECENT_LIMIT} most recent, newest first
         </p>
 
@@ -56,7 +56,7 @@ export default async function AdminEmailHealthPage() {
             <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
               No bounces or complaints
             </p>
-            <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-1 text-[12px] text-neutral-400 dark:text-muted-foreground">
               Addresses appear here when Resend reports them
             </p>
           </div>
@@ -83,11 +83,11 @@ export default async function AdminEmailHealthPage() {
                       <p className="break-all text-[13px] font-medium text-neutral-800 dark:text-neutral-200">
                         {row.email}
                       </p>
-                      <p className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">
+                      <p className="truncate text-[11px] text-neutral-400 dark:text-muted-foreground">
                         {row.userId ? (displayName(row.userName) ?? row.userId) : "No account"}
                         {row.detail && ` · ${row.detail}`}
                       </p>
-                      <p className="text-[11px] text-neutral-400 dark:text-neutral-500 md:hidden">
+                      <p className="text-[11px] text-neutral-400 dark:text-muted-foreground md:hidden">
                         {formatDate(row.lastEventAt)}
                       </p>
                     </td>

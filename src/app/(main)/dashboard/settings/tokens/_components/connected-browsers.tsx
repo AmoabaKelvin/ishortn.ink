@@ -1,8 +1,14 @@
 "use client";
 
-import { IconBrowser, IconPlugConnectedX } from "@tabler/icons-react";
+import {
+  IconArrowUpRight,
+  IconBrandChrome,
+  IconBrowser,
+  IconPlugConnectedX,
+  IconX,
+} from "@tabler/icons-react";
 import { formatDistanceToNow } from "date-fns";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 
 import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
@@ -16,11 +22,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { withProductUtm } from "@/lib/attribution/referral";
+import { CHROME_WEB_STORE_URL } from "@/lib/constants/extension";
+import {
+  dismissExtensionPrompt,
+  readExtensionPromptDismissed,
+  subscribeExtensionPromptDismissed,
+} from "@/lib/extension/prompt";
 import { api } from "@/trpc/react";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
 type Browser = RouterOutputs["token"]["listExtensions"][number];
+
+const STORE_URL = withProductUtm(CHROME_WEB_STORE_URL, "app", "settings_extension_store");
+// Hidden on the server so hydration matches; the prompt enters once the client has read the
+// stored dismissal.
+const readDismissedOnServer = () => true;
 
 const formatDate = (date: Date) =>
   date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
@@ -34,25 +52,32 @@ export function ConnectedBrowsers({
 }) {
   if (browsers.length === 0) {
     return (
-      <div className="py-6 text-center">
-        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-100 dark:bg-muted">
-          <IconBrowser size={18} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+      <div className="space-y-3">
+        <ExtensionPrompt />
+        <div className="py-6 text-center">
+          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-100 dark:bg-muted">
+            <IconBrowser
+              size={18}
+              stroke={1.5}
+              className="text-neutral-400 dark:text-muted-foreground"
+            />
+          </div>
+          <p className="text-[14px] font-medium text-neutral-900 dark:text-foreground">
+            No Connected Browsers
+          </p>
+          <p className="mx-auto mt-1 max-w-sm text-[12px] text-neutral-400 dark:text-muted-foreground">
+            Shorten the page you&apos;re on, copy the link and get its QR code from your browser
+            toolbar.{" "}
+            <a
+              href={docsUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+            >
+              Setup guide
+            </a>
+          </p>
         </div>
-        <p className="text-[14px] font-medium text-neutral-900 dark:text-foreground">
-          No Connected Browsers
-        </p>
-        <p className="mx-auto mt-1 max-w-sm text-[12px] text-neutral-400 dark:text-neutral-500">
-          Shorten the page you&apos;re on, copy the link and get its QR code from your browser
-          toolbar.{" "}
-          <a
-            href={docsUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
-          >
-            Get the extension
-          </a>
-        </p>
       </div>
     );
   }
@@ -62,6 +87,49 @@ export function ConnectedBrowsers({
       {browsers.map((browser) => (
         <BrowserRow key={browser.id} browser={browser} />
       ))}
+    </div>
+  );
+}
+
+function ExtensionPrompt() {
+  const dismissed = useSyncExternalStore(
+    subscribeExtensionPromptDismissed,
+    readExtensionPromptDismissed,
+    readDismissedOnServer,
+  );
+  if (dismissed) return null;
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2.5 text-[13px] text-neutral-700 ease-[cubic-bezier(0.23,1,0.32,1)] motion-safe:duration-200 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 dark:border-border dark:bg-card dark:text-neutral-300">
+      <IconBrandChrome
+        size={16}
+        stroke={1.5}
+        aria-hidden="true"
+        className="shrink-0 text-blue-600 dark:text-blue-400"
+      />
+      <p className="min-w-0 flex-1">
+        <span className="font-medium text-neutral-900 dark:text-foreground">
+          Get the browser extension
+        </span>{" "}
+        for Chrome and Edge to shorten any page from your toolbar.{" "}
+        <a
+          href={STORE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-0.5 whitespace-nowrap font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+        >
+          Add to Chrome
+          <IconArrowUpRight size={14} stroke={1.5} aria-hidden="true" />
+        </a>
+      </p>
+      <button
+        type="button"
+        onClick={dismissExtensionPrompt}
+        aria-label="Dismiss the browser extension prompt"
+        className="-mr-1 shrink-0 rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:text-muted-foreground dark:hover:bg-accent dark:hover:text-neutral-300"
+      >
+        <IconX size={14} stroke={1.5} />
+      </button>
     </div>
   );
 }
@@ -84,7 +152,11 @@ function BrowserRow({ browser }: { browser: Browser }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3">
       <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-neutral-100 dark:bg-muted">
-        <IconBrowser size={15} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+        <IconBrowser
+          size={15}
+          stroke={1.5}
+          className="text-neutral-400 dark:text-muted-foreground"
+        />
       </div>
 
       <div className="min-w-0 flex-1">
@@ -98,7 +170,7 @@ function BrowserRow({ browser }: { browser: Browser }) {
             </code>
           )}
         </div>
-        <p className="mt-0.5 truncate text-[12px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-0.5 truncate text-[12px] text-neutral-400 dark:text-muted-foreground">
           {browser.createdAt && <>Connected {formatDate(browser.createdAt)} &middot; </>}
           {browser.lastUsedAt ? (
             <span title={browser.lastUsedAt.toLocaleString()}>

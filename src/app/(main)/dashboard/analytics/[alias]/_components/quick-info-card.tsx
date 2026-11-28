@@ -24,7 +24,7 @@ const GROWTH_VARIANTS = {
   },
   flat: {
     icon: <IconMinus size={12} stroke={2} />,
-    className: "text-neutral-400 dark:text-neutral-500",
+    className: "text-neutral-400 dark:text-muted-foreground",
   },
 } satisfies Record<GrowthDirection, { icon: React.ReactNode; className: string }>;
 
@@ -46,11 +46,11 @@ export function QuickInfoCard({ title, value, icon, growth, hint }: QuickInfoCar
   return (
     <Card className="group rounded-xl border-neutral-200 dark:border-border p-4 shadow-none transition-colors duration-150 hover:border-neutral-300 dark:hover:border-neutral-600">
       <div className="flex items-center justify-between gap-2">
-        <p className="truncate text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+        <p className="truncate text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-muted-foreground">
           {title}
         </p>
         {icon && (
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center text-neutral-400 dark:text-neutral-500">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center text-neutral-400 dark:text-muted-foreground">
             {icon}
           </span>
         )}
@@ -72,7 +72,7 @@ export function QuickInfoCard({ title, value, icon, growth, hint }: QuickInfoCar
           </span>
         )}
         {hint && !hasGrowth && (
-          <span className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">
+          <span className="truncate text-[11px] text-neutral-400 dark:text-muted-foreground">
             {hint}
           </span>
         )}

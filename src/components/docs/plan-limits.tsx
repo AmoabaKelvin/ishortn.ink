@@ -33,7 +33,7 @@ export function PlanValue({ plan, cap }: { plan: Plan; cap: Cap }) {
 
 const CAP_ROWS: { label: string; cap: Cap }[] = [
   { label: "New links per month", cap: "linksLimit" },
-  { label: "Tracked events per month", cap: "eventsLimit" },
+  { label: "Tracked clicks per month", cap: "eventsLimit" },
   { label: "Analytics date range", cap: "analyticsRangeLimitDays" },
   { label: "Custom domains", cap: "domainLimit" },
   { label: "Folders", cap: "folderLimit" },
@@ -42,6 +42,7 @@ const CAP_ROWS: { label: string; cap: Cap }[] = [
   { label: "Bio pages", cap: "bioPageLimit" },
   { label: "Link blocks per bio page", cap: "bioLinkBlocksPerPageLimit" },
   { label: "Active campaigns", cap: "campaignLimit" },
+  { label: "Scheduled email reports", cap: "scheduledReportLimit" },
 ];
 
 const FEATURE_ROWS: { label: string; allowed: (plan: Plan) => boolean }[] = [

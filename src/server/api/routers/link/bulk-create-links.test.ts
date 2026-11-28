@@ -5,7 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
 
 import { INVALID_URL_MESSAGE } from "@/lib/utils/destination-url";
-import { customDomain, link, linkCreationFailure } from "@/server/db/schema";
+import { customDomain, link, linkCreationFailure, qrcode } from "@/server/db/schema";
 
 import { bulkCreateLinks } from "./link.service";
 import { customDomainImportAllowanceLeft, RESTRICTED_LINK_REASON } from "./utils";
@@ -29,7 +29,7 @@ type FakeDomain = { domain: string; status: "active" | "pending" };
 
 type FakeOptions = {
   restrictedAt?: Date | null;
-  plan?: "free" | "pro";
+  plan?: "free" | "pro" | "ultra";
   customDomainImportCount?: number;
   domains?: FakeDomain[];
 };
@@ -53,9 +53,10 @@ function fakeContext(
 ) {
   const inserted: InsertedLink[] = [];
   const recordedFailures: LinkCreationFailure[] = [];
+  const qrCodes: Array<{ linkId: number; content: string; title: string }> = [];
   const countUpdates: Array<{ monthlyLinkCount: number }> = [];
   const account = { monthlyLinkCount, customDomainImportCount };
-  const subscription = plan === "pro" ? { status: "active", plan: "pro" } : null;
+  const subscription = plan === "free" ? null : { status: "active", plan };
   const db = {
     query: {
       user: {
@@ -81,16 +82,23 @@ function fakeContext(
       from: (table: MySqlTable) => ({
         where: () => {
           if (table === link && "url" in fields) return Promise.resolve(inserted);
+          if (table === qrcode) {
+            return Promise.resolve(qrCodes.map((row, index) => ({ id: index + 1, ...row })));
+          }
           const rows = table === customDomain ? domains.map(({ domain }) => ({ domain })) : [];
           const limit = async () => rows;
           return { limit, orderBy: () => ({ limit }) };
         },
       }),
     }),
-    insert: (table: typeof link | typeof linkCreationFailure) => ({
-      values: async (values: InsertedLink | LinkCreationFailure[]) => {
-        if (table === linkCreationFailure && Array.isArray(values)) {
-          recordedFailures.push(...values);
+    insert: (table: typeof link | typeof linkCreationFailure | typeof qrcode) => ({
+      values: async (values: InsertedLink | LinkCreationFailure[] | typeof qrCodes) => {
+        if (table === qrcode && Array.isArray(values)) {
+          // SAFETY: the QR code insert passes rows with these columns (and more).
+          qrCodes.push(...(values as typeof qrCodes));
+        } else if (table === linkCreationFailure && Array.isArray(values)) {
+          // SAFETY: only the failure insert passes an array of failure rows to this table.
+          recordedFailures.push(...(values as LinkCreationFailure[]));
         } else if (!Array.isArray(values)) {
           inserted.push(values);
         }
@@ -128,12 +136,89 @@ function fakeContext(
       plan,
     },
   } as WorkspaceTRPCContext;
-  return { ctx, inserted, countUpdates, recordedFailures, account };
+  return { ctx, inserted, countUpdates, recordedFailures, account, qrCodes };
 }
 
 const allowUrl = async () => {};
 
 const csv = (...lines: string[]) => ["url,alias,domain,note", ...lines].join("\n");
+
+const urlRows = (count: number) =>
+  Array.from({ length: count }, (_, i) => `https://shop.example/item-${i + 1},item-${i + 1},,`);
+
+describe("bulkCreateLinks with QR codes", () => {
+  test("a 20-row CSV creates 20 links and a QR code for each", async () => {
+    const { ctx, inserted, qrCodes } = fakeContext(0, { plan: "pro" });
+    const result = await bulkCreateLinks(ctx, csv(...urlRows(20)), allowUrl, {
+      qrCodes: { presetId: null },
+    });
+
+    expect(result).toMatchObject({ created: 20, failed: 0 });
+    expect(inserted).toHaveLength(20);
+    expect(qrCodes).toHaveLength(20);
+    expect(result.qrCodes.map((code) => code.alias)).toEqual(
+      Array.from({ length: 20 }, (_, i) => `item-${i + 1}`),
+    );
+    // Each code encodes its row's link, not a new tracking link.
+    expect(qrCodes.map((code) => code.content).sort()).toEqual(
+      inserted.map((row) => row.url).sort(),
+    );
+    expect(result.qrStyle).toMatchObject({ pixelStyle: "rounded", ecc: "M", logoImage: null });
+    expect(result.message).toContain("20 QR codes created");
+  });
+
+  test("rows that fail get no QR code", async () => {
+    const { ctx, qrCodes } = fakeContext(0, { plan: "pro" });
+    const result = await bulkCreateLinks(
+      ctx,
+      csv("https://a.example,first,,", "not a url,second,,"),
+      allowUrl,
+      { qrCodes: { presetId: null } },
+    );
+
+    expect(result.created).toBe(1);
+    expect(qrCodes).toHaveLength(1);
+    expect(result.qrCodes).toEqual([{ id: 1, row: 2, domain: expect.any(String), alias: "first" }]);
+  });
+
+  test("Free plans can't create QR codes from an import, and nothing is created", async () => {
+    const { ctx, inserted, qrCodes } = fakeContext(0);
+    await expect(
+      bulkCreateLinks(ctx, csv(...urlRows(2)), allowUrl, { qrCodes: { presetId: null } }),
+    ).rejects.toThrow("available on Pro and Ultra");
+    expect(inserted).toEqual([]);
+    expect(qrCodes).toEqual([]);
+  });
+
+  test("Pro is capped at 100 QR codes per import", async () => {
+    const { ctx, inserted } = fakeContext(0, { plan: "pro" });
+    await expect(
+      bulkCreateLinks(ctx, csv(...urlRows(101)), allowUrl, { qrCodes: { presetId: null } }),
+    ).rejects.toThrow("up to 100 QR codes per import");
+    expect(inserted).toEqual([]);
+
+    const ok = fakeContext(0, { plan: "pro" });
+    const result = await bulkCreateLinks(ok.ctx, csv(...urlRows(100)), allowUrl, {
+      qrCodes: { presetId: null },
+    });
+    expect(ok.qrCodes).toHaveLength(100);
+    expect(result.qrCodes).toHaveLength(100);
+  });
+
+  test("Ultra has no per-import QR code cap", async () => {
+    const { ctx, qrCodes } = fakeContext(0, { plan: "ultra" });
+    await bulkCreateLinks(ctx, csv(...urlRows(150)), allowUrl, { qrCodes: { presetId: null } });
+    expect(qrCodes).toHaveLength(150);
+  });
+
+  test("without the option no QR codes are created", async () => {
+    const { ctx, qrCodes } = fakeContext(0, { plan: "pro" });
+    const result = await bulkCreateLinks(ctx, csv(...urlRows(3)), allowUrl);
+    expect(qrCodes).toEqual([]);
+    expect(result.qrCodes).toEqual([]);
+    expect(result.qrStyle).toBeNull();
+  });
+});
 
 describe("bulkCreateLinks", () => {
   test("creates valid rows and counts them against the monthly allowance", async () => {
@@ -153,6 +238,28 @@ describe("bulkCreateLinks", () => {
       domain: "ishortn.ink",
     });
     expect(countUpdates).toEqual([{ monthlyLinkCount: 5 }]);
+  });
+
+  test("keeps the title column of a plain CSV as the link name", async () => {
+    const { ctx, inserted } = fakeContext(0, { plan: "pro" });
+    const result = await bulkCreateLinks(
+      ctx,
+      [
+        "url,alias,title",
+        "https://a.example,spring,Spring sale",
+        "https://b.example,menu,Dinner menu",
+        "https://c.example,contact,",
+      ].join("\n"),
+      allowUrl,
+      { keepBitlyCodes: false },
+    );
+
+    expect(result).toMatchObject({ created: 3, failed: 0, notices: [] });
+    expect(inserted.map((row) => [row.alias, row.name])).toEqual([
+      ["spring", "Spring sale"],
+      ["menu", "Dinner menu"],
+      ["contact", undefined],
+    ]);
   });
 
   test("creates only the rows within the remaining free allowance", async () => {

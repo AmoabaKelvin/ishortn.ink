@@ -3,6 +3,7 @@ import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { toast } from "sonner";
 
 import { ACTIVE_PROMO } from "@/lib/billing/promo";
+import { monthlyLinkLimitMessage } from "@/server/lib/user-plan";
 
 import * as events from "./events";
 import { notifyPlanLimit, trackUpgradeClick, trackUpgradeShown } from "./upgrade-prompt";
@@ -34,18 +35,21 @@ describe("notifyPlanLimit", () => {
 
   test("records the limit and the prompt impression under the same source", () => {
     const spy = spyOn(events, "trackEvent").mockImplementation(() => {});
-    notifyPlanLimit("You've reached your monthly link limit.", "link_create", "pro");
+    notifyPlanLimit(monthlyLinkLimitMessage("free", 30), "link_create", "pro");
     const calls = spy.mock.calls;
     spy.mockRestore();
     expect(calls).toEqual([
-      [events.POSTHOG_EVENTS.PLAN_LIMIT_REACHED, { source: "link_create" }],
+      [
+        events.POSTHOG_EVENTS.PLAN_LIMIT_REACHED,
+        { source: "link_create", limit_key: "monthly_links" },
+      ],
       [events.POSTHOG_EVENTS.UPGRADE_PROMPT_SHOWN, { source: "link_create" }],
     ]);
   });
 
   test("with a promo the toast states the offer and the prompt is attributed to it", () => {
     const spy = spyOn(events, "trackEvent").mockImplementation(() => {});
-    notifyPlanLimit("You've reached your monthly link limit.", "link_create", "pro", ACTIVE_PROMO);
+    notifyPlanLimit(monthlyLinkLimitMessage("free", 30), "link_create", "pro", ACTIVE_PROMO);
 
     const shown = toast.getHistory().at(-1);
     expect(shown && "description" in shown ? shown.description : null).toBe(
@@ -65,7 +69,10 @@ describe("notifyPlanLimit", () => {
       "bfcm2026",
     );
     expect(calls).toEqual([
-      [events.POSTHOG_EVENTS.PLAN_LIMIT_REACHED, { source: "link_create" }],
+      [
+        events.POSTHOG_EVENTS.PLAN_LIMIT_REACHED,
+        { source: "link_create", limit_key: "monthly_links" },
+      ],
       [events.POSTHOG_EVENTS.UPGRADE_PROMPT_SHOWN, { source: "link_create", promo: "BFCM20" }],
       [events.POSTHOG_EVENTS.UPGRADE_PROMPT_CLICKED, { source: "link_create", promo: "BFCM20" }],
     ]);

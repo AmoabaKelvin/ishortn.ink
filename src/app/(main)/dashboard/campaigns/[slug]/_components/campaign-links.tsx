@@ -28,7 +28,7 @@ export function CampaignLinks({ campaign }: { campaign: CampaignData }) {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="text-[13px] text-neutral-400 dark:text-muted-foreground">
           {campaign.links.length === 0
             ? "Attach existing links and QR codes, or create new ones inside this campaign."
             : "Clicks and scans from these links roll up into the campaign."}
@@ -61,7 +61,7 @@ export function CampaignLinks({ campaign }: { campaign: CampaignData }) {
           <h3 className="mt-4 text-[15px] font-medium text-neutral-900 dark:text-foreground">
             No links in this campaign
           </h3>
-          <p className="mt-1 max-w-sm text-[13px] text-neutral-400 dark:text-neutral-500">
+          <p className="mt-1 max-w-sm text-[13px] text-neutral-400 dark:text-muted-foreground">
             Add your Instagram, newsletter, flyer QR, and ad links here to compare how each channel
             performs.
           </p>
@@ -103,7 +103,7 @@ export function CampaignLinks({ campaign }: { campaign: CampaignData }) {
                         </span>
                       )}
                     </div>
-                    <p className="mt-0.5 truncate text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <p className="mt-0.5 truncate text-[12px] text-neutral-400 dark:text-muted-foreground">
                       {shortUrl}
                       {memberLink.url && ` → ${memberLink.url}`}
                     </p>

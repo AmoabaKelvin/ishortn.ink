@@ -42,7 +42,9 @@ export function SectionToggle({
             {title}
             {badge}
           </p>
-          <span className="text-[12px] text-neutral-400 dark:text-neutral-500">{description}</span>
+          <span className="text-[12px] text-neutral-400 dark:text-muted-foreground">
+            {description}
+          </span>
         </div>
         <IconChevronDown
           size={16}

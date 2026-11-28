@@ -18,6 +18,7 @@ import {
   IconKeyFilled,
   IconLinkFilled,
   IconListDetailsFilled,
+  IconMailFilled,
   IconMapPinFilled,
   IconReportAnalyticsFilled,
   IconShieldCheckFilled,
@@ -353,6 +354,7 @@ export const solutions = {
       },
     ],
     related: [
+      { href: "/customers/airo", label: "Customer story: how AIRO cut its rack card spend" },
       {
         href: "/blog/qr-code-on-product-packaging",
         label: "QR codes on product packaging and labels",
@@ -670,7 +672,7 @@ export const solutions = {
       "qr codes for print shops",
       "white label qr code generator",
     ],
-    updatedOn: "2026-11-24",
+    updatedOn: "2026-11-27",
     eyebrow: "Agencies and print shops",
     icon: IconBriefcaseFilled,
     h1: "QR codes and short links for agencies and print shops",
@@ -701,6 +703,11 @@ export const solutions = {
         icon: IconReportAnalyticsFilled,
       },
       {
+        title: "Reports that send themselves",
+        body: `Set a weekly or monthly email report on any link, folder or campaign and add the client's address. Pro includes ${count(PLAN_CAPS.pro.scheduledReportLimit)} reports; Ultra and team workspaces have no limit.`,
+        icon: IconMailFilled,
+      },
+      {
         title: "Bring existing links with you",
         body: "On Pro and Ultra you can import up to 1,000 links per CSV file, and a Bitly export works as it is. Once the client's short domain points to iShortn, their existing Bitly links can keep working.",
         icon: IconFileUploadFilled,
@@ -722,7 +729,7 @@ export const solutions = {
       },
       {
         title: "Repoint and report",
-        body: "Change destinations when the campaign changes. For reporting, send the client the link's read-only stats page, or export the numbers to CSV.",
+        body: "Change destinations when the campaign changes. For reporting, schedule an emailed report for a link, folder or campaign: up to 5 people get clicks, top countries, devices and sources every Monday or on the 1st, with no account needed. You can also send the read-only stats page or export to CSV.",
       },
     ],
     plans: [
@@ -753,9 +760,19 @@ export const solutions = {
           "Yes. Turn on sharing for a link on its analytics page and send the address. The client sees clicks over time, countries, devices and traffic sources. Free accounts' shared pages show the last 7 days; on Pro and Ultra the client can pick the date range. Turning sharing off stops the address working at once.",
       },
       {
+        question: "Can I send clients automatic link reports?",
+        answer:
+          "Yes. Click Email report on a link, folder or campaign and add up to 5 addresses. Weekly reports go out on Mondays and monthly reports on the 1st. Recipients don't need an iShortn account. Reports come from iShortn in its email design, and each one says it was set up by you or your team.",
+      },
+      {
         question: "Is iShortn white label?",
         answer:
           "Partly. Links and QR codes can run on the client's own domain, so the link their customers see has no iShortn name in it. The dashboard carries the iShortn name, and there's no reseller portal or custom-branded login.",
+      },
+      {
+        question: "Can a team's tools use the API without a personal key?",
+        answer:
+          "Yes. Team workspaces have their own API keys, created by owners and admins. Zapier, n8n, Make and the MCP server work with them, and they keep working when the person who made them leaves.",
       },
       {
         question: "What file format do the QR codes download in?",
@@ -923,6 +940,7 @@ export const solutions = {
       },
     ],
     related: [
+      { href: "/customers/airo", label: "Customer story: how AIRO cut its rack card spend" },
       { href: "/blog/qr-code-for-flyers", label: "Put a QR code on a flyer" },
       { href: "/qr-code-generator", label: "Free QR code generator" },
       { href: "/blog/how-to-track-qr-code-scans", label: "How to track QR code scans" },

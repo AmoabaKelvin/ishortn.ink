@@ -63,7 +63,7 @@ dark mode. Always write both halves of the pair:
 | Headings, primary text      | `text-neutral-900 dark:text-foreground`                                                                            |
 | Labels, body                | `text-neutral-700 dark:text-neutral-300`                                                                           |
 | Secondary text              | `text-neutral-500 dark:text-neutral-400`                                                                           |
-| Muted text, meta, icons     | `text-neutral-400 dark:text-neutral-500`                                                                           |
+| Muted text, meta, icons     | `text-neutral-400 dark:text-muted-foreground`                                                                      |
 | Surface (cards, inputs)     | `bg-white dark:bg-card`                                                                                            |
 | Soft fill (icon tiles, bar) | `bg-neutral-100 dark:bg-muted`                                                                                     |
 | Subtle panel, table header  | `bg-neutral-50 dark:bg-accent/50`                                                                                  |

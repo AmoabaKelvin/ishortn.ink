@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
+import { getPlanCaps } from "@/lib/billing/plans";
+
 import { checkTrackingLinkQuota, insertHiddenTrackingLink } from "./index";
 
 import type { Plan } from "@/lib/billing/plans";
@@ -52,9 +54,9 @@ function fakeWorkspace(plan: Plan) {
 
 // The quota half of prepareHiddenTrackingLink followed by the real insert; the
 // rest of prepare (URL scan, domain, alias) doesn't touch the monthly count.
-async function addBioLink(plan: Plan) {
+async function addBioLink(plan: Plan, kind: "bio" | "bio-image" = "bio") {
   const { ctx, userRow } = fakeWorkspace(plan);
-  const quota = await checkTrackingLinkQuota(ctx, "bio");
+  const quota = await checkTrackingLinkQuota(ctx, kind);
   const prepared = {
     ...quota,
     values: {
@@ -79,6 +81,19 @@ describe("bio tracking links and the monthly link quota", () => {
 
   test("a Pro bio link increments the monthly link count", async () => {
     expect(await addBioLink("pro")).toBe(6);
+  });
+
+  test("an image block's link increments the monthly link count on every plan", async () => {
+    expect(await addBioLink("free", "bio-image")).toBe(6);
+    expect(await addBioLink("pro", "bio-image")).toBe(6);
+  });
+
+  test("an image block's link is refused once the monthly link allowance is used", async () => {
+    const { ctx, userRow } = fakeWorkspace("pro");
+    userRow.monthlyLinkCount = getPlanCaps("pro").linksLimit ?? 0;
+    await expect(checkTrackingLinkQuota(ctx, "bio-image")).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
   });
 
   test("a QR tracking link on the free plan still increments the monthly link count", async () => {

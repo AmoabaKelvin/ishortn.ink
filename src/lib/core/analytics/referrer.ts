@@ -1,8 +1,9 @@
 import { lookup } from "@/lib/utils/lookup";
 
-// Referrers are stored as coarse source labels (`parseReferrer` in visitor.ts):
-// a known-source name ("twitter", "facebook", "direct"), or the registrable
-// domain of any other host ("instagram.com", "google.co.uk"). Older rows may
+// Referrers are stored as coarse source labels (`inferSource` in visitor.ts):
+// a known-source name ("twitter", "facebook", "direct"), the in-app browser or
+// QR label inferred when no referrer was sent ("instagram", "qr"), or the
+// registrable domain of any other host ("instagram.com", "google.co.uk"). Older rows may
 // hold "null" or a full URL. These helpers read all of them; they are pure so
 // both the click pipeline and client components can import them.
 
@@ -40,6 +41,15 @@ const SOURCE_ALIASES = {
   "whatsapp.com": "whatsapp",
   "whatsapp.net": "whatsapp",
   "wa.me": "whatsapp",
+  "tiktok.com": "tiktok",
+  "snapchat.com": "snapchat",
+  "pinterest.com": "pinterest",
+  "pin.it": "pinterest",
+  "threads.net": "threads",
+  "threads.com": "threads",
+  "telegram.org": "telegram",
+  "t.me": "telegram",
+  "line.me": "line",
   // Android app referrers (android-app://com.facebook.katana), stored by registrable domain.
   "facebook.katana": "facebook",
   "instagram.android": "instagram",
@@ -81,6 +91,10 @@ const SOURCE_LABELS = {
   youtube: "YouTube",
   whatsapp: "WhatsApp",
   vkontakte: "VK",
+  qr: "QR code scan",
+  tiktok: "TikTok",
+  wechat: "WeChat",
+  line: "LINE",
 };
 
 /** Display label: source names are title-cased, domains are shown as-is. */
@@ -98,11 +112,32 @@ const SOCIAL_SOURCES = new Set([
   "reddit",
   "youtube",
   "vkontakte",
-  "pinterest.com",
-  "tiktok.com",
-  "threads.net",
+  "pinterest",
+  "tiktok",
+  "snapchat",
+  "threads",
   "bsky.app",
 ]);
+
+// Mail clients and the click-tracking hosts of email providers.
+const EMAIL_SOURCES = new Set([
+  "gmail",
+  "list-manage.com",
+  "mailchi.mp",
+  "mailchimp.com",
+  "awstrack.me",
+  "sendgrid.net",
+  "outlook.com",
+  "live.com",
+  "office.com",
+  "substack.com",
+  "beehiiv.com",
+  "convertkit-mail.com",
+  "klclick.com",
+  "hubspotlinks.com",
+]);
+
+const MESSAGING_SOURCES = new Set(["whatsapp", "telegram", "wechat", "line"]);
 
 const SEARCH_ENGINES = new Set([
   "google",
@@ -123,6 +158,57 @@ export function isSearchReferrer(stored: string): boolean {
   if (source === "google") return true;
   return source.includes(".") && SEARCH_ENGINES.has(baseDomain(source).split(".")[0] ?? "");
 }
+
+export type ReferrerChannel =
+  | "social"
+  | "email"
+  | "search"
+  | "messaging"
+  | "qr"
+  | "website"
+  | "direct";
+
+export function isEmailReferrer(stored: string): boolean {
+  return EMAIL_SOURCES.has(normalizeReferrer(stored));
+}
+
+/** Coarse channel of a stored referrer; unrecognised labels without a domain count as direct. */
+export function referrerChannel(stored: string): ReferrerChannel {
+  const source = normalizeReferrer(stored);
+  if (source === "qr") return "qr";
+  if (EMAIL_SOURCES.has(source)) return "email";
+  if (MESSAGING_SOURCES.has(source)) return "messaging";
+  if (SOCIAL_SOURCES.has(source)) return "social";
+  if (isSearchReferrer(source)) return "search";
+  return source.includes(".") ? "website" : "direct";
+}
+
+const CHANNEL_LABELS = {
+  social: "Social",
+  email: "Email",
+  search: "Search",
+  messaging: "Messaging",
+  qr: "QR code scan",
+  website: "Websites",
+  direct: "Direct",
+} satisfies Record<ReferrerChannel, string>;
+
+/** Merge stored referrer counts into one row per channel. */
+export function groupReferrerChannels(referers: Record<string, number>): ReferrerRow[] {
+  const rows = new Map<ReferrerChannel, ReferrerRow>();
+  for (const [stored, clicks] of Object.entries(referers)) {
+    const channel = referrerChannel(stored);
+    const row = rows.get(channel);
+    if (row) row.clicks += Number(clicks);
+    else
+      rows.set(channel, { source: channel, name: CHANNEL_LABELS[channel], clicks: Number(clicks) });
+  }
+  return [...rows.values()];
+}
+
+/** Shown beside the Direct row: what a missing referrer means. */
+export const DIRECT_SOURCE_DESCRIPTION =
+  "No referrer was sent: typed or pasted links, some email and chat apps, and browsers that hide the source.";
 
 export type ReferrerRow = { source: string; name: string; clicks: number };
 

@@ -84,7 +84,7 @@ export function FolderSettingsModal({ folder, open, onOpenChange }: FolderSettin
               <IconLoader2
                 size={16}
                 stroke={1.5}
-                className="animate-spin text-neutral-400 dark:text-neutral-500"
+                className="animate-spin text-neutral-400 dark:text-muted-foreground"
               />
             </div>
             <DialogFooter>
@@ -198,7 +198,7 @@ function FolderAccessForm({
               <span className="text-[13px] font-medium text-neutral-900 dark:text-foreground">
                 All members
               </span>
-              <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
+              <span className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                 Full team access
               </span>
             </button>
@@ -216,7 +216,7 @@ function FolderAccessForm({
               <span className="text-[13px] font-medium text-neutral-900 dark:text-foreground">
                 Restricted
               </span>
-              <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
+              <span className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                 Selected members
               </span>
             </button>
@@ -231,7 +231,7 @@ function FolderAccessForm({
             </Label>
 
             {members.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-neutral-200 dark:border-border py-6 text-center text-[13px] text-neutral-400 dark:text-neutral-500">
+              <div className="rounded-lg border border-dashed border-neutral-200 dark:border-border py-6 text-center text-[13px] text-neutral-400 dark:text-muted-foreground">
                 No regular members in this team
               </div>
             ) : (
@@ -242,12 +242,12 @@ function FolderAccessForm({
                       variant="outline"
                       className="w-full justify-between h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] font-normal"
                     >
-                      <span className="text-neutral-400 dark:text-neutral-500">
+                      <span className="text-neutral-400 dark:text-muted-foreground">
                         {selectedUserIds.length > 0
                           ? `${selectedUserIds.length} selected`
                           : "Select members"}
                       </span>
-                      <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                      <span className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                         {members.length} available
                       </span>
                     </Button>
@@ -256,7 +256,7 @@ function FolderAccessForm({
                     <Command>
                       <CommandInput placeholder="Search..." className="h-9" />
                       <CommandList>
-                        <CommandEmpty className="py-4 text-center text-[13px] text-neutral-400 dark:text-neutral-500">
+                        <CommandEmpty className="py-4 text-center text-[13px] text-neutral-400 dark:text-muted-foreground">
                           No members found
                         </CommandEmpty>
                         <CommandGroup>
@@ -279,7 +279,7 @@ function FolderAccessForm({
                                 <p className="text-[13px] font-medium text-neutral-900 dark:text-foreground truncate">
                                   {member.user.name ?? "Unknown"}
                                 </p>
-                                <p className="text-[12px] text-neutral-400 dark:text-neutral-500 truncate">
+                                <p className="text-[12px] text-neutral-400 dark:text-muted-foreground truncate">
                                   {member.user.email}
                                 </p>
                               </div>
@@ -323,7 +323,7 @@ function FolderAccessForm({
                         <button
                           type="button"
                           onClick={() => removeMember(member.userId)}
-                          className="rounded p-0.5 text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
+                          className="rounded p-0.5 text-neutral-400 dark:text-muted-foreground transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
                         >
                           <IconX size={10} stroke={2} />
                         </button>
@@ -333,14 +333,14 @@ function FolderAccessForm({
                 )}
 
                 {selectedUserIds.length === 0 && (
-                  <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                  <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                     Only owners and admins will have access
                   </p>
                 )}
               </div>
             )}
 
-            <p className="text-[12px] text-neutral-400 dark:text-neutral-500 pt-1">
+            <p className="text-[12px] text-neutral-400 dark:text-muted-foreground pt-1">
               Owners and admins always have access to all folders
             </p>
           </div>

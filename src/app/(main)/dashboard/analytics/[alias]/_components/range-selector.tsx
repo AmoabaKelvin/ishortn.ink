@@ -141,7 +141,7 @@ export const RangeSelector = ({
                 <IconCalendarStats
                   size={14}
                   stroke={1.5}
-                  className="mr-1.5 inline-block text-neutral-400 dark:text-neutral-500"
+                  className="mr-1.5 inline-block text-neutral-400 dark:text-muted-foreground"
                 />
                 {formatCustomRange(activeCustom)}
               </span>
@@ -164,12 +164,12 @@ export const RangeSelector = ({
                 key={option.value}
                 value={option.value}
                 aria-label={isLocked ? `${option.label}, Locked, Pro` : undefined}
-                className={cn(isLocked && "text-neutral-400 dark:text-neutral-500")}
+                className={cn(isLocked && "text-neutral-400 dark:text-muted-foreground")}
               >
                 <Icon
                   size={14}
                   stroke={1.5}
-                  className="mr-1.5 inline-block text-neutral-400 dark:text-neutral-500"
+                  className="mr-1.5 inline-block text-neutral-400 dark:text-muted-foreground"
                 />
                 {option.label}
                 {isLocked && (
@@ -177,7 +177,7 @@ export const RangeSelector = ({
                     size={14}
                     stroke={1.5}
                     aria-hidden="true"
-                    className="ml-1.5 inline-block text-neutral-400 dark:text-neutral-500"
+                    className="ml-1.5 inline-block text-neutral-400 dark:text-muted-foreground"
                   />
                 )}
               </SelectItem>

@@ -4,6 +4,8 @@ import { Funnel_Sans } from "next/font/google";
 
 import { ChangelogBanner } from "@/components/changelog/changelog-banner";
 import { purgeDateFor } from "@/lib/account-deletion/constants";
+import { subscriptionInterval } from "@/lib/billing/plans";
+import { paddlePriceId } from "@/lib/paddle/config";
 import { cn } from "@/lib/utils";
 import { displayName } from "@/lib/utils/user-name";
 import { ensureUser } from "@/server/lib/ensure-user";
@@ -18,7 +20,11 @@ import { DashboardNav } from "./_components/navigation/header";
 import { SidebarWrapper } from "./_components/navigation/sidebar-wrapper";
 import { PlanGraceBanner } from "./_components/plan-grace-banner";
 import { PromoBanner } from "./_components/promo-banner";
-import { promoBannerState, upgradeOfferPromo } from "./_components/promo-banner-state";
+import {
+  graceOfferPromo,
+  promoBannerState,
+  upgradeOfferPromo,
+} from "./_components/promo-banner-state";
 import { RestoreAccountButton } from "./_components/restore-account-button";
 import { SignOutButton } from "./_components/sign-out-button";
 import { trackingPausedBannerState } from "./_components/tracking-paused";
@@ -76,7 +82,7 @@ export default async function DashboardLayout({ children }: Props) {
             </p>
             {currentUser.bannedReason && (
               <div className="mt-5 rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card px-4 py-3">
-                <p className="text-[12px] font-medium text-neutral-400 dark:text-neutral-500">
+                <p className="text-[12px] font-medium text-neutral-400 dark:text-muted-foreground">
                   Reason
                 </p>
                 <p className="mt-1 text-[13px] text-neutral-700 dark:text-neutral-300">
@@ -84,7 +90,7 @@ export default async function DashboardLayout({ children }: Props) {
                 </p>
               </div>
             )}
-            <p className="mt-6 text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-6 text-[12px] text-neutral-400 dark:text-muted-foreground">
               If you believe this is a mistake, please contact us at{" "}
               <a
                 href="mailto:support@ishortn.ink"
@@ -156,6 +162,7 @@ export default async function DashboardLayout({ children }: Props) {
     otherBannerShown: isRestricted || emailBounced || !!trackingPaused || !!graceNotice,
   });
   const upgradeOffer = upgradeOfferPromo({ subscription, isRestricted });
+  const graceOffer = graceOfferPromo({ subscription, notice: graceNotice, isRestricted });
   // Dismissal is read on the client (annual-switch-card.tsx).
   const annualOffer = annualSwitchOffer({
     subscription: subscription?.subscriptions ?? null,
@@ -164,6 +171,10 @@ export default async function DashboardLayout({ children }: Props) {
     graceActive: !!graceNotice,
     otherBannerShown: emailBounced || !!trackingPaused || !!promo,
     dismissedAt: null,
+    paddleMonthlyPriceIds: {
+      pro: paddlePriceId("pro", "monthly"),
+      ultra: paddlePriceId("ultra", "monthly"),
+    },
   });
 
   return (
@@ -174,7 +185,7 @@ export default async function DashboardLayout({ children }: Props) {
         {/* Main content area with left margin for sidebar */}
         <div className="lg:pl-[280px]">
           <ChangelogBanner />
-          <div className="mx-auto max-w-[1180px] px-4 pt-6 pb-10 text-black sm:px-6 lg:px-8 lg:pt-10">
+          <div className="mx-auto max-w-[1180px] px-4 pt-6 pb-10 text-black dark:text-foreground sm:px-6 lg:px-8 lg:pt-10">
             <DashboardNav />
             {isRestricted && (
               <div className="mt-6 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-700 dark:border-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
@@ -197,7 +208,11 @@ export default async function DashboardLayout({ children }: Props) {
               <AnnualSwitchCard offer={annualOffer} source="dashboard" className="mt-6" />
             )}
             <div className="mt-7 py-4">
-              <PlanGraceBanner initialNotice={graceNotice} />
+              <PlanGraceBanner
+                initialNotice={graceNotice}
+                promo={graceOffer}
+                interval={subscriptionInterval(subscription?.subscriptions)}
+              />
               {children}
             </div>
           </div>

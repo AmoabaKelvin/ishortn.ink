@@ -6,6 +6,7 @@ import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pr
 import { DOCS_PAGES, docsHref } from "@/lib/docs/navigation";
 import { competitors } from "@/lib/seo/competitors";
 import { MAX_CSV_IMPORT_ROWS } from "@/server/api/routers/link/utils";
+import { MAX_REPORT_RECIPIENTS } from "@/server/api/routers/scheduled-report/scheduled-report.input";
 
 import { getSolution, solutionList, solutions, usd } from "./solutions";
 
@@ -68,6 +69,16 @@ describe("solution copy", () => {
     for (const n of csvRows) expect(n).toBe(MAX_CSV_IMPORT_ROWS.toLocaleString("en-US"));
   });
 
+  it("only quotes the current email report limits", () => {
+    const reports = matches(/Pro includes (\d+) reports/g);
+    expect(reports.length).toBeGreaterThan(0);
+    for (const n of reports) expect(Number(n)).toBe(PLAN_CAPS.pro.scheduledReportLimit);
+
+    const recipients = matches(/up to (\d+) (?:people|addresses)/g);
+    expect(recipients.length).toBeGreaterThan(0);
+    for (const n of recipients) expect(Number(n)).toBe(MAX_REPORT_RECIPIENTS);
+  });
+
   it("only quotes current free plan limits", () => {
     const qrCodes = matches(/(\d+) dynamic (?:QR )?codes/g);
     expect(qrCodes.length).toBeGreaterThan(0);
@@ -95,12 +106,13 @@ describe("solution copy", () => {
   });
 
   // A mistyped blog slug would hide the link forever instead of failing.
-  it("links only to existing docs pages, blog posts, comparison pages and the QR code generator", () => {
+  it("links only to existing docs pages, blog posts, comparison pages, the QR code generator and customer stories", () => {
     const docs = new Set([
       ...DOCS_PAGES.map((page) => docsHref(page.slug)),
       ...Object.values(competitors).map((competitor) => `/compare/${competitor.slug}`),
       "/qr-code-generator",
       "/whatsapp-link-generator",
+      "/customers/airo",
     ]);
     const farFuture = new Date("2100-01-01");
     for (const { href } of solutionList.flatMap((solution) => solution.related)) {

@@ -13,14 +13,18 @@ import {
   like,
   lt,
   lte,
+  ne,
   or,
   sql,
   sum,
 } from "drizzle-orm";
 import { z } from "zod";
 
+import { env } from "@/env.mjs";
 import {
   canUseCampaignUtmDefaults,
+  canUseLinkUtmParams,
+  LINK_UTM_PLAN_MESSAGE,
   canUseGeoRules,
   getGeoRulesLimit,
   isUnlimitedGeoRules,
@@ -53,7 +57,7 @@ import { hashIp } from "@/lib/utils/ip-hash";
 import { displayName } from "@/lib/utils/user-name";
 import { recordClick } from "@/middlewares/enqueue-click";
 import { isLinkScheduled } from "@/middlewares/link-policy";
-import { resolveLink } from "@/middlewares/record-click";
+import { findLinkByAlias } from "@/middlewares/record-click";
 import { checkLinkExpiration } from "@/middlewares/resolve-link";
 import {
   campaign,
@@ -75,8 +79,15 @@ import {
   recordLinkCreationFailures,
   trackLinkCreation,
 } from "@/server/lib/link-creation/failures";
+import { getDestinationDownByLinkId, resetLinkHealth } from "@/server/lib/link-health/status";
+import { getTargetingTypesByLinkId } from "@/server/lib/link-targeting";
 import { scrapeMetadata } from "@/server/lib/metadata";
-import { assertUrlSafe } from "@/server/lib/phishing";
+import { assertUrlSafe, assertUrlSafeFast, canDeferLlmCheck } from "@/server/lib/phishing";
+import {
+  checkUrlWithLlmAfterResponse,
+  recordSafetyFollowUp,
+  workspaceSafetyAccount,
+} from "@/server/lib/phishing/follow-up";
 import {
   checkCampaignPatternsAfterResponse,
   type LinkDestination,
@@ -88,6 +99,7 @@ import {
   assertCanEnableVerifiedClicks,
   issueVerifiedClickToken,
 } from "@/server/lib/verified-click";
+import { emitLinkWebhooks } from "@/server/lib/webhooks";
 import {
   getAccessibleFolderIds,
   isWorkspaceAdmin,
@@ -98,6 +110,11 @@ import {
 } from "@/server/lib/workspace";
 
 import { mergeCampaignUtm } from "../campaign/utils";
+import {
+  createBulkQrCodes,
+  deleteQrCodeImages,
+  prepareBulkQrCodes,
+} from "../qrcode/qrcode-bulk.service";
 import { associateTagsWithLink, getTagsForLink } from "../tag/tag.service";
 import { LINK_ALIAS_MAX_LENGTH, LINK_NOTE_MAX_LENGTH } from "./link.input";
 import {
@@ -148,7 +165,10 @@ import type { Plan } from "@/lib/billing/plans";
 import type { Link } from "@/server/db/schema";
 import type { LinkCreationAttempt, LinkCreationStep } from "@/server/lib/link-creation/failures";
 import type { ScrapedMetadata } from "@/server/lib/metadata";
+import type { UrlSafetyDeps, UrlSafetyResult } from "@/server/lib/phishing";
+import type { CreatedLink } from "@/server/lib/phishing/follow-up";
 import type { WorkspaceContext } from "@/server/lib/workspace";
+import type { SQLWrapper } from "drizzle-orm";
 
 const log = logger.child({ component: "link.service" });
 
@@ -324,6 +344,17 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
     linksQuery,
   ]);
 
+  // Started now so they run alongside the creator and tag lookups below.
+  const targetingByLink = getTargetingTypesByLinkId(
+    ctx.db,
+    links.map((l) => l.id),
+  );
+  const downByLink = getDestinationDownByLinkId(
+    ctx.db,
+    ctx.workspace.plan,
+    links.map((l) => l.id),
+  );
+
   // Batch fetch creator info for team workspaces (avoid N+1)
   let creatorMap: Map<string, { id: string; name: string | null; imageUrl: string | null }> =
     new Map();
@@ -375,6 +406,8 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
     }),
   );
 
+  const [targetingTypes, destinationDown] = await Promise.all([targetingByLink, downByLink]);
+
   const totalLinks = totalLinksResult?.[0]?.count ?? 0;
   // Tells a brand-new workspace (first-link prompt) apart from a filter that
   // matched nothing; only queried when this page came back empty.
@@ -387,7 +420,11 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
     (Number(archivedClicksResult?.[0]?.archivedClicks) || 0);
 
   return {
-    links: linksWithTags,
+    links: linksWithTags.map((linkItem) => ({
+      ...linkItem,
+      targetingTypes: targetingTypes.get(linkItem.id) ?? [],
+      destinationDown: destinationDown.get(linkItem.id) ?? null,
+    })),
     totalLinks,
     totalClicks,
     currentPage: page,
@@ -410,10 +447,33 @@ export const getLink = async (ctx: WorkspaceTRPCContext, input: GetLinkInput) =>
 };
 
 // Seams for tests; callers use the defaults.
-type LinkCreationDeps = {
-  checkUrl?: (url: string) => Promise<void>;
+export type LinkSafetyDeps = UrlSafetyDeps & {
+  checkAfterResponse?: typeof checkUrlWithLlmAfterResponse;
+};
+
+type LinkCreationDeps = LinkSafetyDeps & {
   fetchMetadata?: (url: string) => Promise<ScrapedMetadata>;
 };
+
+/**
+ * The URL safety check for a dashboard write, run before it. Returns what to run once the link
+ * exists. Lower-risk accounts (see `canDeferLlmCheck`) wait only for the fast layers; the page
+ * fetch and LLM check, which take seconds and rarely reject, then run after the response and
+ * block or flag the link. Other accounts get the full check before the write.
+ */
+async function checkLinkUrl(
+  ctx: WorkspaceTRPCContext,
+  url: string,
+  { checkAfterResponse = checkUrlWithLlmAfterResponse, ...deps }: LinkSafetyDeps = {},
+): Promise<(created: CreatedLink) => void> {
+  const account = workspaceSafetyAccount(ctx);
+  if (await canDeferLlmCheck(account)) {
+    await assertUrlSafeFast(url, deps);
+    return (created) => void checkAfterResponse(created, url, { ...deps, account });
+  }
+  const safety = await assertUrlSafe(url, { ...deps, account });
+  return (created) => recordSafetyFollowUp(created.id, safety);
+}
 
 // Best-effort: a metadata-service outage must not block link creation.
 async function fetchMetadataFailOpen(
@@ -455,7 +515,7 @@ const createLinkSteps = async (
   ctx: WorkspaceTRPCContext,
   input: CreateLinkInput,
   attempt: LinkCreationAttempt,
-  { checkUrl = assertUrlSafe, fetchMetadata = scrapeMetadata }: LinkCreationDeps,
+  { fetchMetadata = scrapeMetadata, ...safetyDeps }: LinkCreationDeps,
 ) => {
   const { plan, currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
   const isPaidPlan = plan !== "free";
@@ -466,7 +526,7 @@ const createLinkSteps = async (
     input.alias && input.alias !== "" ? input.alias : await generateUnreservedAlias(ctx.db, domain);
 
   attempt.step = "safety";
-  await checkUrl(input.url);
+  const afterCreate = await checkLinkUrl(ctx, input.url, safetyDeps);
 
   attempt.step = "metadata";
   const fetchedMetadata = await fetchMetadataFailOpen(fetchMetadata, input.url);
@@ -509,19 +569,12 @@ const createLinkSteps = async (
     }
   }
 
-  // Check for UTM params - Ultra plan only
   const utmParamsValues = Object.values(input.utmParams ?? {});
   const hasUtmParams = utmParamsValues.some(
     (value) => value !== undefined && value !== null && value !== "",
   );
-  if (hasUtmParams) {
-    if (plan !== "ultra") {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message:
-          "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
-      });
-    }
+  if (hasUtmParams && !canUseLinkUtmParams(plan)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: LINK_UTM_PLAN_MESSAGE });
   }
 
   // Check for link cloaking - Ultra plan only
@@ -599,6 +652,9 @@ const createLinkSteps = async (
   // Create link without tags field
   const { tags: _tags, ...linkData } = input;
   const ownership = workspaceOwnership(ctx.workspace);
+  // Stored and sent in link.created, so the payload matches what GET /api/v1/links/:id returns.
+  // The column has second precision; drop the milliseconds rather than let MySQL round them.
+  const createdAt = new Date(Math.floor(Date.now() / 1000) * 1000);
 
   // One transaction, so a failed tag or rule write doesn't leave a half-made link.
   const result = await ctx.db.transaction(async (tx) => {
@@ -609,6 +665,7 @@ const createLinkSteps = async (
       userId: ownership.userId,
       teamId: ownership.teamId,
       createdByUserId: ctx.auth.userId, // Track the actual user who created the link
+      createdAt,
       passwordHash: input.password,
       domain,
       note: input.note,
@@ -643,6 +700,7 @@ const createLinkSteps = async (
     return inserted;
   });
   const linkId = Number(result.insertId);
+  afterCreate({ id: linkId, domain, alias });
 
   // Upload OG image to R2 if it's base64
   if (input.metadata?.image) {
@@ -674,11 +732,53 @@ const createLinkSteps = async (
 
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
   checkCampaignPatternsAfterResponse(linkDestinations(linkId, input.url, geoRulesInput));
+  emitLinkWebhooks(ctx.db, ctx.workspace, "link.created", [
+    {
+      id: linkId,
+      createdAt,
+      domain,
+      alias,
+      url: input.url,
+      disableLinkAfterDate: input.disableLinkAfterDate ?? null,
+      activateAt: input.activateAt ?? null,
+      disableLinkAfterClicks: input.disableLinkAfterClicks ?? null,
+    },
+  ]);
 
-  return { id: linkId, alias, domain };
+  return { id: linkId, alias, domain, isFirstLink: await isFirstLink(ctx, plan, linkId) };
 };
 
-export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInput) => {
+/**
+ * Whether `linkId` is the only short link in the workspace, for the link-ready dialog's
+ * first-link offer. That offer is for Free personal workspaces only, so nobody else pays the query,
+ * and a failed lookup only hides it: the link already exists.
+ */
+const isFirstLink = async (ctx: WorkspaceTRPCContext, plan: Plan, linkId: number) => {
+  if (plan !== "free" || ctx.workspace.type !== "personal") return false;
+  const otherLinks = await ctx.db
+    .select({ id: link.id })
+    .from(link)
+    .where(
+      and(
+        workspaceFilter(ctx.workspace, link.userId, link.teamId),
+        eq(link.isQrCode, false),
+        eq(link.isBioLink, false),
+        ne(link.id, linkId),
+      ),
+    )
+    .limit(1)
+    .catch((err) => {
+      log.warn({ err, linkId }, "first-link check failed");
+      return null;
+    });
+  return otherLinks?.length === 0;
+};
+
+export const updateLink = async (
+  ctx: WorkspaceTRPCContext,
+  input: UpdateLinkInput,
+  safetyDeps: LinkSafetyDeps = {},
+) => {
   // Get existing link first
   const existingLink = await ctx.db.query.link.findFirst({
     where: and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
@@ -702,9 +802,10 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
 
   // Re-scan only when the destination actually changes: the check can reach
   // Safe Browsing / Web Risk and an LLM, and the current URL already passed it.
-  if (input.url !== undefined && input.url !== existingLink.url) {
-    await assertUrlSafe(input.url);
-  }
+  const afterUpdate =
+    input.url !== undefined && input.url !== existingLink.url
+      ? await checkLinkUrl(ctx, input.url, safetyDeps)
+      : undefined;
 
   // If domain is being changed, it must be platform-owned or a verified
   // custom domain for this workspace. Either way it must be within the plan's
@@ -748,15 +849,12 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
     );
   }
 
-  // Check for UTM params - Ultra plan only
   if (
-    (hasUtmValues(existingLink.utmParams) ? usagePlan : workspacePlan) !== "ultra" &&
+    !canUseLinkUtmParams(hasUtmValues(existingLink.utmParams) ? usagePlan : workspacePlan) &&
     hasUtmValues(input.utmParams) &&
     !sameUtmParams(input.utmParams, existingLink.utmParams)
   ) {
-    throw new Error(
-      "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
-    );
+    throw new Error(LINK_UTM_PLAN_MESSAGE);
   }
 
   // Check for link cloaking - Ultra plan only
@@ -905,6 +1003,9 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
       );
     }
     await tx.update(link).set(linkData).where(linkWhere);
+    if (linkData.url !== undefined && linkData.url !== existingLink.url) {
+      await resetLinkHealth(tx, input.id);
+    }
 
     if (tagNames) {
       await associateTagsWithLink({ ...ctx, db: tx }, input.id, tagNames);
@@ -959,7 +1060,8 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   // Always set the new cache entry with updated values
   await setInCache(buildCacheKey(updatedLink.domain, updatedLink.alias!), updatedLinkWithTags);
 
-  // After the cache write, so a block from the check isn't overwritten by it.
+  // After the cache write, so a block from these checks isn't overwritten by it.
+  afterUpdate?.({ id: input.id, domain: updatedLink.domain, alias: updatedLink.alias! });
   checkCampaignPatternsAfterResponse(
     linkDestinations(
       input.id,
@@ -967,6 +1069,7 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
       geoRulesInput,
     ),
   );
+  emitLinkWebhooks(ctx.db, ctx.workspace, "link.updated", [updatedLink]);
 };
 
 export const deleteLink = async (ctx: WorkspaceTRPCContext, input: GetLinkInput) => {
@@ -1011,17 +1114,27 @@ export const removeLink = async (
     eq(link.id, linkToDelete.id),
     workspaceFilter(workspace, link.userId, link.teamId),
   );
-  const cacheKeys = [
-    buildCacheKey(linkToDelete.domain, linkToDelete.alias!),
-    ...(await previousAddressCacheKeys(db, linkToDelete.id)),
-  ];
+  // QR codes made by a CSV import encode this link and go with it.
+  const qrWhere = and(
+    eq(qrcode.linkId, linkToDelete.id),
+    workspaceFilter(workspace, qrcode.userId, qrcode.teamId),
+  );
+  const [cacheKeys, qrCodes] = await Promise.all([
+    previousAddressCacheKeys(db, linkToDelete.id),
+    db.select({ qrCode: qrcode.qrCode, style: qrcode.style }).from(qrcode).where(qrWhere),
+  ]);
   await Promise.all([
-    ...cacheKeys.map((key) => deleteFromCache(key)),
+    ...[buildCacheKey(linkToDelete.domain, linkToDelete.alias!), ...cacheKeys].map((key) =>
+      deleteFromCache(key),
+    ),
     db.transaction(async (tx) => {
+      if (qrCodes.length > 0) await tx.delete(qrcode).where(qrWhere);
       await reserveLinkAliases(tx, where, "deleted");
       await tx.delete(link).where(where);
     }),
   ]);
+  if (qrCodes.length > 0) await deleteQrCodeImages(db, workspace, qrCodes);
+  emitLinkWebhooks(db, workspace, "link.deleted", [linkToDelete]);
 };
 
 export const bulkDeleteLinks = async (ctx: WorkspaceTRPCContext, linkIds: number[]) => {
@@ -1068,6 +1181,11 @@ export const bulkDeleteLinks = async (ctx: WorkspaceTRPCContext, linkIds: number
     }
   }
 
+  const qrCodes = await ctx.db
+    .select({ qrCode: qrcode.qrCode, style: qrcode.style })
+    .from(qrcode)
+    .where(inArray(qrcode.linkId, validLinkIds));
+
   // Delete from database in transaction (delete dependents first)
   await ctx.db.transaction(async (tx) => {
     // 1. Delete link visits
@@ -1089,6 +1207,9 @@ export const bulkDeleteLinks = async (ctx: WorkspaceTRPCContext, linkIds: number
     await reserveLinkAliases(tx, inArray(link.id, validLinkIds), "deleted");
     await tx.delete(link).where(inArray(link.id, validLinkIds));
   });
+
+  if (qrCodes.length > 0) await deleteQrCodeImages(ctx.db, ctx.workspace, qrCodes);
+  emitLinkWebhooks(ctx.db, ctx.workspace, "link.deleted", linksToDelete);
 
   // Invalidate cache for all deleted links in the background. waitUntil keeps
   // the serverless function alive until every deleteFromCache settles.
@@ -1194,19 +1315,6 @@ export const bulkToggleLinkStatus = async (
   return { success: true, count: linksToUpdate.length, disabled: disable };
 };
 
-/**
- * Full link row by alias, cache-first. Server-only: the row carries the
- * destination, password hash and owner fields, so it must never be returned
- * from a public procedure as-is (see `retrieveOriginalUrl`).
- */
-export const findLinkByAlias = async (
-  input: Pick<RetrieveOriginalUrlInput, "alias" | "domain">,
-) => {
-  // The same lookup as the redirect, so previews and metadata also follow moved links.
-  const found = await resolveLink(input.domain, input.alias);
-  return found?.alias ? found : null;
-};
-
 export const retrieveOriginalUrl = async (
   ctx: PublicTRPCContext,
   input: RetrieveOriginalUrlInput,
@@ -1218,17 +1326,19 @@ export const retrieveOriginalUrl = async (
 export const shortenLinkWithAutoAlias = (
   ctx: WorkspaceTRPCContext,
   input: QuickLinkShorteningInput,
+  deps: LinkCreationDeps = {},
 ) =>
   trackLinkCreation(ctx.db, "dashboard", ctx.auth.userId, (attempt) =>
-    shortenLinkSteps(ctx, input, attempt),
+    shortenLinkSteps(ctx, input, attempt, deps),
   );
 
 const shortenLinkSteps = async (
   ctx: WorkspaceTRPCContext,
   input: QuickLinkShorteningInput,
   attempt: LinkCreationAttempt,
+  { fetchMetadata = scrapeMetadata, ...safetyDeps }: LinkCreationDeps,
 ) => {
-  const { currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
+  const { plan, currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
 
   const savedDomain = await getWorkspaceDefaultDomain(ctx);
   // The saved default can outlive the domain (deleted, or never verified)
@@ -1237,13 +1347,16 @@ const shortenLinkSteps = async (
   const alias = await generateUnreservedAlias(ctx.db, domain);
 
   attempt.step = "safety";
-  await assertUrlSafe(input.url);
+  const afterCreate = await checkLinkUrl(ctx, input.url, safetyDeps);
 
   attempt.step = "metadata";
-  const fetchedMetadata = await fetchMetadataFailOpen(scrapeMetadata, input.url);
+  const fetchedMetadata = await fetchMetadataFailOpen(fetchMetadata, input.url);
   const name = fetchedMetadata?.title ?? "Untitled Link";
   const tagNames = input.tags ?? [];
   const ownership = workspaceOwnership(ctx.workspace);
+  // Stored and sent in link.created, so the payload matches what GET /api/v1/links/:id returns.
+  // The column has second precision; drop the milliseconds rather than let MySQL round them.
+  const createdAt = new Date(Math.floor(Date.now() / 1000) * 1000);
 
   attempt.step = "db";
   const result = await ctx.db.transaction(async (tx) => {
@@ -1254,6 +1367,7 @@ const shortenLinkSteps = async (
       userId: ownership.userId,
       teamId: ownership.teamId,
       createdByUserId: ctx.auth.userId, // Track the actual user who created the link
+      createdAt,
       name,
       metadata: {
         title: fetchedMetadata?.title,
@@ -1271,12 +1385,26 @@ const shortenLinkSteps = async (
   });
 
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
+  afterCreate({ id: Number(result.insertId), domain, alias });
   checkCampaignPatternsAfterResponse(linkDestinations(Number(result.insertId), input.url));
+  emitLinkWebhooks(ctx.db, ctx.workspace, "link.created", [
+    {
+      id: Number(result.insertId),
+      createdAt,
+      domain,
+      alias,
+      url: input.url,
+      disableLinkAfterDate: null,
+      activateAt: null,
+      disableLinkAfterClicks: null,
+    },
+  ]);
 
   return {
     id: result.insertId,
     alias,
     domain,
+    isFirstLink: await isFirstLink(ctx, plan, Number(result.insertId)),
   };
 };
 
@@ -1316,13 +1444,14 @@ export const getLinkVisitsInWindow = (
  * Clicks on these links before `before`, raw visits plus archived daily summaries, in one
  * statement: the count uses the (linkId, createdAt) index, the subquery the (linkId, date) one.
  * Summary rows only hold whole days, and `before` is a UTC midnight, so neither side overlaps.
+ * `linkIds` may be a subquery selecting link ids, so a whole workspace needs no id list.
  */
 export const countClicksBefore = async (
   db: WorkspaceTRPCContext["db"],
-  linkIds: number[],
+  linkIds: number[] | SQLWrapper,
   before: Date,
 ) => {
-  if (linkIds.length === 0) return 0;
+  if (Array.isArray(linkIds) && linkIds.length === 0) return 0;
   const archived = db
     .select({ clicks: sql`coalesce(sum(${linkVisitDailySummary.clicks}), 0)` })
     .from(linkVisitDailySummary)
@@ -1358,6 +1487,9 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
   if (!foundLink) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
   }
+  if (foundLink.folderId) {
+    await requireFolderAccess(ctx.db, ctx.workspace, foundLink.folderId);
+  }
 
   const { range, custom } = resolveAnalyticsRange(input, userHasPaidPlan);
   const window = resolveRangeWindow(range, new Date(), custom);
@@ -1378,6 +1510,7 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
     prevCounts,
     prevSummaries,
     hiddenClicks,
+    downByLink,
   ] = await Promise.all([
     getLinkVisitsInWindow(ctx.db, foundLink.id, startDate, now),
     ctx.db.query.geoRule.findMany({
@@ -1432,9 +1565,11 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
     userHasPaidPlan
       ? Promise.resolve(0)
       : countClicksBefore(ctx.db, [foundLink.id], freeAnalyticsWindowStart(now)),
+    getDestinationDownByLinkId(ctx.db, plan, [foundLink.id]),
   ]);
 
   const archived = summarizeArchived(summaries);
+  const destinationDown = downByLink.get(foundLink.id) ?? null;
 
   const previous = prevCounts
     ? {
@@ -1457,6 +1592,7 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
       previous,
       archived,
       hiddenClicks,
+      destinationDown,
       domain,
       range,
       custom,
@@ -1496,6 +1632,7 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
     previous,
     archived,
     hiddenClicks,
+    destinationDown,
     domain,
     range,
     custom,
@@ -1710,7 +1847,14 @@ export const verifyLinkPassword = async (
   const ip = getClientIp(ctx.headers);
   const attemptKeys = [
     { key: `pwattempts:link:${input.id}`, limit: PASSWORD_ATTEMPTS_PER_LINK },
-    ...(ip ? [{ key: `pwattempts:ip:${hashIp(ip)}`, limit: PASSWORD_ATTEMPTS_PER_IP }] : []),
+    ...(ip
+      ? [
+          {
+            key: `pwattempts:ip:${hashIp(ip, env.IP_HASH_SECRET)}`,
+            limit: PASSWORD_ATTEMPTS_PER_IP,
+          },
+        ]
+      : []),
   ];
   const now = Date.now();
   const attempts = await Promise.all(
@@ -1798,6 +1942,7 @@ export const verifyLinkPassword = async (
     ip: getClientIp(ctx.headers) ?? "",
     country: geo.country ?? "",
     city: geo.city ?? "",
+    ipHashSecret: env.IP_HASH_SECRET,
     matchedGeoRuleId: geoResult.matched ? geoResult.ruleId : undefined,
     visitId: tokenIssue?.visitId ?? null,
   });
@@ -1880,18 +2025,30 @@ type ImportLink = {
   unavailableAlias?: string;
 };
 
-type PreparedLink = { record: ImportLink; alreadyImported: boolean };
+type PreparedLink = { record: ImportLink; alreadyImported: boolean; linkId?: number };
 
 export type BulkCreateLinksOptions = {
   /** Bitly exports: also create the random code of a custom link on the same domain. */
   keepBitlyCodes?: boolean;
+  /** Also create a QR code for each row's new link, drawn with this saved style (null: default). */
+  qrCodes?: { presetId: number | null };
+};
+
+type BulkQrCodeResult = { id: number; row: number; domain: string; alias: string };
+
+type CheckImportUrl = (url: string) => Promise<UrlSafetyResult | void>;
+
+// One account for the whole import, so its age is looked up at most once.
+const checkImportUrl = (ctx: WorkspaceTRPCContext): CheckImportUrl => {
+  const account = workspaceSafetyAccount(ctx);
+  return (url) => assertUrlSafe(url, { account });
 };
 
 // `checkUrl` is a seam for tests; callers use the default.
 export const bulkCreateLinks = (
   ctx: WorkspaceTRPCContext,
   csvContent: string,
-  checkUrl: (url: string) => Promise<void> = assertUrlSafe,
+  checkUrl: CheckImportUrl = checkImportUrl(ctx),
   options: BulkCreateLinksOptions = {},
 ) =>
   // Records failures that reject the whole import; per-row failures are recorded below.
@@ -1944,14 +2101,19 @@ const importErrorMessage = ({ reason }: PromiseRejectedResult) =>
 const bulkCreateLinkRows = async (
   ctx: WorkspaceTRPCContext,
   csvContent: string,
-  checkUrl: (url: string) => Promise<void>,
-  { keepBitlyCodes = true }: BulkCreateLinksOptions,
+  checkUrl: CheckImportUrl,
+  { keepBitlyCodes = true, qrCodes }: BulkCreateLinksOptions,
 ) => {
   const parsed = parseLinkCsv(csvContent);
   const isBitlyFile = parsed.some((row) => row.bitly);
   // Links deleted in Bitly are neither created nor counted toward the allowance.
   const rows = parsed.filter((row) => !row.bitly?.deleted);
   const skipped = parsed.length - rows.length;
+
+  // Rejects the whole import before any link exists when the plan can't add the QR codes.
+  const qrPlan = qrCodes
+    ? await prepareBulkQrCodes(ctx, { rowCount: rows.length, presetId: qrCodes.presetId })
+    : undefined;
 
   // Throws when the monthly allowance and the custom-domain import allowance are
   // both used up, rejecting the whole import.
@@ -2097,7 +2259,7 @@ const bulkCreateLinkRows = async (
   let allotted = 0;
   let importAllotted = 0;
   // Rows often share a destination, and a Bitly code always shares its row's.
-  const scans = new Map<string, Promise<void>>();
+  const scans = new Map<string, Promise<UrlSafetyResult | void>>();
   const createdDestinations: LinkDestination[] = [];
   const createLinks = async (checks: PromiseSettledResult<PreparedLink>[]) => {
     const steps = checks.map((): LinkCreationStep => "validation");
@@ -2132,7 +2294,7 @@ const bulkCreateLinkRows = async (
           scan = checkUrl(record.url);
           scans.set(record.url, scan);
         }
-        await scan;
+        const safety = await scan;
 
         steps[index] = "db";
         const ownership = workspaceOwnership(ctx.workspace);
@@ -2148,8 +2310,10 @@ const bulkCreateLinkRows = async (
           note: record.note,
           ...restrictedLinkValues(ctx.restrictedAt),
         });
-        createdDestinations.push({ linkId: Number(inserted.insertId), url: record.url });
-        return { record: { ...record, alias }, alreadyImported: false };
+        recordSafetyFollowUp(Number(inserted.insertId), safety);
+        const linkId = Number(inserted.insertId);
+        createdDestinations.push({ linkId, url: record.url });
+        return { record: { ...record, alias }, alreadyImported: false, linkId };
       },
     );
     const importCreated = results.filter(
@@ -2252,6 +2416,40 @@ const bulkCreateLinkRows = async (
   await incrementCustomDomainImportCount(ctx, importCreated);
   checkCampaignPatternsAfterResponse(createdDestinations);
 
+  // Codes for each row's own new link; Bitly code links and earlier imports get none.
+  let createdQrCodes: BulkQrCodeResult[] = [];
+  let qrCodeNotice = "";
+  if (qrPlan) {
+    const qrLinks = primary.results.flatMap((result) =>
+      result.status === "fulfilled" && result.value.linkId
+        ? [{ ...result.value.record, linkId: result.value.linkId }]
+        : [],
+    );
+    try {
+      const rows = await createBulkQrCodes(
+        ctx,
+        qrPlan,
+        qrLinks.map((entry) => ({
+          linkId: entry.linkId,
+          url: entry.url,
+          title: entry.name || `${entry.domain}/${entry.alias}`,
+        })),
+      );
+      const byLink = new Map(qrLinks.map((entry) => [entry.linkId, entry]));
+      createdQrCodes = rows.flatMap((row) => {
+        const entry = row.linkId ? byLink.get(row.linkId) : undefined;
+        return entry?.alias
+          ? [{ id: row.id, row: entry.row, domain: entry.domain, alias: entry.alias }]
+          : [];
+      });
+      createdQrCodes.sort((a, b) => a.row - b.row);
+      qrCodeNotice = `, ${createdQrCodes.length} ${createdQrCodes.length === 1 ? "QR code" : "QR codes"} created`;
+    } catch (error) {
+      log.error({ err: error }, "failed to create QR codes for a CSV import");
+      qrCodeNotice = ". The links were created, but their QR codes couldn't be. Please try again";
+    }
+  }
+
   const importAllowanceRemaining = importAllowanceLeft - importCreated;
   const importNotice =
     importCreated > 0
@@ -2276,7 +2474,10 @@ const bulkCreateLinkRows = async (
     domainNotices,
     importAllowanceUsed: importCreated,
     importAllowanceRemaining,
-    message: `${summary.join(", ")}${importNotice}`,
+    qrCodes: createdQrCodes,
+    qrStyle:
+      qrPlan && createdQrCodes.length > 0 ? { ...qrPlan.style, logoImage: qrPlan.logo } : null,
+    message: `${summary.join(", ")}${qrCodeNotice}${importNotice}`,
   };
 };
 

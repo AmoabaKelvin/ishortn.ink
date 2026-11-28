@@ -12,15 +12,16 @@ A QR code on a business card saves the other person from typing your details int
 
 This guide covers both. It's written for companies that print cards for several people, such as sales reps, account managers, field engineers or the partners at a practice. The first half applies to a single card too.
 
-We make iShortn, a link shortener with dynamic QR codes on your own domain. iShortn doesn't make vCard codes, and we explain below when a vCard is the better choice anyway.
+We make iShortn, a link shortener with dynamic QR codes on your own domain. iShortn makes both kinds of code covered below, including an editable contact card code, and we say when each one is the better choice.
 
 ## The short version
 
 1. A **vCard code** saves your contact straight to the phone and works without signal. It can't be changed after printing and doesn't count scans.
 2. A **link code** opens a page. You can change where it points, see how often it's scanned, and the code stays small.
-3. For a team, give every person their own link on the company domain, such as `go.yourcompany.com/jane`, and print that address under the code.
-4. Print the code at least 2 cm (about 0.8 inch) wide with a clear margin, and test a printed proof before the full run.
-5. When someone leaves, repoint their link. The cards they handed out keep working.
+3. A **contact card code** sits in between. It opens a hosted contact page with a **Save contact** button, counts scans, and you can edit the details after the cards are printed. It needs signal, like a link.
+4. For a team, give every person their own link on the company domain, such as `go.yourcompany.com/jane`, and print that address under the code.
+5. Print the code at least 2 cm (about 0.8 inch) wide with a clear margin, and test a printed proof before the full run.
+6. When someone leaves, repoint their link. The cards they handed out keep working.
 
 ## vCard or link: what the code holds
 
@@ -30,14 +31,14 @@ A QR code stores text. On a business card, that text is usually one of two thing
 
 **A link** is a web address. Scan it and the phone opens a page: your profile on the company website, a contact page, a calendar booking page or your LinkedIn profile.
 
-| | vCard code | Link code (dynamic) |
-|---|---|---|
-| Saves the contact in one step | Yes | Only if the page offers a contact file (see below) |
-| Works without mobile signal | Yes | No |
-| Can be changed after printing | No | Yes |
-| Counts scans | No | Yes |
-| Code density | High: often 300+ characters | Low: about 30 characters |
-| Depends on an outside service | No | Yes, on whatever runs the link |
+| | vCard code | Link code (dynamic) | Contact card code (iShortn) |
+|---|---|---|---|
+| Saves the contact in one step | Yes | Only if the page offers a contact file (see below) | Yes, from the page's Save contact button |
+| Works without mobile signal | Yes | No | No |
+| Can be changed after printing | No | Yes | Yes |
+| Counts scans | No | Yes | Yes |
+| Code density | High: often 300+ characters | Low: about 30 characters | Low: about 30 characters |
+| Depends on an outside service | No | Yes, on whatever runs the link | Yes, on iShortn |
 
 Neither is right for everyone. A vCard suits someone whose details rarely change and who mostly meets people in places with bad signal. A link suits anyone whose role, phone number or employer may change before the box of cards runs out, and any company that wants to know whether cards get used. For a company printing cards for a team, we'd pick the link almost every time, because the people on the cards change faster than the boxes run out.
 
@@ -49,9 +50,9 @@ At 2 cm wide, the vCard's modules are 0.29 mm each and the link's are 0.69 mm. F
 
 ### Getting "save contact" from a link
 
-You can have both. Export your contact as a `.vcf` file, which most address books and CRMs can do. Put it on your company website, and add a **Save contact** button to the page the QR code opens. On an iPhone, opening the file shows the contact with an option to add it. On Android, the phone downloads the file and opening it offers to add the contact. Ask whoever runs your website to serve the file as `text/vcard`, then test both kinds of phone.
+You can have both. A contact card code points to a small page with your details and a **Save contact** button, which downloads a standard `.vcf` file that iPhones and Android phones add to their contacts. Because the code holds a short link, not the contact itself, it stays small, counts scans, and the details can change after printing. In iShortn, choose **vCard** under **Create QR Code**. Contact card codes are on Pro and Ultra.
 
-The page can then carry what a vCard can't: a photo, a booking link, product lines or service areas, and a link to the latest catalogue.
+If you'd rather host it yourself, export your contact as a `.vcf` file, put it on your company website and add a **Save contact** button to the page the QR code opens. Ask whoever runs your website to serve the file as `text/vcard`, then test both kinds of phone. Your own page can also carry what a contact card can't, such as a photo, a booking link, product lines or the latest catalogue.
 
 ## Size and print
 
@@ -95,9 +96,11 @@ The same pattern works for staff badges at [trade shows](/blog/qr-codes-for-trad
 3. **Download the codes.** Each link has a QR code in its menu that you can download as a PNG. If you want a logo, brand colours or an SVG for the printer, create the code under **QR Codes** instead, choose your domain there, and download it as SVG. Those codes get a generated ending rather than the person's name, so print the readable link under them. See [QR codes](/docs/qr-codes) for the styling options.
 4. **Change destinations whenever you need to.** Edits apply to every printed card at once.
 
+Prefer to hand out a contact instead of a page? Create a **vCard** code for each person under **QR Codes** instead of step 2. Scans open their contact page, and when someone's number or title changes you edit their card once and every printed card shows the new details.
+
 If your current cards print a branded domain that runs through Bitly, [move it over first](/docs/migrate-from-bitly) so the codes already in circulation keep working. Our [iShortn vs Bitly](/compare/bitly) page compares the two.
 
-Custom domains and CSV import need [Pro](/pricing), which costs $8 a month or $80 a year. Pro includes 3 custom domains, 1,000 new links a month and the full scan history. One person can run the whole team's cards from one Pro account.
+Custom domains and CSV import need [Pro](/pricing), which costs $8 a month or $80 a year. Pro includes 3 custom domains, 1,000 new links a month and 1 year of detailed scan history. One person can run the whole team's cards from one Pro account.
 
 If several people need to log in and manage links, Ultra ($15 a month or $150 a year) adds team workspaces with no limit on members. Your links stay yours on either plan. They export as CSV or JSON, so if you ever move to another tool, you recreate them there, point the domain at it, and the printed cards keep working.
 
@@ -109,7 +112,7 @@ For a single card, the free plan works with an `isht.app` address, and our free 
 
 **What size should a QR code be on a business card?** At least 2 cm (0.8 inch) wide, with an empty margin around it. Make a vCard code larger or remove fields from it.
 
-**Can I put my contact details in the QR code itself?** Yes, as a vCard. It works offline but can't be changed after printing, and many fields make the code dense.
+**Can I put my contact details in the QR code itself?** Yes, as a vCard. A plain vCard works offline but can't be changed after printing, and many fields make the code dense. A contact card code (iShortn Pro) opens a page with a Save contact button instead, so it stays small and editable but needs signal.
 
 **What happens to the QR code when an employee leaves?** With a static code, it keeps opening whatever it was printed with. With a dynamic link on your own domain, you repoint it to a colleague or a team page.
 

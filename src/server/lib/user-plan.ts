@@ -4,7 +4,7 @@ import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { effectivePlan } from "@/lib/billing/entitlements";
 import { getPlanCaps, Plan, resolvePlan } from "@/lib/billing/plans";
 import { db } from "@/server/db";
-import { subscription, user } from "@/server/db/schema";
+import { monthlyUsageSnapshot, subscription, user } from "@/server/db/schema";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 
 import type { PLAN_CAPS } from "@/lib/billing/plans";
@@ -40,7 +40,7 @@ export type UserPlanContext = {
   linksLimit: number | undefined;
 };
 
-const getMonthStart = () => {
+export const getMonthStart = () => {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), 1);
 };
@@ -70,6 +70,11 @@ export async function getUserPlanContext(
   };
 }
 
+/** YYYY-MM of `date` in the same (server-local) calendar getMonthStart uses. */
+export function usageMonth(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export async function normalizeMonthlyEventCount(
   ctx: UserPlanContext,
   dbClient: DbClient = db,
@@ -78,18 +83,48 @@ export async function normalizeMonthlyEventCount(
   const lastReset = ctx.userRecord.lastEventCountReset ?? ctx.userRecord.createdAt ?? new Date();
 
   if (lastReset < monthStart) {
-    await dbClient
-      .update(user)
-      .set({
-        monthlyEventCount: 0,
-        lastEventCountReset: new Date(),
-        eventUsageAlertLevel: 0,
-        droppedEventCount: 0,
-        eventTrackingPausedAt: null,
-      })
-      .where(eq(user.id, ctx.userRecord.id));
+    return dbClient.transaction(async (tx) => {
+      // `ctx` may be a snapshot read: lock the row and re-read the counters so the snapshot holds
+      // the final counts, and a parallel batch that already reset this month isn't zeroed again.
+      const [current] = await tx
+        .select({
+          monthlyEventCount: user.monthlyEventCount,
+          droppedEventCount: user.droppedEventCount,
+          lastEventCountReset: user.lastEventCountReset,
+          createdAt: user.createdAt,
+        })
+        .from(user)
+        .where(eq(user.id, ctx.userRecord.id))
+        .for("update");
+      if (!current) return 0;
 
-    return 0;
+      const currentReset = current.lastEventCountReset ?? current.createdAt ?? new Date();
+      if (currentReset >= monthStart) return current.monthlyEventCount ?? 0;
+
+      const recordedEventCount = current.monthlyEventCount ?? 0;
+      const droppedEventCount = current.droppedEventCount ?? 0;
+      if (recordedEventCount > 0 || droppedEventCount > 0) {
+        await tx.insert(monthlyUsageSnapshot).values({
+          userId: ctx.userRecord.id,
+          month: usageMonth(currentReset),
+          recordedEventCount,
+          droppedEventCount,
+        });
+      }
+
+      await tx
+        .update(user)
+        .set({
+          monthlyEventCount: 0,
+          lastEventCountReset: new Date(),
+          eventUsageAlertLevel: 0,
+          droppedEventCount: 0,
+          eventTrackingPausedAt: null,
+        })
+        .where(eq(user.id, ctx.userRecord.id));
+
+      return 0;
+    });
   }
 
   return ctx.userRecord.monthlyEventCount ?? 0;
@@ -185,4 +220,57 @@ export async function reserveMonthlyLinkSlot(
   }
 
   return planCtx;
+}
+
+/**
+ * reserveMonthlyLinkSlot in one statement, for callers that already know the plan (API tokens
+ * load it with the token): applies the new-month reset and counts one link in a single
+ * conditional UPDATE, so it needs no transaction and parallel requests can't overshoot the cap.
+ * Plans without a limit are not counted. Pair a failed insert with releaseMonthlyLinkSlot.
+ * Throws TRPCError("FORBIDDEN") with the user-facing message when the limit is reached.
+ */
+export async function claimMonthlyLinkSlot(
+  userId: string,
+  plan: Plan,
+  dbClient: DbClient = db,
+): Promise<void> {
+  const limit = getPlanCaps(plan).linksLimit;
+  if (limit === undefined) return;
+
+  const monthStart = getMonthStart();
+  // Same fallback as normalizeMonthlyLinkCount: a user never reset counts from sign-up.
+  const isNewMonth = or(
+    lt(user.lastLinkCountReset, monthStart),
+    and(isNull(user.lastLinkCountReset), lt(user.createdAt, monthStart)),
+  );
+  const usedThisMonth = sql`(case when ${isNewMonth} then 0 else coalesce(${user.monthlyLinkCount}, 0) end)`;
+
+  // MySQL applies SET assignments left to right and later ones see earlier results. Drizzle
+  // emits them in schema order, monthlyLinkCount before lastLinkCountReset, so the count is
+  // computed against the old reset date.
+  const [result] = await dbClient
+    .update(user)
+    .set({
+      monthlyLinkCount: sql`${usedThisMonth} + 1`,
+      lastLinkCountReset: sql`case when ${isNewMonth} then ${sql.param(new Date(), user.lastLinkCountReset)} else ${user.lastLinkCountReset} end`,
+    })
+    .where(and(eq(user.id, userId), lt(usedThisMonth, limit)));
+
+  if (result.affectedRows === 0) {
+    await recordPlanLimitHit({ userId, limitKey: "monthly_links", plan });
+    throw new TRPCError({ code: "FORBIDDEN", message: monthlyLinkLimitMessage(plan, limit) });
+  }
+}
+
+/** Gives back a slot claimMonthlyLinkSlot took when the link it was for wasn't created. */
+export async function releaseMonthlyLinkSlot(
+  userId: string,
+  plan: Plan,
+  dbClient: DbClient = db,
+): Promise<void> {
+  if (getPlanCaps(plan).linksLimit === undefined) return;
+  await dbClient
+    .update(user)
+    .set({ monthlyLinkCount: sql`greatest(coalesce(${user.monthlyLinkCount}, 0) - 1, 0)` })
+    .where(eq(user.id, userId));
 }

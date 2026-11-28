@@ -61,7 +61,7 @@ export function FolderCard({
 
             {/* Metadata row */}
             <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
-              <span className="text-neutral-400 dark:text-neutral-500">
+              <span className="text-neutral-400 dark:text-muted-foreground">
                 {daysSinceFolderCreation === 0 ? "Today" : `${daysSinceFolderCreation}d`}
               </span>
               <span className="text-neutral-300">&middot;</span>
@@ -71,7 +71,7 @@ export function FolderCard({
               {folder.description && (
                 <>
                   <span className="text-neutral-300">&middot;</span>
-                  <span className="max-w-[250px] truncate text-neutral-400 dark:text-neutral-500">
+                  <span className="max-w-[250px] truncate text-neutral-400 dark:text-muted-foreground">
                     {folder.description}
                   </span>
                 </>
@@ -97,7 +97,7 @@ export function FolderCard({
                   type="button"
                   onClick={() => onSettings?.(folder)}
                   aria-label={`Folder access for ${folder.name}`}
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-muted-foreground transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
                 >
                   <IconSettings size={14} stroke={1.5} />
                 </button>
@@ -106,7 +106,7 @@ export function FolderCard({
                 type="button"
                 onClick={() => onEdit(folder)}
                 aria-label={`Edit ${folder.name}`}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-muted-foreground transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
               >
                 <IconPencil size={14} stroke={1.5} />
               </button>
@@ -114,7 +114,7 @@ export function FolderCard({
                 type="button"
                 onClick={() => onDelete(folder)}
                 aria-label={`Delete ${folder.name}`}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-muted-foreground transition-colors hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600"
               >
                 <IconTrash size={14} stroke={1.5} />
               </button>

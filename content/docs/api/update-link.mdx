@@ -6,7 +6,7 @@ endpoint:
   path: /api/v1/links/{alias}
 ---
 
-Updates one short link in your personal workspace. Send only the fields you want to change. The change takes effect for visitors straight away.
+Updates one short link in the key's workspace. Send only the fields you want to change. The change takes effect for visitors straight away.
 
 ## Request
 
@@ -21,7 +21,7 @@ The JSON body takes at least one of these fields:
 | --- | --- | --- |
 | `url` | string | New destination. Must be a valid absolute URL. It goes through the [link safety check](/docs/abuse#link-safety-checks) again. |
 | `alias` | string | New alias, 1 to 20 characters: letters, numbers, `-` and `_`, and at least 6 characters on the Free plan. Must not already exist on the link's domain (checked case-insensitively), the same rules as [Create a link](/docs/api/create-link). Changing only the letter case of the current alias skips these checks. The old alias stops working. |
-| `domain` | string | Moves the link to another domain: a platform domain or an active custom domain in your personal workspace, as for [Create a link](/docs/api/create-link). The alias (or the new `alias`, if sent) must be free on that domain. The old short URL keeps redirecting to the link, and its clicks count toward the same link. |
+| `domain` | string | Moves the link to another domain: a platform domain or an active custom domain in the key's workspace, as for [Create a link](/docs/api/create-link). The alias (or the new `alias`, if sent) must be free on that domain. The old short URL keeps redirecting to the link, and its clicks count toward the same link. |
 | `expiresAt` | string \| null | Expiry date as ISO 8601 with a time zone, such as `2026-12-31T23:59:59Z`. `null` removes it. |
 | `activatesAt` | string \| null | Activation time as ISO 8601 with a time zone. Setting a time requires Pro or Ultra; `null` removes it on any plan. |
 | `expiresAfter` | integer \| null | Click limit, a whole number above 0. `null` removes it. |
@@ -122,10 +122,10 @@ Error bodies use the [standard error shape](/docs/api#responses-and-errors), exc
 | `401` | `unauthorized` | `Invalid or missing API key` | See [Authentication](/docs/api#authentication). |
 | `403` | | `{"error": "API access requires Pro", "upgrade_url": "https://ishortn.ink/pricing"}` (whole body) | The key's account isn't on Pro or Ultra and its notice period has ended. See [API access by plan](/docs/api#api-access-by-plan). |
 | `403` | `forbidden` | `Your account is restricted. Contact safety@ishortn.ink` | Your account has been restricted. |
-| `403` | `forbidden` | `Domain not available for this API key` | The `domain` query parameter or body field isn't a platform domain or an active custom domain in your personal workspace. |
+| `403` | `forbidden` | `Domain not available for this API key` | The `domain` query parameter or body field isn't a platform domain or an active custom domain in the key's workspace. |
 | `403` | `forbidden` | `Your plan includes 3 custom domains, so links.example.com can't take new or edited links. Upgrade to Ultra to keep using it.` | The link, or the `domain` it is moving to, is on a custom domain beyond your plan's allowance, for example after a downgrade. Without custom domains on your plan the message is `Custom domains are available on Pro and Ultra. Upgrade to create or edit links on links.example.com.` |
 | `403` | `forbidden` | `Scheduled links are only available on Pro and Ultra plans` | Setting `activatesAt` on the Free plan. |
-| `404` | `not_found` | `Link not found` | No link with that alias on that domain in your personal workspace. |
+| `404` | `not_found` | `Link not found` | No link with that alias on that domain in the key's workspace. |
 | `409` | `conflict` | `Alias already exists` | The new alias, or the current one when moving the link with `domain`, is taken on the target domain, compared case-insensitively. Aliases of deleted or renamed links on platform domains, and old addresses of moved links, stay taken. |
 | `409` | `conflict` | `Alias already exists for this domain` | Another request took the new alias at the same moment. |
 | `429` | `rate_limited` | `Rate limit exceeded. Retry in N seconds.` | See [Rate limits](/docs/api#rate-limits). |

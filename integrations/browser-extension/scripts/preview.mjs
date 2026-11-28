@@ -70,5 +70,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { url } = await servePreview(Number(process.env.PORT) || 4173);
   console.log(`Popup:  ${url}/popup.html?state=created`);
   console.log(`Frame:  ${url}/frame.html?state=created`);
-  console.log("States: not-connected, manual, created, customize, limit, unshortenable, unshortenable-empty, network-error");
+  console.log("States: not-connected, manual, creating, created, customize, limit, unshortenable, unshortenable-empty, network-error");
 }

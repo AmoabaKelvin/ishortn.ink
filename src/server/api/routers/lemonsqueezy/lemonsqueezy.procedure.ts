@@ -9,6 +9,10 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, isNull, lt, or } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
+import { checkoutCustomData, checkoutEventProperties } from "@/lib/billing/attribution";
+import { billingPlanMode } from "@/lib/billing/entitlements";
+import { planChangeDiscount, promoFirstPaymentAt } from "@/lib/billing/first-year-discount";
+import { STALE_BILLING_MESSAGE } from "@/lib/billing/plan-change-copy";
 import {
   canOfferPause,
   getIntervalFromVariantId,
@@ -17,12 +21,18 @@ import {
   getVariantId,
   pauseResumesAt,
   resolvePlan,
+  scheduledPause,
+  subscriptionInterval,
 } from "@/lib/billing/plans";
-import { checkoutDiscountCode } from "@/lib/billing/promo";
+import { checkoutDiscountCode, findFirstYearPromo } from "@/lib/billing/promo";
 import { configureLemonSqueezy } from "@/lib/config/lemonsqueezy";
 import { logger } from "@/lib/logger";
+import { getPaddleClient, PaddleApiError } from "@/lib/paddle/client";
+import { checkoutProviderFor, getPaddleConfig, paddlePriceId } from "@/lib/paddle/config";
+import { normalizePaddleSubscription, paddleSubscriptionSchema } from "@/lib/paddle/normalize";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { subscription, subscriptionCancellation } from "@/server/db/schema";
+import { captureServerEvent } from "@/server/lib/analytics/posthog-server";
 import { recordCheckoutStart } from "@/server/lib/checkout-starts";
 import { sendDowngradeFeedbackNotification } from "@/server/lib/notifications/discord";
 
@@ -32,9 +42,14 @@ import {
   downgradeReasonLabels,
   downgradeWithFeedbackInput,
   pauseSubscriptionInput,
+  previewPlanChangeInput,
 } from "./lemonsqueezy.input";
+import { createPaddleCheckout } from "./paddle-checkout";
 import {
   createCheckoutWithPromoFallback,
+  lemonSqueezyPromoRejected,
+  paddleErrorToClient,
+  paddlePreviewCharge,
   parseProviderUpdatedAt,
   pauseUpdate,
   providerErrorToClient,
@@ -42,14 +57,31 @@ import {
 } from "./utils";
 
 import type { ProtectedTRPCContext } from "../../trpc";
-import type { Plan } from "@/lib/billing/plans";
+import type { CreateCheckoutOrUpdateInput } from "./lemonsqueezy.input";
+import type { PaddleCheckoutClient } from "./paddle-checkout";
+import type { Attribution } from "@/lib/billing/attribution";
+import type { PlanChangeCharge } from "@/lib/billing/plan-change-copy";
+import type { BillingInterval, Plan } from "@/lib/billing/plans";
+import type {
+  PaddleClient,
+  PaddleSubscription,
+  UpdateSubscriptionInput,
+} from "@/lib/paddle/client";
+import type { PaddleConfig, PaidPlan } from "@/lib/paddle/config";
+import type { NormalizedPaddleSubscription } from "@/lib/paddle/normalize";
 import type { Subscription } from "@/server/db/schema";
+import type { CheckoutStartInput } from "@/server/lib/checkout-starts";
 import type { Subscription as ProviderSubscription } from "@lemonsqueezy/lemonsqueezy.js";
+import type { SQL } from "drizzle-orm";
 
 const log = logger.child({ component: "billing.lemonsqueezy" });
 
-const resumeFirstMessage = (status: string | null | undefined) =>
-  `Your subscription is ${status === "paused" ? "paused" : "cancelled"}. Resume it before changing plans.`;
+function resumeFirstMessage(row: Subscription | null | undefined) {
+  if (scheduledPause(row)) {
+    return "Your subscription is set to pause. Resume it before changing plans.";
+  }
+  return `Your subscription is ${row?.status === "paused" ? "paused" : "cancelled"}. Resume it before changing plans.`;
+}
 
 type ProviderErrorContext = {
   userId: string;
@@ -78,34 +110,31 @@ function formatDate(date: Date): string {
   });
 }
 
+type SubscriptionUpdate = Partial<typeof subscription.$inferInsert>;
+
+type ProviderState = Pick<SubscriptionUpdate, "status" | "endsAt" | "renewsAt" | "pausedUntil"> & {
+  providerUpdatedAt: Date | null;
+};
+
 /**
  * Mirrors the provider's state onto the local row right after a change. The
  * provider's `updated_at` becomes the ordering marker, so the webhook for this
  * same change, or an older one delivered late, is dropped instead of reverting
  * it; a newer webhook that already landed is not overwritten.
  */
-async function applyProviderState(
+async function writeProviderState(
   ctx: ProtectedTRPCContext,
-  subscriptionId: number,
-  attributes: ProviderSubscription["data"]["attributes"],
-  extra: Partial<typeof subscription.$inferInsert> = {},
+  matchesSubscription: SQL[],
+  { providerUpdatedAt, ...state }: ProviderState,
+  extra: SubscriptionUpdate,
 ) {
-  const providerUpdatedAt = parseProviderUpdatedAt(attributes.updated_at);
-
   await ctx.db
     .update(subscription)
-    .set({
-      ...extra,
-      status: attributes.status,
-      endsAt: attributes.ends_at ? new Date(attributes.ends_at) : null,
-      renewsAt: attributes.renews_at ? new Date(attributes.renews_at) : null,
-      pausedUntil: attributes.pause?.resumes_at ? new Date(attributes.pause.resumes_at) : null,
-      ...(providerUpdatedAt && { providerUpdatedAt }),
-    })
+    .set({ ...extra, ...state, ...(providerUpdatedAt && { providerUpdatedAt }) })
     .where(
       and(
         eq(subscription.userId, ctx.auth.userId),
-        eq(subscription.subscriptionId, subscriptionId),
+        ...matchesSubscription,
         providerUpdatedAt
           ? or(
               isNull(subscription.providerUpdatedAt),
@@ -114,6 +143,291 @@ async function applyProviderState(
           : undefined,
       ),
     );
+}
+
+async function applyProviderState(
+  ctx: ProtectedTRPCContext,
+  subscriptionId: number,
+  attributes: ProviderSubscription["data"]["attributes"],
+  extra: SubscriptionUpdate = {},
+) {
+  await writeProviderState(
+    ctx,
+    [eq(subscription.subscriptionId, subscriptionId)],
+    {
+      status: attributes.status,
+      endsAt: attributes.ends_at ? new Date(attributes.ends_at) : null,
+      renewsAt: attributes.renews_at ? new Date(attributes.renews_at) : null,
+      pausedUntil: attributes.pause?.resumes_at ? new Date(attributes.pause.resumes_at) : null,
+      providerUpdatedAt: parseProviderUpdatedAt(attributes.updated_at),
+    },
+    extra,
+  );
+}
+
+export type PaddleDeps = {
+  client: Pick<
+    PaddleClient,
+    | "getSubscription"
+    | "updateSubscription"
+    | "previewSubscriptionUpdate"
+    | "cancelSubscription"
+    | "pauseSubscription"
+    | "resumeSubscription"
+    | "getUpdatePaymentMethodTransaction"
+    | "createPortalSession"
+    | "createDiscount"
+    | "archiveDiscount"
+  >;
+  config: PaddleConfig;
+};
+
+export type BillingDeps = {
+  /** The Paddle client and config, or null while Paddle isn't configured. */
+  paddle: () => PaddleDeps | null;
+};
+
+const defaultBillingDeps: BillingDeps = {
+  paddle: () => {
+    const config = getPaddleConfig();
+    const client = getPaddleClient();
+    return config && client ? { config, client } : null;
+  },
+};
+
+type PaddleRow = Subscription & { providerSubscriptionId: string };
+
+function isPaddleRow(row: Subscription | null | undefined): row is PaddleRow {
+  return row?.billingProvider === "paddle" && !!row.providerSubscriptionId;
+}
+
+/** Runs a Paddle call, logging a failure and turning it into a user-facing error. */
+async function callPaddle<T>(
+  action: string,
+  context: { userId: string; providerSubscriptionId: string },
+  call: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await call();
+  } catch (err) {
+    const paddleErr = err instanceof PaddleApiError ? err : null;
+    const statusCode = paddleErr?.status ?? null;
+    log.error({ err, statusCode, provider: "paddle", ...context }, `paddle ${action} failed`);
+    throw new TRPCError(paddleErrorToClient(statusCode, paddleErr?.code));
+  }
+}
+
+function requirePaddle(deps: BillingDeps, userId: string): PaddleDeps {
+  const paddle = deps.paddle();
+  if (!paddle) {
+    log.error(
+      { userId, provider: "paddle" },
+      "paddle subscription found but paddle is not configured",
+    );
+    throw new TRPCError(providerErrorToClient(null));
+  }
+  return paddle;
+}
+
+// Paddle refuses item changes on a past_due subscription.
+function assertPaddleItemsChangeable(row: PaddleRow) {
+  if (row.status === "past_due") {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Update your payment method first." });
+  }
+}
+
+// The latest checkout start is the one that created a live subscription, since a live
+// subscription can't start another.
+const findLatestCheckoutStart = (ctx: ProtectedTRPCContext) =>
+  ctx.db.query.checkoutStart.findFirst({
+    where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
+    orderBy: (table, { desc }) => [desc(table.createdAt), desc(table.id)],
+    columns: { plan: true, interval: true, promoCode: true, provider: true, createdAt: true },
+  });
+
+/**
+ * The `discount` to send with a Paddle plan or interval change, or undefined to leave it as it
+ * is. A subscription that started with a first-year promo (FIRST_YEAR_PROMOS, past campaigns
+ * included) gets a new discount for what is left of that year (planChangeDiscount), or none after
+ * it; Paddle would otherwise keep counting the checkout discount's recurrences per billing period,
+ * whatever the interval. The created discount's id is returned so a failed change can archive it.
+ */
+async function promoDiscountUpdate(
+  ctx: ProtectedTRPCContext,
+  client: PaddleDeps["client"],
+  row: PaddleRow,
+  change: { to: BillingInterval; billsNow: boolean },
+): Promise<UpdateSubscriptionInput["discount"]> {
+  const checkout = await findLatestCheckoutStart(ctx);
+  if (checkout?.provider !== "paddle" || !checkout.promoCode) return undefined;
+  const from = subscriptionInterval(row);
+
+  const promo = findFirstYearPromo(checkout.promoCode);
+  if (!promo) {
+    // An unregistered code's terms are unknown, but a recurring discount must never carry into
+    // annual periods, where each recurrence is a year.
+    return from === "monthly" && change.to === "annual" ? null : undefined;
+  }
+
+  const firstPaymentAt = promoFirstPaymentAt(row.createdAt, checkout.createdAt);
+  // Once a change has ended the promo it stays ended, e.g. monthly → annual → monthly → annual.
+  if (row.promoDiscountEndedAt && row.promoDiscountEndedAt >= firstPaymentAt) return null;
+
+  const discount = planChangeDiscount({
+    firstPaymentAt,
+    from,
+    to: change.to,
+    billsNow: change.billsNow,
+  });
+  if (discount.action === "remove") return null;
+
+  const userId = ctx.auth.userId;
+  try {
+    const created = await client.createDiscount({
+      percentOff: promo.percentOff,
+      description: `${promo.code}: ${promo.percentOff}% off the first year`,
+      maximumRecurringIntervals: discount.terms.maximumRecurringIntervals,
+      customData: { user_id: userId, promo_code: promo.code },
+    });
+    return { id: created.id, effectiveFrom: discount.effectiveFrom };
+  } catch (err) {
+    const statusCode = err instanceof PaddleApiError ? err.status : null;
+    log.error(
+      {
+        err,
+        statusCode,
+        provider: "paddle",
+        userId,
+        providerSubscriptionId: row.providerSubscriptionId,
+      },
+      "paddle create discount failed",
+    );
+    // On monthly the checkout discount's remaining recurrences cover the rest of the first year,
+    // so the change goes ahead without `discount`. On annual it would recur yearly, so the change
+    // fails and can be retried.
+    if (change.to === "annual") {
+      throw new TRPCError(
+        paddleErrorToClient(statusCode, err instanceof PaddleApiError ? err.code : null),
+      );
+    }
+    return undefined;
+  }
+}
+
+/** Retires a discount created for a change that didn't happen, so it can't be applied later. */
+async function archiveUnusedDiscount(
+  client: PaddleDeps["client"],
+  discountId: string,
+  context: { userId: string; providerSubscriptionId: string },
+) {
+  await client
+    .archiveDiscount(discountId)
+    .catch((err: Error) =>
+      log.warn({ err, ...context, discountId }, "failed to archive unused paddle discount"),
+    );
+}
+
+/**
+ * Moves a Paddle subscription to `priceId`, setting the first-year promo discount for the change
+ * (promoDiscountUpdate). A discount created for a change that then fails is archived, and a
+ * removed one is recorded on the row so the billing card stops showing it.
+ */
+async function changePaddleItems(
+  ctx: ProtectedTRPCContext,
+  client: PaddleDeps["client"],
+  row: PaddleRow,
+  change: { action: string; priceId: string; to: BillingInterval; billsNow: boolean },
+): Promise<PaddleSubscription> {
+  const userId = ctx.auth.userId;
+  const providerSubscriptionId = row.providerSubscriptionId;
+  const discount = await promoDiscountUpdate(ctx, client, row, change);
+
+  let updated: PaddleSubscription;
+  try {
+    updated = await callPaddle(change.action, { userId, providerSubscriptionId }, () =>
+      client.updateSubscription(providerSubscriptionId, {
+        items: [{ priceId: change.priceId, quantity: 1 }],
+        prorationBillingMode: change.billsNow
+          ? "prorated_immediately"
+          : "prorated_next_billing_period",
+        ...(discount !== undefined && { discount }),
+      }),
+    );
+  } catch (err) {
+    if (discount) {
+      await archiveUnusedDiscount(client, discount.id, { userId, providerSubscriptionId });
+    }
+    throw err;
+  }
+
+  if (discount === null) {
+    try {
+      await ctx.db
+        .update(subscription)
+        .set({ promoDiscountEndedAt: new Date() })
+        .where(eq(subscription.providerSubscriptionId, providerSubscriptionId));
+    } catch (err) {
+      // Paddle already removed it; only the billing card's discount line is affected.
+      log.error({ err, userId, providerSubscriptionId }, "failed to record promo discount end");
+    }
+  }
+  return updated;
+}
+
+/** Paddle's counterpart of applyProviderState, matched on the Paddle subscription id. */
+async function applyPaddleState(
+  ctx: ProtectedTRPCContext,
+  config: PaddleConfig,
+  paddleSubscription: PaddleSubscription,
+  extra: (normalized: NormalizedPaddleSubscription) => SubscriptionUpdate = () => ({}),
+): Promise<NormalizedPaddleSubscription> {
+  const normalized = normalizePaddleSubscription(
+    paddleSubscriptionSchema.parse(paddleSubscription),
+    config,
+  );
+  await writeProviderState(
+    ctx,
+    [
+      eq(subscription.billingProvider, "paddle"),
+      eq(subscription.providerSubscriptionId, normalized.providerSubscriptionId),
+    ],
+    {
+      status: normalized.status,
+      endsAt: normalized.endsAt,
+      renewsAt: normalized.renewsAt,
+      pausedUntil: normalized.pausedUntil,
+      providerUpdatedAt: normalized.providerUpdatedAt,
+    },
+    extra(normalized),
+  );
+  return normalized;
+}
+
+/** The plan fields to store after a Paddle plan change; the requested plan when the price is unknown. */
+const paddlePlanFields =
+  (plan: PaidPlan, interval: BillingInterval) => (normalized: NormalizedPaddleSubscription) => ({
+    plan: normalized.unrecognisedPrice ? plan : normalized.plan,
+    billingInterval: normalized.unrecognisedPrice ? interval : normalized.interval,
+    providerPriceId: normalized.providerPriceId,
+  });
+
+async function paddlePortalUrls(
+  { client }: PaddleDeps,
+  row: PaddleRow,
+  userId: string,
+): Promise<{ customer_portal: string; update_payment_method: string | null } | null> {
+  if (!row.providerCustomerId) return null;
+  const customerId = row.providerCustomerId;
+  const session = await callPaddle(
+    "portal session",
+    { userId, providerSubscriptionId: row.providerSubscriptionId },
+    () => client.createPortalSession(customerId, [row.providerSubscriptionId]),
+  );
+  return {
+    customer_portal: session.urls.general.overview,
+    update_payment_method:
+      session.urls.subscriptions[0]?.update_subscription_payment_method ?? null,
+  };
 }
 
 type CancellationRecord = Pick<
@@ -131,9 +445,12 @@ async function recordCancellation(
   try {
     await ctx.db.insert(subscriptionCancellation).values({
       userId: ctx.auth.userId,
-      subscriptionId: userSubscription.subscriptionId ?? 0,
+      // Paddle ids are strings; they go in providerSubscriptionId.
+      subscriptionId:
+        userSubscription.billingProvider === "paddle" ? 0 : (userSubscription.subscriptionId ?? 0),
       fromPlan,
-      billingInterval: getIntervalFromVariantId(userSubscription.variantId),
+      providerSubscriptionId: userSubscription.providerSubscriptionId,
+      billingInterval: subscriptionInterval(userSubscription),
       variantId: userSubscription.variantId,
       ...record,
     });
@@ -151,432 +468,752 @@ async function getUserSubscription(ctx: ProtectedTRPCContext) {
   });
 }
 
-export const lemonsqueezyRouter = createTRPCRouter({
-  createCheckoutOrUpdate: protectedProcedure
-    .input(createCheckoutOrUpdateInput)
-    .mutation(async ({ ctx, input }) => {
-      configureLemonSqueezy();
+export type NewCheckoutDeps = {
+  recordStart: (start: CheckoutStartInput) => Promise<void>;
+  paddleConfig: PaddleConfig | null;
+  paddleClient: PaddleCheckoutClient | null;
+  createLemonSqueezyCheckout: typeof createCheckout;
+  /** Runs before a Lemon Squeezy checkout only, so a Paddle checkout works without its env. */
+  configureLemonSqueezy: () => void;
+};
 
-      const userId = ctx.auth.userId;
-      const variantId = getVariantId(input.plan, input.interval);
+export type NewCheckoutInput = CreateCheckoutOrUpdateInput & {
+  userId: string;
+  user: { email: string | null } | null | undefined;
+  subscription: Subscription | null | undefined;
+};
 
-      const [user, userSubscription] = await Promise.all([
-        ctx.db.query.user.findFirst({ where: (table, { eq }) => eq(table.id, userId) }),
-        getUserSubscription(ctx),
-      ]);
+async function lemonSqueezyCheckout(
+  deps: NewCheckoutDeps,
+  input: NewCheckoutInput,
+  attribution: Attribution,
+  promoCode: string | undefined,
+) {
+  deps.configureLemonSqueezy();
+  const { userId } = input;
+  const variantId = getVariantId(input.plan, input.interval);
+  const { result: checkout, discountCode } = await createCheckoutWithPromoFallback(
+    (discountCode) =>
+      deps.createLemonSqueezyCheckout(env.LEMONSQUEEZY_STORE_ID!, variantId, {
+        checkoutOptions: {
+          // The app opens the URL as a full page; an embed checkout's close button only works
+          // inside the Lemon.js overlay.
+          embed: false,
+          media: false,
+        },
+        checkoutData: {
+          email: input.user?.email ?? undefined,
+          discountCode,
+          // Read back by the order webhook to attribute the order like the checkout.
+          custom: checkoutCustomData(userId, attribution, discountCode),
+        },
+        productOptions: {
+          enabledVariants: [variantId],
+          // The flag opens the "how did you find us" prompt (checkout-acquisition-prompt.tsx).
+          redirectUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings?checkout=success#billing`,
+          receiptButtonText: "Go to Dashboard",
+          receiptThankYouNote: `Thank you for signing up to iShortn ${
+            input.plan.charAt(0).toUpperCase() + input.plan.slice(1)
+          }!`,
+        },
+      }),
+    lemonSqueezyPromoRejected,
+    promoCode,
+    (rejected) =>
+      log.warn(
+        { userId, variantId, discountCode: promoCode, err: rejected.error },
+        "promo code rejected, retrying checkout without it",
+      ),
+  );
 
-      // Any subscription that still grants access is changed or resumed, never
-      // replaced: a second checkout would create a second subscription that
-      // keeps billing after the webhook overwrites the single local row.
-      const mode = getSubscriptionMode(userSubscription);
+  if (checkout.error) {
+    throw providerError("checkout", checkout, { userId, variantId });
+  }
 
-      if (mode === "resume") {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: resumeFirstMessage(userSubscription?.status),
-        });
-      }
+  const url = checkout.data.data.attributes.url;
+  if (!url) {
+    log.error({ userId, variantId }, "lemon squeezy checkout returned no url");
+    throw new TRPCError(providerErrorToClient(null));
+  }
+  return { url, discountCode };
+}
 
-      if (mode === "update" && userSubscription?.subscriptionId) {
-        const subscriptionId = userSubscription.subscriptionId;
-
-        if (userSubscription.variantId === variantId) {
-          return { status: "updated" as const, message: "You are already on this plan." };
-        }
-
-        const updatedSub = await updateSubscription(subscriptionId, {
-          variantId,
-          invoiceImmediately: true,
-        });
-
-        if (updatedSub.error) {
-          throw providerError("plan change", updatedSub, { userId, subscriptionId, variantId });
-        }
-
-        const attributes = updatedSub.data.data.attributes;
-        try {
-          await applyProviderState(ctx, subscriptionId, attributes, {
-            plan: getPlanFromIds(attributes.variant_id, attributes.product_id) ?? input.plan,
-            billingInterval: getIntervalFromVariantId(attributes.variant_id),
-            variantId: attributes.variant_id,
-            productId: attributes.product_id,
-          });
-        } catch (e) {
-          // The provider already applied the change; the webhook will sync it.
-          log.error(
-            { err: e, userId, subscriptionId },
-            "failed to update local subscription state",
-          );
-        }
-
-        return { status: "updated" as const, message: "Plan updated successfully!" };
-      }
-
-      const promoCode = checkoutDiscountCode();
-      const { result: checkout, discountCode: sentPromoCode } =
-        await createCheckoutWithPromoFallback(
-          (discountCode) =>
-            createCheckout(env.LEMONSQUEEZY_STORE_ID!, variantId, {
-              checkoutOptions: {
-                // The app opens the URL as a full page; an embed checkout's close button only works
-                // inside the Lemon.js overlay.
-                embed: false,
-                media: false,
-              },
-              checkoutData: {
-                email: user?.email ?? undefined,
-                discountCode,
-                custom: {
-                  user_id: userId,
-                },
-              },
-              productOptions: {
-                enabledVariants: [variantId],
-                // The flag opens the "how did you find us" prompt (checkout-acquisition-prompt.tsx).
-                redirectUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings?checkout=success#billing`,
-                receiptButtonText: "Go to Dashboard",
-                receiptThankYouNote: `Thank you for signing up to iShortn ${
-                  input.plan.charAt(0).toUpperCase() + input.plan.slice(1)
-                }!`,
-              },
-            }),
-          promoCode,
-          (rejected) =>
-            log.warn(
-              { userId, variantId, discountCode: promoCode, err: rejected.error },
-              "promo code rejected, retrying checkout without it",
-            ),
-        );
-
-      if (checkout.error) {
-        throw providerError("checkout", checkout, { userId, variantId });
-      }
-
-      const url = checkout.data.data.attributes.url;
-      if (!url) {
-        log.error({ userId, variantId }, "lemon squeezy checkout returned no url");
-        throw new TRPCError(providerErrorToClient(null));
-      }
-
-      void runBackgroundTask(
-        recordCheckoutStart({
-          userId,
-          plan: input.plan,
-          interval: input.interval,
-          source: input.source ?? null,
-          promoCode: sentPromoCode ?? null,
-        }),
-      );
-
-      return { status: "redirect" as const, url };
-    }),
-
-  cancelSubscription: protectedProcedure.mutation(async ({ ctx }) => {
-    configureLemonSqueezy();
-
-    const userId = ctx.auth.userId;
-    const userSubscription = await getUserSubscription(ctx);
-    const mode = getSubscriptionMode(userSubscription);
-
-    if (mode === "resume") {
-      throw new TRPCError({
-        code: "CONFLICT",
-        message:
-          userSubscription?.status === "paused"
-            ? resumeFirstMessage("paused")
-            : "Your subscription is already cancelled.",
-      });
-    }
-    if (mode !== "update" || !userSubscription?.subscriptionId) {
-      throw new TRPCError({ code: "NOT_FOUND", message: "No active subscription found" });
-    }
-
-    const subscriptionId = userSubscription.subscriptionId;
-    const cancelledSub = await cancelSubscription(subscriptionId);
-
-    if (cancelledSub.error) {
-      throw providerError("cancel", cancelledSub, { userId, subscriptionId });
-    }
-
-    // Keep plan/variant: access is retained until endsAt, and resolvePlan()
-    // drops the user to free once that date passes.
-    await applyProviderState(ctx, subscriptionId, cancelledSub.data.data.attributes);
-
-    return cancelledSub;
-  }),
-
-  resumeSubscription: protectedProcedure.mutation(async ({ ctx }) => {
-    configureLemonSqueezy();
-
-    const userId = ctx.auth.userId;
-    const userSubscription = await getUserSubscription(ctx);
-
-    if (getSubscriptionMode(userSubscription) !== "resume" || !userSubscription?.subscriptionId) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "There is no cancelled or paused subscription to resume.",
-      });
-    }
-
-    const subscriptionId = userSubscription.subscriptionId;
-    const resumedSub = await updateSubscription(
-      subscriptionId,
-      resumeUpdate(userSubscription.status),
+/**
+ * A checkout for a user with no subscription to change: Paddle when the provider switch selects
+ * it for this user (`checkoutProviderFor`), Lemon Squeezy otherwise.
+ */
+export async function startNewCheckout(deps: NewCheckoutDeps, input: NewCheckoutInput) {
+  const { userId, plan, interval } = input;
+  // A subscription that still exists with either provider is changed or resumed in place; a
+  // second checkout would bill twice while only one row is kept.
+  if (getSubscriptionMode(input.subscription) !== "checkout") {
+    log.error(
+      { userId, provider: input.subscription?.billingProvider },
+      "refused a new checkout for a user with a live subscription",
     );
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "You already have a subscription. Change your plan from billing settings.",
+    });
+  }
+  const promoCode = checkoutDiscountCode();
+  const attribution = { source: input.source, ...input.utm };
+  const priceId = paddlePriceId(plan, interval, deps.paddleConfig);
+  // Configured Paddle always has a client and every price; the checks only narrow the types.
+  const paddle =
+    checkoutProviderFor(userId, deps.paddleConfig) === "paddle" &&
+    deps.paddleConfig &&
+    deps.paddleClient &&
+    priceId
+      ? { client: deps.paddleClient, priceId, environment: deps.paddleConfig.environment }
+      : null;
+  const provider = paddle ? "paddle" : "lemonsqueezy";
 
-    if (resumedSub.error) {
-      throw providerError("resume", resumedSub, { userId, subscriptionId });
-    }
+  const { url, discountCode } = paddle
+    ? await createPaddleCheckout(paddle.client, {
+        userId,
+        email: input.user?.email,
+        subscription: input.subscription,
+        plan,
+        interval,
+        priceId: paddle.priceId,
+        attribution,
+        promoCode,
+      })
+    : await lemonSqueezyCheckout(deps, input, attribution, promoCode);
 
-    await applyProviderState(ctx, subscriptionId, resumedSub.data.data.attributes);
+  void runBackgroundTask(
+    deps.recordStart({
+      userId,
+      plan,
+      interval,
+      source: input.source ?? null,
+      promoCode: discountCode ?? null,
+      provider,
+    }),
+  );
 
-    return { message: "Your subscription has been resumed." };
-  }),
+  // Sandbox checkouts are test runs; sending them would count them in the checkout funnel.
+  if (paddle?.environment !== "sandbox") {
+    captureServerEvent(
+      { id: userId, email: input.user?.email },
+      "checkout_started",
+      checkoutEventProperties({
+        plan,
+        interval,
+        discount_code: discountCode,
+        provider,
+        billing_env: paddle?.environment,
+        ...attribution,
+      }),
+    );
+  }
 
-  subscriptionDetails: protectedProcedure.mutation(async ({ ctx }) => {
-    configureLemonSqueezy();
+  return { status: "redirect" as const, url };
+}
 
-    const userSubscription = await getUserSubscription(ctx);
+export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps) =>
+  createTRPCRouter({
+    createCheckoutOrUpdate: protectedProcedure
+      .input(createCheckoutOrUpdateInput)
+      .mutation(async ({ ctx, input }) => {
+        const userId = ctx.auth.userId;
+        const variantId = getVariantId(input.plan, input.interval);
 
-    if (!userSubscription) {
-      throw new Error("No active subscription found");
-    }
+        const [user, userSubscription] = await Promise.all([
+          ctx.db.query.user.findFirst({ where: (table, { eq }) => eq(table.id, userId) }),
+          getUserSubscription(ctx),
+        ]);
 
-    // Try to get subscription details if we have a valid subscriptionId
-    if (userSubscription.subscriptionId && userSubscription.subscriptionId > 0) {
-      const userSub = await getSubscription(userSubscription.subscriptionId);
+        // Any subscription that still grants access is changed or resumed, never
+        // replaced: a second checkout would create a second subscription that
+        // keeps billing after the webhook overwrites the single local row.
+        const mode = getSubscriptionMode(userSubscription);
 
-      if (!userSub.error) {
-        return userSub.data.data.attributes.urls;
-      }
-    }
-
-    // Fall back to customer portal if we have a valid customerId
-    if (userSubscription.customerId && userSubscription.customerId > 0) {
-      const customer = await getCustomer(userSubscription.customerId);
-
-      if (!customer.error && customer.data.data.attributes.urls.customer_portal) {
-        return {
-          customer_portal: customer.data.data.attributes.urls.customer_portal,
-          update_payment_method: null,
-        };
-      }
-    }
-
-    throw new Error("Unable to retrieve subscription management URL");
-  }),
-
-  // The subscription's update-payment-method page. Lemon Squeezy signs this URL
-  // and it expires, so it is fetched fresh on every visit instead of stored.
-  // Falls back to the customer portal like subscriptionDetails (Settings →
-  // Billing); null when neither is available.
-  updatePaymentMethodUrl: protectedProcedure.query(async ({ ctx }) => {
-    const userSubscription = await getUserSubscription(ctx);
-    const subscriptionId = userSubscription?.subscriptionId;
-    const customerId = userSubscription?.customerId;
-
-    try {
-      configureLemonSqueezy();
-      if (subscriptionId && subscriptionId > 0) {
-        const providerSub = await getSubscription(subscriptionId);
-        const url = providerSub.data?.data.attributes.urls.update_payment_method;
-        if (url) return url;
-        if (providerSub.error) {
+        const storedPlanMode = billingPlanMode(userSubscription);
+        if (input.displayedPlanMode && input.displayedPlanMode !== storedPlanMode) {
           log.warn(
-            { err: providerSub.error, userId: ctx.auth.userId, subscriptionId },
-            "failed to fetch update-payment-method url; trying customer portal",
+            { userId, displayedPlanMode: input.displayedPlanMode, storedPlanMode },
+            "refused a plan change from a stale billing screen",
           );
+          throw new TRPCError({ code: "CONFLICT", message: STALE_BILLING_MESSAGE });
         }
-      }
-      if (customerId && customerId > 0) {
-        const customer = await getCustomer(customerId);
-        if (customer.error) throw customer.error;
-        return customer.data.data.attributes.urls.customer_portal ?? null;
-      }
-      return null;
-    } catch (err) {
-      log.error(
-        { err, userId: ctx.auth.userId, subscriptionId, customerId },
-        "failed to fetch payment management url",
-      );
-      return null;
-    }
-  }),
 
-  downgradeWithFeedback: protectedProcedure
-    .input(downgradeWithFeedbackInput)
-    .mutation(async ({ ctx, input }) => {
-      configureLemonSqueezy();
+        if (mode === "resume") {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: resumeFirstMessage(userSubscription),
+          });
+        }
 
+        if (mode === "update" && isPaddleRow(userSubscription)) {
+          const { client, config } = requirePaddle(deps, userId);
+          const providerSubscriptionId = userSubscription.providerSubscriptionId;
+          assertPaddleItemsChangeable(userSubscription);
+
+          const priceId = paddlePriceId(input.plan, input.interval, config);
+          if (!priceId) throw new TRPCError(providerErrorToClient(null));
+          if (userSubscription.providerPriceId === priceId) {
+            return { status: "updated" as const, message: "You are already on this plan." };
+          }
+
+          const updatedSub = await changePaddleItems(ctx, client, userSubscription, {
+            action: "plan change",
+            priceId,
+            to: input.interval,
+            billsNow: true,
+          });
+
+          try {
+            await applyPaddleState(
+              ctx,
+              config,
+              updatedSub,
+              paddlePlanFields(input.plan, input.interval),
+            );
+          } catch (e) {
+            // Paddle already applied the change; the webhook will sync it.
+            log.error(
+              { err: e, userId, providerSubscriptionId, provider: "paddle" },
+              "failed to update local subscription state",
+            );
+          }
+
+          return { status: "updated" as const, message: "Plan updated successfully!" };
+        }
+
+        if (mode === "update" && userSubscription?.subscriptionId) {
+          const subscriptionId = userSubscription.subscriptionId;
+
+          if (userSubscription.variantId === variantId) {
+            return { status: "updated" as const, message: "You are already on this plan." };
+          }
+
+          configureLemonSqueezy();
+
+          const updatedSub = await updateSubscription(subscriptionId, {
+            variantId,
+            invoiceImmediately: true,
+          });
+
+          if (updatedSub.error) {
+            throw providerError("plan change", updatedSub, { userId, subscriptionId, variantId });
+          }
+
+          const attributes = updatedSub.data.data.attributes;
+          try {
+            await applyProviderState(ctx, subscriptionId, attributes, {
+              plan: getPlanFromIds(attributes.variant_id, attributes.product_id) ?? input.plan,
+              billingInterval: getIntervalFromVariantId(attributes.variant_id),
+              variantId: attributes.variant_id,
+              productId: attributes.product_id,
+            });
+          } catch (e) {
+            // The provider already applied the change; the webhook will sync it.
+            log.error(
+              { err: e, userId, subscriptionId },
+              "failed to update local subscription state",
+            );
+          }
+
+          return { status: "updated" as const, message: "Plan updated successfully!" };
+        }
+
+        return startNewCheckout(
+          {
+            recordStart: (start) => recordCheckoutStart(start, ctx.db),
+            paddleConfig: getPaddleConfig(),
+            paddleClient: getPaddleClient(),
+            createLemonSqueezyCheckout: createCheckout,
+            configureLemonSqueezy,
+          },
+          { userId, user, subscription: userSubscription, ...input },
+        );
+      }),
+
+    // What createCheckoutOrUpdate would charge today, for its confirm dialog. Never throws: a
+    // failed preview falls back to the prorated wording.
+    previewPlanChange: protectedProcedure
+      .input(previewPlanChangeInput)
+      .query(async ({ ctx, input }): Promise<PlanChangeCharge> => {
+        const userId = ctx.auth.userId;
+        const userSubscription = await getUserSubscription(ctx);
+        if (!isPaddleRow(userSubscription)) return { type: "list_price" };
+
+        const paddle = deps.paddle();
+        const priceId = paddle && paddlePriceId(input.plan, input.interval, paddle.config);
+        const providerSubscriptionId = userSubscription.providerSubscriptionId;
+        if (!paddle || !priceId || getSubscriptionMode(userSubscription) !== "update") {
+          return { type: "prorated" };
+        }
+
+        // The preview carries the discount the change would set, so the amount due matches what
+        // createCheckoutOrUpdate charges. A discount id is needed for that, so one is created
+        // here and archived once the preview is read.
+        let discount: UpdateSubscriptionInput["discount"];
+        try {
+          discount = await promoDiscountUpdate(ctx, paddle.client, userSubscription, {
+            to: input.interval,
+            billsNow: true,
+          });
+          const preview = await paddle.client.previewSubscriptionUpdate(providerSubscriptionId, {
+            items: [{ priceId, quantity: 1 }],
+            prorationBillingMode: "prorated_immediately",
+            ...(discount !== undefined && { discount }),
+          });
+          return paddlePreviewCharge(preview);
+        } catch (err) {
+          log.warn(
+            { err, userId, providerSubscriptionId, provider: "paddle" },
+            "paddle plan change preview failed",
+          );
+          return { type: "prorated" };
+        } finally {
+          if (discount) {
+            await archiveUnusedDiscount(paddle.client, discount.id, {
+              userId,
+              providerSubscriptionId,
+            });
+          }
+        }
+      }),
+
+    cancelSubscription: protectedProcedure.mutation(async ({ ctx }) => {
       const userId = ctx.auth.userId;
-      const { targetPlan, reason, additionalFeedback } = input;
-
-      const [userRecord, userSubscription] = await Promise.all([
-        ctx.db.query.user.findFirst({ where: (table, { eq }) => eq(table.id, userId) }),
-        getUserSubscription(ctx),
-      ]);
-
+      const userSubscription = await getUserSubscription(ctx);
       const mode = getSubscriptionMode(userSubscription);
 
       if (mode === "resume") {
         throw new TRPCError({
           code: "CONFLICT",
           message:
-            targetPlan === "free" && userSubscription?.status !== "paused"
-              ? "Your subscription is already cancelled."
-              : resumeFirstMessage(userSubscription?.status),
+            userSubscription?.status === "paused" || scheduledPause(userSubscription)
+              ? resumeFirstMessage(userSubscription)
+              : "Your subscription is already cancelled.",
         });
+      }
+      if (isPaddleRow(userSubscription) && mode === "update") {
+        const { client, config } = requirePaddle(deps, userId);
+        const providerSubscriptionId = userSubscription.providerSubscriptionId;
+        const cancelledSub = await callPaddle("cancel", { userId, providerSubscriptionId }, () =>
+          client.cancelSubscription(providerSubscriptionId, "next_billing_period"),
+        );
+        await applyPaddleState(ctx, config, cancelledSub);
+        return cancelledSub;
       }
       if (mode !== "update" || !userSubscription?.subscriptionId) {
         throw new TRPCError({ code: "NOT_FOUND", message: "No active subscription found" });
       }
 
       const subscriptionId = userSubscription.subscriptionId;
-      const currentPlan = resolvePlan(userSubscription);
+      configureLemonSqueezy();
+      const cancelledSub = await cancelSubscription(subscriptionId);
 
-      // Validate this is actually a downgrade
-      const planOrder = { free: 0, pro: 1, ultra: 2 };
-      if (planOrder[targetPlan] >= planOrder[currentPlan]) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Invalid downgrade request - target plan is not lower than current plan",
-        });
+      if (cancelledSub.error) {
+        throw providerError("cancel", cancelledSub, { userId, subscriptionId });
       }
 
-      const cancellation = {
-        toPlan: targetPlan,
-        reason,
-        feedback: additionalFeedback || null,
-        // The modal offers a pause before every cancellation canOfferPause allows.
-        offerShown: targetPlan === "free" && canOfferPause(userSubscription) ? "pause" : "none",
-      } as const;
+      // Keep plan/variant: access is retained until endsAt, and resolvePlan()
+      // drops the user to free once that date passes.
+      await applyProviderState(ctx, subscriptionId, cancelledSub.data.data.attributes);
 
-      // Send feedback notification (fire and forget — waitUntil keeps the
-      // Worker alive until the Discord webhook completes).
-      void runBackgroundTask(
-        sendDowngradeFeedbackNotification({
-          userEmail: userRecord?.email ?? "unknown",
-          userName: userRecord?.name,
-          fromPlan: currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1),
-          toPlan: targetPlan.charAt(0).toUpperCase() + targetPlan.slice(1),
-          reason: downgradeReasonLabels[reason],
-          additionalFeedback,
-        }),
-      );
-
-      // Handle downgrade to free (cancellation)
-      if (targetPlan === "free") {
-        const cancelledSub = await cancelSubscription(subscriptionId);
-
-        if (cancelledSub.error) {
-          throw providerError("cancel", cancelledSub, { userId, subscriptionId });
-        }
-
-        const attributes = cancelledSub.data.data.attributes;
-        // Keep plan/variant: access is retained until endsAt, and
-        // resolvePlan() drops the user to free once that date passes.
-        await applyProviderState(ctx, subscriptionId, attributes);
-        await recordCancellation(ctx, userSubscription, currentPlan, {
-          ...cancellation,
-          outcome: "cancelled",
-        });
-
-        return {
-          status: "cancelled" as const,
-          message: attributes.ends_at
-            ? `Your subscription has been cancelled. You'll keep access until ${formatDate(new Date(attributes.ends_at))}.`
-            : "Your subscription has been cancelled. You'll keep access until the end of your billing period.",
-        };
-      }
-
-      // Downgrade to Pro (from Ultra), keeping the current interval. Lemon
-      // Squeezy switches the variant now and credits the unused time on the
-      // next invoice (invoiceImmediately: false), so the plan changes now.
-      const interval = getIntervalFromVariantId(userSubscription.variantId);
-      const variantId = getVariantId(targetPlan, interval);
-
-      const updatedSub = await updateSubscription(subscriptionId, {
-        variantId,
-        invoiceImmediately: false,
-      });
-
-      if (updatedSub.error) {
-        throw providerError("downgrade", updatedSub, { userId, subscriptionId, variantId });
-      }
-
-      const attributes = updatedSub.data.data.attributes;
-      await applyProviderState(ctx, subscriptionId, attributes, {
-        plan: targetPlan,
-        billingInterval: interval,
-        variantId: attributes.variant_id,
-        productId: attributes.product_id,
-      });
-      await recordCancellation(ctx, userSubscription, currentPlan, {
-        ...cancellation,
-        outcome: "downgraded",
-      });
-
-      return {
-        status: "downgraded" as const,
-        message: "You're now on Pro. Credit for unused Ultra time goes toward your next invoice.",
-      };
+      return cancelledSub;
     }),
 
-  // Offered in place of cancelling to Free (downgrade-feedback-modal.tsx).
-  pauseSubscription: protectedProcedure
-    .input(pauseSubscriptionInput)
-    .mutation(async ({ ctx, input }) => {
-      configureLemonSqueezy();
-
+    resumeSubscription: protectedProcedure.mutation(async ({ ctx }) => {
       const userId = ctx.auth.userId;
-      const [userRecord, userSubscription] = await Promise.all([
-        ctx.db.query.user.findFirst({ where: (table, { eq }) => eq(table.id, userId) }),
-        getUserSubscription(ctx),
-      ]);
+      const userSubscription = await getUserSubscription(ctx);
 
-      if (!userSubscription?.subscriptionId || !canOfferPause(userSubscription)) {
+      const mode = getSubscriptionMode(userSubscription);
+
+      if (mode === "resume" && isPaddleRow(userSubscription)) {
+        const { client, config } = requirePaddle(deps, userId);
+        const providerSubscriptionId = userSubscription.providerSubscriptionId;
+        // A pause in effect is resumed; a scheduled cancel or pause is removed.
+        const resumedSub = await callPaddle("resume", { userId, providerSubscriptionId }, () =>
+          userSubscription.status === "paused"
+            ? client.resumeSubscription(providerSubscriptionId, "immediately")
+            : client.updateSubscription(providerSubscriptionId, { scheduledChange: null }),
+        );
+        await applyPaddleState(ctx, config, resumedSub);
+        return { message: "Your subscription has been resumed." };
+      }
+      if (mode !== "resume" || !userSubscription?.subscriptionId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Only an active monthly subscription can be paused.",
+          message: "There is no cancelled or paused subscription to resume.",
         });
       }
 
       const subscriptionId = userSubscription.subscriptionId;
-      const currentPlan = resolvePlan(userSubscription);
-      const resumesAt = pauseResumesAt(input.months);
-
-      const pausedSub = await updateSubscription(subscriptionId, pauseUpdate(resumesAt));
-      if (pausedSub.error) {
-        throw providerError("pause", pausedSub, { userId, subscriptionId });
-      }
-
-      const attributes = pausedSub.data.data.attributes;
-      await applyProviderState(ctx, subscriptionId, attributes);
-      await recordCancellation(ctx, userSubscription, currentPlan, {
-        toPlan: "free",
-        reason: input.reason,
-        feedback: input.feedback || null,
-        offerShown: "pause",
-        outcome: "paused",
-        pauseMonths: input.months,
-      });
-
-      void runBackgroundTask(
-        sendDowngradeFeedbackNotification({
-          userEmail: userRecord?.email ?? "unknown",
-          userName: userRecord?.name,
-          fromPlan: currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1),
-          toPlan: `Paused for ${input.months} ${input.months === 1 ? "month" : "months"}`,
-          reason: downgradeReasonLabels[input.reason],
-          additionalFeedback: input.feedback,
-        }),
+      configureLemonSqueezy();
+      const resumedSub = await updateSubscription(
+        subscriptionId,
+        resumeUpdate(userSubscription.status),
       );
 
-      const restartsAt = attributes.pause?.resumes_at
-        ? new Date(attributes.pause.resumes_at)
-        : resumesAt;
-      return {
-        message: `Billing is paused. It restarts on ${formatDate(restartsAt)}.`,
-      };
+      if (resumedSub.error) {
+        throw providerError("resume", resumedSub, { userId, subscriptionId });
+      }
+
+      await applyProviderState(ctx, subscriptionId, resumedSub.data.data.attributes);
+
+      return { message: "Your subscription has been resumed." };
     }),
-});
+
+    subscriptionDetails: protectedProcedure.mutation(async ({ ctx }) => {
+      const userId = ctx.auth.userId;
+      const userSubscription = await getUserSubscription(ctx);
+
+      if (!userSubscription) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No subscription found." });
+      }
+
+      if (isPaddleRow(userSubscription)) {
+        const urls = await paddlePortalUrls(requirePaddle(deps, userId), userSubscription, userId);
+        if (urls) return urls;
+        log.error(
+          {
+            userId,
+            provider: "paddle",
+            providerSubscriptionId: userSubscription.providerSubscriptionId,
+          },
+          "paddle subscription has no customer id for a portal session",
+        );
+        throw new TRPCError(providerErrorToClient(null));
+      }
+
+      configureLemonSqueezy();
+
+      // Try to get subscription details if we have a valid subscriptionId
+      if (userSubscription.subscriptionId && userSubscription.subscriptionId > 0) {
+        const userSub = await getSubscription(userSubscription.subscriptionId);
+
+        if (!userSub.error) {
+          return userSub.data.data.attributes.urls;
+        }
+      }
+
+      // Fall back to customer portal if we have a valid customerId
+      if (userSubscription.customerId && userSubscription.customerId > 0) {
+        const customer = await getCustomer(userSubscription.customerId);
+
+        if (!customer.error && customer.data.data.attributes.urls.customer_portal) {
+          return {
+            customer_portal: customer.data.data.attributes.urls.customer_portal,
+            update_payment_method: null,
+          };
+        }
+      }
+
+      log.error({ userId }, "lemon squeezy returned no portal url");
+      throw new TRPCError(providerErrorToClient(null));
+    }),
+
+    // The checkout that created the current subscription, for its discount (subscriptionDiscount).
+    latestCheckoutStart: protectedProcedure.query(
+      async ({ ctx }) => (await findLatestCheckoutStart(ctx)) ?? null,
+    ),
+
+    // The subscription's update-payment-method page. Lemon Squeezy signs this URL
+    // and it expires, so it is fetched fresh on every visit instead of stored.
+    // Falls back to the customer portal like subscriptionDetails (Settings →
+    // Billing); null when neither is available.
+    updatePaymentMethodUrl: protectedProcedure.query(async ({ ctx }) => {
+      const userSubscription = await getUserSubscription(ctx);
+
+      if (isPaddleRow(userSubscription)) {
+        const userId = ctx.auth.userId;
+        const providerSubscriptionId = userSubscription.providerSubscriptionId;
+        try {
+          const paddle = requirePaddle(deps, userId);
+          const urls = await paddlePortalUrls(paddle, userSubscription, userId).catch(() => null);
+          if (urls?.update_payment_method) return urls.update_payment_method;
+          const transaction =
+            await paddle.client.getUpdatePaymentMethodTransaction(providerSubscriptionId);
+          return transaction.checkout?.url ?? null;
+        } catch (err) {
+          log.error(
+            { err, userId, providerSubscriptionId, provider: "paddle" },
+            "failed to fetch payment management url",
+          );
+          return null;
+        }
+      }
+
+      const subscriptionId = userSubscription?.subscriptionId;
+      const customerId = userSubscription?.customerId;
+
+      try {
+        configureLemonSqueezy();
+        if (subscriptionId && subscriptionId > 0) {
+          const providerSub = await getSubscription(subscriptionId);
+          const url = providerSub.data?.data.attributes.urls.update_payment_method;
+          if (url) return url;
+          if (providerSub.error) {
+            log.warn(
+              { err: providerSub.error, userId: ctx.auth.userId, subscriptionId },
+              "failed to fetch update-payment-method url; trying customer portal",
+            );
+          }
+        }
+        if (customerId && customerId > 0) {
+          const customer = await getCustomer(customerId);
+          if (customer.error) throw customer.error;
+          return customer.data.data.attributes.urls.customer_portal ?? null;
+        }
+        return null;
+      } catch (err) {
+        log.error(
+          { err, userId: ctx.auth.userId, subscriptionId, customerId },
+          "failed to fetch payment management url",
+        );
+        return null;
+      }
+    }),
+
+    downgradeWithFeedback: protectedProcedure
+      .input(downgradeWithFeedbackInput)
+      .mutation(async ({ ctx, input }) => {
+        const userId = ctx.auth.userId;
+        const { targetPlan, reason, additionalFeedback } = input;
+
+        const [userRecord, userSubscription] = await Promise.all([
+          ctx.db.query.user.findFirst({ where: (table, { eq }) => eq(table.id, userId) }),
+          getUserSubscription(ctx),
+        ]);
+
+        const mode = getSubscriptionMode(userSubscription);
+
+        if (mode === "resume") {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              targetPlan === "free" && userSubscription?.status === "cancelled"
+                ? "Your subscription is already cancelled."
+                : resumeFirstMessage(userSubscription),
+          });
+        }
+        const paddleRow = isPaddleRow(userSubscription) ? userSubscription : null;
+        if (
+          mode !== "update" ||
+          !userSubscription ||
+          (!paddleRow && !userSubscription.subscriptionId)
+        ) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "No active subscription found" });
+        }
+
+        const subscriptionId = userSubscription.subscriptionId ?? 0;
+        const currentPlan = resolvePlan(userSubscription);
+
+        // Validate this is actually a downgrade
+        const planOrder = { free: 0, pro: 1, ultra: 2 };
+        if (planOrder[targetPlan] >= planOrder[currentPlan]) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Invalid downgrade request - target plan is not lower than current plan",
+          });
+        }
+        const paddle = paddleRow ? requirePaddle(deps, userId) : null;
+        if (paddleRow && targetPlan !== "free") assertPaddleItemsChangeable(paddleRow);
+        if (!paddleRow) configureLemonSqueezy();
+
+        const cancellation = {
+          toPlan: targetPlan,
+          reason,
+          feedback: additionalFeedback || null,
+          // The modal offers a pause before every cancellation canOfferPause allows.
+          offerShown: targetPlan === "free" && canOfferPause(userSubscription) ? "pause" : "none",
+        } as const;
+
+        // Send feedback notification (fire and forget — waitUntil keeps the
+        // Worker alive until the Discord webhook completes).
+        void runBackgroundTask(
+          sendDowngradeFeedbackNotification({
+            userEmail: userRecord?.email ?? "unknown",
+            userName: userRecord?.name,
+            fromPlan: currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1),
+            toPlan: targetPlan.charAt(0).toUpperCase() + targetPlan.slice(1),
+            reason: downgradeReasonLabels[reason],
+            additionalFeedback,
+          }),
+        );
+
+        // Handle downgrade to free (cancellation)
+        if (targetPlan === "free") {
+          // Keep plan/variant: access is retained until endsAt, and
+          // resolvePlan() drops the user to free once that date passes.
+          let endsAt: Date | null;
+          if (paddleRow && paddle) {
+            const providerSubscriptionId = paddleRow.providerSubscriptionId;
+            const cancelledSub = await callPaddle(
+              "cancel",
+              { userId, providerSubscriptionId },
+              () => paddle.client.cancelSubscription(providerSubscriptionId, "next_billing_period"),
+            );
+            ({ endsAt } = await applyPaddleState(ctx, paddle.config, cancelledSub));
+          } else {
+            const cancelledSub = await cancelSubscription(subscriptionId);
+
+            if (cancelledSub.error) {
+              throw providerError("cancel", cancelledSub, { userId, subscriptionId });
+            }
+
+            const attributes = cancelledSub.data.data.attributes;
+            await applyProviderState(ctx, subscriptionId, attributes);
+            endsAt = attributes.ends_at ? new Date(attributes.ends_at) : null;
+          }
+          await recordCancellation(ctx, userSubscription, currentPlan, {
+            ...cancellation,
+            outcome: "cancelled",
+          });
+
+          return {
+            status: "cancelled" as const,
+            message: endsAt
+              ? `Your subscription has been cancelled. You'll keep access until ${formatDate(endsAt)}.`
+              : "Your subscription has been cancelled. You'll keep access until the end of your billing period.",
+          };
+        }
+
+        // Downgrade to Pro (from Ultra), keeping the current interval. Both
+        // providers switch the plan now and credit the unused time toward the
+        // next invoice.
+        const interval = subscriptionInterval(userSubscription);
+
+        if (paddleRow && paddle) {
+          const priceId = paddlePriceId(targetPlan, interval, paddle.config);
+          if (!priceId) throw new TRPCError(providerErrorToClient(null));
+
+          // prorated_immediately puts the credit on the customer's Paddle balance now, so it pays
+          // toward the next charge of any kind. Deferred to the next billing period, it would wait
+          // a year if the user then switched to annual.
+          const updatedSub = await changePaddleItems(ctx, paddle.client, paddleRow, {
+            action: "downgrade",
+            priceId,
+            to: interval,
+            billsNow: true,
+          });
+          await applyPaddleState(
+            ctx,
+            paddle.config,
+            updatedSub,
+            paddlePlanFields(targetPlan, interval),
+          );
+        } else {
+          const variantId = getVariantId(targetPlan, interval);
+
+          const updatedSub = await updateSubscription(subscriptionId, {
+            variantId,
+            invoiceImmediately: false,
+          });
+
+          if (updatedSub.error) {
+            throw providerError("downgrade", updatedSub, { userId, subscriptionId, variantId });
+          }
+
+          const attributes = updatedSub.data.data.attributes;
+          await applyProviderState(ctx, subscriptionId, attributes, {
+            plan: targetPlan,
+            billingInterval: interval,
+            variantId: attributes.variant_id,
+            productId: attributes.product_id,
+          });
+        }
+        await recordCancellation(ctx, userSubscription, currentPlan, {
+          ...cancellation,
+          outcome: "downgraded",
+        });
+
+        return {
+          status: "downgraded" as const,
+          message: "You're now on Pro. Credit for unused Ultra time goes toward your next invoice.",
+        };
+      }),
+
+    // Offered in place of cancelling to Free (downgrade-feedback-modal.tsx).
+    pauseSubscription: protectedProcedure
+      .input(pauseSubscriptionInput)
+      .mutation(async ({ ctx, input }) => {
+        const userId = ctx.auth.userId;
+        const [userRecord, userSubscription] = await Promise.all([
+          ctx.db.query.user.findFirst({ where: (table, { eq }) => eq(table.id, userId) }),
+          getUserSubscription(ctx),
+        ]);
+
+        if (!userSubscription || !canOfferPause(userSubscription)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Only an active monthly subscription can be paused.",
+          });
+        }
+
+        const currentPlan = resolvePlan(userSubscription);
+        let message: string;
+
+        if (isPaddleRow(userSubscription)) {
+          const { client, config } = requirePaddle(deps, userId);
+          const providerSubscriptionId = userSubscription.providerSubscriptionId;
+          const context = { userId, providerSubscriptionId };
+          // Paddle pauses at the end of the paid period, so the paused months count from there.
+          const current = await callPaddle("pause", context, () =>
+            client.getSubscription(providerSubscriptionId),
+          );
+          const periodEnd = current.current_billing_period?.ends_at;
+          const pausesAt = periodEnd ? new Date(periodEnd) : new Date();
+          const resumesAt = pauseResumesAt(input.months, pausesAt);
+
+          const pausedSub = await callPaddle("pause", context, () =>
+            client.pauseSubscription(providerSubscriptionId, {
+              effectiveFrom: "next_billing_period",
+              resumeAt: resumesAt.toISOString(),
+            }),
+          );
+          const normalized = await applyPaddleState(ctx, config, pausedSub);
+          const scheduledStart = pausedSub.scheduled_change?.effective_at;
+          message = `Your subscription pauses on ${formatDate(
+            scheduledStart ? new Date(scheduledStart) : pausesAt,
+          )} and resumes on ${formatDate(normalized.pausedUntil ?? resumesAt)}.`;
+        } else {
+          const subscriptionId = userSubscription.subscriptionId ?? 0;
+          const resumesAt = pauseResumesAt(input.months);
+          configureLemonSqueezy();
+
+          const pausedSub = await updateSubscription(subscriptionId, pauseUpdate(resumesAt));
+          if (pausedSub.error) {
+            throw providerError("pause", pausedSub, { userId, subscriptionId });
+          }
+
+          const attributes = pausedSub.data.data.attributes;
+          await applyProviderState(ctx, subscriptionId, attributes);
+          const restartsAt = attributes.pause?.resumes_at
+            ? new Date(attributes.pause.resumes_at)
+            : resumesAt;
+          message = `Billing is paused. It restarts on ${formatDate(restartsAt)}.`;
+        }
+
+        await recordCancellation(ctx, userSubscription, currentPlan, {
+          toPlan: "free",
+          reason: input.reason,
+          feedback: input.feedback || null,
+          offerShown: "pause",
+          outcome: "paused",
+          pauseMonths: input.months,
+        });
+
+        void runBackgroundTask(
+          sendDowngradeFeedbackNotification({
+            userEmail: userRecord?.email ?? "unknown",
+            userName: userRecord?.name,
+            fromPlan: currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1),
+            toPlan: `Paused for ${input.months} ${input.months === 1 ? "month" : "months"}`,
+            reason: downgradeReasonLabels[input.reason],
+            additionalFeedback: input.feedback,
+          }),
+        );
+
+        return { message };
+      }),
+  });
+
+export const lemonsqueezyRouter = createLemonsqueezyRouter();

@@ -185,7 +185,7 @@ export function MoveToFolderModal({
                     setNewFolderDescription("");
                   }}
                   aria-label="Back to folder list"
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-muted-foreground transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
                 >
                   <IconChevronLeft size={18} stroke={1.5} />
                 </button>
@@ -217,7 +217,7 @@ export function MoveToFolderModal({
                     className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300"
                   >
                     Description
-                    <span className="ml-1.5 text-[12px] font-normal text-neutral-400 dark:text-neutral-500">
+                    <span className="ml-1.5 text-[12px] font-normal text-neutral-400 dark:text-muted-foreground">
                       optional
                     </span>
                   </Label>
@@ -283,7 +283,7 @@ export function MoveToFolderModal({
                   <IconSearch
                     size={16}
                     stroke={1.5}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-muted-foreground"
                   />
                   <Input
                     placeholder="Search folders..."
@@ -295,7 +295,7 @@ export function MoveToFolderModal({
                     <button
                       type="button"
                       onClick={() => setSearchQuery("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-muted-foreground hover:text-neutral-600"
                     >
                       <IconX size={14} stroke={1.5} />
                     </button>
@@ -309,7 +309,7 @@ export function MoveToFolderModal({
                       <IconLoader2
                         size={16}
                         stroke={1.5}
-                        className="animate-spin text-neutral-400 dark:text-neutral-500"
+                        className="animate-spin text-neutral-400 dark:text-muted-foreground"
                       />
                     </div>
                   ) : (
@@ -388,7 +388,7 @@ export function MoveToFolderModal({
                               <span className="block truncate text-[13px] font-medium text-neutral-900 dark:text-foreground">
                                 {folder.name}
                               </span>
-                              <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                              <span className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                                 {folder.linkCount} {folder.linkCount === 1 ? "link" : "links"}
                               </span>
                             </div>
@@ -408,7 +408,7 @@ export function MoveToFolderModal({
                         ))
                       ) : searchQuery ? (
                         <div className="py-8 text-center">
-                          <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
+                          <p className="text-[13px] text-neutral-400 dark:text-muted-foreground">
                             No folders found
                           </p>
                         </div>

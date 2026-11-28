@@ -18,7 +18,9 @@ import { copyToClipboard } from "@/lib/utils/clipboard";
 
 import { useSelection } from "../selection-context";
 import { LinkActions } from "./actions";
+import { DestinationDownBadge } from "./destination-down-badge";
 import { LinkNoteTooltip } from "./note-tooltip";
+import { LinkTargetingTooltip } from "./targeting-tooltip";
 
 import type { LinkCardLink } from "./types";
 
@@ -236,6 +238,10 @@ const Link = ({ link, onTagClick }: LinkProps) => {
         {/* Right actions */}
         <div className="flex shrink-0 items-center gap-2">
           {link.note && <LinkNoteTooltip note={link.note} />}
+
+          <LinkTargetingTooltip types={link.targetingTypes} />
+
+          {link.destinationDown && <DestinationDownBadge down={link.destinationDown} />}
 
           {link.archived && (
             <span

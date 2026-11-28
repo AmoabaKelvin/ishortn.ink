@@ -1,5 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 
+import { env } from "@/env.mjs";
 import { parseDeviceDetails } from "@/lib/core/analytics/visitor";
 import {
   type Link,
@@ -61,14 +62,16 @@ export async function checkLinkExpiration(link: Link, cacheKey: string): Promise
 type GeoRules = Awaited<ReturnType<typeof getGeoRulesFromCache>>;
 
 async function loadGeoRules(linkId: number): Promise<GeoRules> {
+  const readAt = Date.now();
   const rulesFromDb = await db.query.geoRule.findMany({
     where: eq(geoRule.linkId, linkId),
     orderBy: [asc(geoRule.priority)],
   });
   // Cache the empty list too: most links have no rules, and without it every
   // click on them missed KV and queried the database. Every rule write for an
-  // existing link evicts this key (geo-rules.service.ts, updateLink).
-  void runBackgroundTask(setGeoRulesInCache(linkId, rulesFromDb));
+  // existing link evicts this key (geo-rules.service.ts, updateLink), and the fill is skipped
+  // when one landed after this read.
+  void runBackgroundTask(setGeoRulesInCache(linkId, rulesFromDb, readAt));
   return rulesFromDb;
 }
 
@@ -207,6 +210,7 @@ export async function resolveShortLink(
           ip,
           country,
           city,
+          ipHashSecret: env.IP_HASH_SECRET,
           matchedGeoRuleId: geoResult.ruleId,
           visitId,
         }),
@@ -223,7 +227,17 @@ export async function resolveShortLink(
     const destinationUrl = appendUtmParams(link.url, link.utmParams);
     const { visitId, verificationToken } = issueToken(destinationUrl);
 
-    void runBackgroundTask(recordClick({ headers, link, ip, country, city, visitId }));
+    void runBackgroundTask(
+      recordClick({
+        headers,
+        link,
+        ip,
+        country,
+        city,
+        ipHashSecret: env.IP_HASH_SECRET,
+        visitId,
+      }),
+    );
 
     return {
       url: destinationUrl,

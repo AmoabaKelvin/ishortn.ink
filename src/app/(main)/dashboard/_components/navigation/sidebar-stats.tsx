@@ -1,6 +1,7 @@
 "use client";
 
 import { IconArrowUpRight, IconTag } from "@tabler/icons-react";
+import { Suspense, use } from "react";
 
 import { UpgradeCta } from "@/components/upgrade-cta";
 import { planPriceDisplay } from "@/lib/billing/pricing";
@@ -9,7 +10,9 @@ import { cn } from "@/lib/utils";
 
 import { eventsUpgradeTarget, formatResetDay } from "../tracking-paused";
 import { useUpgradeOffer } from "../upgrade-offer";
+import { EVENTS_PAUSED_SOURCE, sidebarUpgradeReason } from "./sidebar-upgrade-reason";
 
+import type { SidebarUpgradeReason, SidebarUpgradeSignals } from "./sidebar-upgrade-reason";
 import type { Promo } from "@/lib/billing/promo";
 
 export type EventUsage = {
@@ -29,7 +32,7 @@ function EventMeter({ eventUsage }: { eventUsage: EventUsage }) {
   return (
     <div className="mt-3">
       <div className="flex items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
-        <span>Events</span>
+        <span>Tracked clicks</span>
         <span className="tabular-nums">
           {count.toLocaleString()} / {limit.toLocaleString()}
         </span>
@@ -52,7 +55,7 @@ function EventMeter({ eventUsage }: { eventUsage: EventUsage }) {
               <span className="font-medium tabular-nums">
                 {paused.dropped.toLocaleString()}
               </span>{" "}
-              {paused.dropped === 1 ? "visit" : "visits"} not recorded.
+              {paused.dropped === 1 ? "click" : "clicks"} not recorded.
             </>
           )}
         </p>
@@ -62,7 +65,7 @@ function EventMeter({ eventUsage }: { eventUsage: EventUsage }) {
           <span className="tabular-nums">
             {count.toLocaleString()} of {limit.toLocaleString()}
           </span>{" "}
-          events used{resetsAt ? `, resets ${formatResetDay(resetsAt)}` : ""}.
+          tracked clicks used{resetsAt ? `, resets ${formatResetDay(resetsAt)}` : ""}.
         </p>
       )}
     </div>
@@ -91,7 +94,55 @@ function SidebarOffer({ promo }: { promo: Promo }) {
   );
 }
 
-const EVENTS_PAUSED_SOURCE = "sidebar_events_paused";
+type FreeUpgradeButtonProps = {
+  reason: SidebarUpgradeReason;
+  shown: boolean;
+  promo: Promo | null;
+};
+
+function FreeUpgradeButton({ reason, shown, promo }: FreeUpgradeButtonProps) {
+  const isGeneric = reason.label === "Upgrade to Pro";
+  return (
+    <UpgradeCta
+      requiredPlan="pro"
+      source={reason.source}
+      shown={shown}
+      promo={promo}
+      trackingProperties={reason.hiddenClicks ? { hidden_clicks: reason.hiddenClicks } : undefined}
+      aria-label={isGeneric ? undefined : `${reason.label}. Upgrade to Pro`}
+      title={isGeneric ? undefined : reason.label}
+      className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[12px] font-medium text-white transition-colors hover:bg-blue-700"
+    >
+      <span className="min-w-0 truncate tabular-nums">{reason.label}</span>
+      {/* The stat may truncate; the action word always stays visible. */}
+      {!isGeneric && (
+        <>
+          <span aria-hidden="true" className="shrink-0">
+            &middot;
+          </span>
+          <span aria-hidden="true" className="shrink-0">
+            Upgrade
+          </span>
+        </>
+      )}
+      <IconArrowUpRight size={13} stroke={2} className="shrink-0" />
+    </UpgradeCta>
+  );
+}
+
+type ReasonInputs = Omit<Parameters<typeof sidebarUpgradeReason>[0], "signals">;
+
+function StreamedUpgradeButton({
+  signals,
+  inputs,
+  ...props
+}: Omit<FreeUpgradeButtonProps, "reason"> & {
+  signals: Promise<SidebarUpgradeSignals | null>;
+  inputs: ReasonInputs;
+}) {
+  const reason = sidebarUpgradeReason({ ...inputs, signals: use(signals) });
+  return <FreeUpgradeButton reason={reason} {...props} />;
+}
 
 type SidebarStatsProps = {
   monthlyLinkCount: number;
@@ -99,6 +150,9 @@ type SidebarStatsProps = {
   linkLimit: number | null;
   eventUsage?: EventUsage;
   folderUsage?: { count: number; limit: number | null };
+  qrCodeUsage?: { count: number; limit: number | null };
+  /** Streamed signals for the Free upgrade reason; null when the usage summary already decides it. */
+  upgradeSignals?: Promise<SidebarUpgradeSignals | null> | null;
   plan: "free" | "pro" | "ultra";
   /** Whether the sidebar is on screen; on mobile it stays mounted off-canvas while closed. */
   shown: boolean;
@@ -109,6 +163,8 @@ export function SidebarStats({
   userHasPaidPlan,
   linkLimit,
   eventUsage,
+  qrCodeUsage,
+  upgradeSignals = null,
   plan,
   shown,
 }: SidebarStatsProps) {
@@ -121,13 +177,18 @@ export function SidebarStats({
   // While tracking is paused the upgrade CTA leads with the event cap.
   const eventsTarget = eventUsage?.paused ? eventsUpgradeTarget(plan) : null;
   const promo = useUpgradeOffer();
+  const reasonInputs: ReasonInputs = {
+    events: eventUsage,
+    qrCodes: qrCodeUsage,
+    linksAtLimit: isAtLimit,
+  };
 
   if (userHasPaidPlan) {
     return (
       <div className="space-y-3">
         <div className="rounded-lg border border-neutral-100 dark:border-border/50 p-3">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-muted-foreground">
               {plan} plan
             </span>
             <span className="text-[11px] tabular-nums text-neutral-500 dark:text-neutral-400">
@@ -144,7 +205,7 @@ export function SidebarStats({
             requiredPlan="ultra"
             source={eventsTarget ? EVENTS_PAUSED_SOURCE : "sidebar_pro"}
             shown={shown}
-            className="flex items-center gap-1 px-1 text-[12px] font-medium text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-foreground"
+            className="flex items-center gap-1 px-1 text-[12px] font-medium text-neutral-400 dark:text-muted-foreground transition-colors hover:text-neutral-900 dark:hover:text-foreground"
           >
             Upgrade to Ultra
             <IconArrowUpRight size={12} stroke={1.5} />
@@ -159,7 +220,7 @@ export function SidebarStats({
     <div className="space-y-3">
       <div className="rounded-lg border border-neutral-100 dark:border-border/50 p-3">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-muted-foreground">
             Free plan
           </span>
           <span
@@ -196,22 +257,31 @@ export function SidebarStats({
 
       <div className="space-y-2">
         {promo && <SidebarOffer promo={promo} />}
-        <UpgradeCta
-          requiredPlan="pro"
-          source={
-            eventsTarget
-              ? EVENTS_PAUSED_SOURCE
-              : isAtLimit
-                ? "sidebar_free_at_limit"
-                : "sidebar_free"
-          }
-          shown={shown}
-          promo={promo}
-          className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[12px] font-medium text-white transition-colors hover:bg-blue-700"
-        >
-          Upgrade to Pro
-          <IconArrowUpRight size={13} stroke={2} />
-        </UpgradeCta>
+        {upgradeSignals ? (
+          // Until the signals arrive, the generic button holds the space without an impression.
+          <Suspense
+            fallback={
+              <FreeUpgradeButton
+                reason={sidebarUpgradeReason({ linksAtLimit: isAtLimit, signals: null })}
+                shown={false}
+                promo={promo}
+              />
+            }
+          >
+            <StreamedUpgradeButton
+              signals={upgradeSignals}
+              inputs={reasonInputs}
+              shown={shown}
+              promo={promo}
+            />
+          </Suspense>
+        ) : (
+          <FreeUpgradeButton
+            reason={sidebarUpgradeReason({ ...reasonInputs, signals: null })}
+            shown={shown}
+            promo={promo}
+          />
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,9 @@
-import { getPlanCaps, getPlanFromIds } from "@/lib/billing/plans";
+import {
+  canUseLinkUtmParams,
+  getPlanCaps,
+  getPlanFromIds,
+  getSubscriptionMode,
+} from "@/lib/billing/plans";
 
 import type { Plan } from "@/lib/billing/plans";
 import type { Subscription } from "@/server/db/schema";
@@ -48,6 +53,16 @@ export function subscribedPlan(subscription?: SubscriptionState): Plan {
   if (!subscription) return "free";
   const plan = getPlanFromIds(subscription.variantId, subscription.productId) ?? subscription.plan;
   return plan === "pro" || plan === "ultra" ? plan : "free";
+}
+
+/**
+ * The plan state the billing UI acts on: "free" while an upgrade starts a new checkout, otherwise
+ * the subscribed plan. Billing screens send back the value they rendered with each plan change, so
+ * a change made from a stale screen (e.g. Free shown before the checkout webhook landed) can be
+ * refused instead of charging a live subscription unconfirmed.
+ */
+export function billingPlanMode(subscription?: Subscription | null): Plan {
+  return getSubscriptionMode(subscription) === "checkout" ? "free" : subscribedPlan(subscription);
 }
 
 /** The plan the subscription is paying for right now, ignoring any grace period. */
@@ -310,7 +325,7 @@ const FEATURE_LIMITS = {
   passwordLinks: (plan) => (plan === "free" ? 0 : undefined),
   scheduledLinks: (plan) => (plan === "free" ? 0 : undefined),
   verifiedClickLinks: (plan) => (plan === "free" ? 0 : undefined),
-  utmLinks: (plan) => (plan === "ultra" ? undefined : 0),
+  utmLinks: (plan) => (canUseLinkUtmParams(plan) ? undefined : 0),
   cloakedLinks: (plan) => (plan === "ultra" ? undefined : 0),
 } satisfies Record<UsageFeature, (plan: Plan) => number | undefined>;
 

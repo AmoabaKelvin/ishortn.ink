@@ -92,6 +92,7 @@ export const competitors = {
       { href: "/compare/tinyurl", label: "iShortn vs TinyURL" },
       { href: "/compare/short-io", label: "iShortn vs Short.io" },
       { href: "/compare/dub", label: "iShortn vs Dub" },
+      { href: "/compare/cuttly", label: "Cuttly vs iShortn" },
     ],
     migrationGuide: {
       href: "/docs/migrate-from-bitly",
@@ -166,6 +167,7 @@ export const competitors = {
       { href: "/blog/how-to-track-link-clicks", label: "How to track link clicks" },
       { href: "/docs/bulk-import", label: "CSV bulk import: file format and limits" },
       { href: "/compare/bitly", label: "Bitly vs iShortn" },
+      { href: "/compare/cuttly", label: "Cuttly vs iShortn" },
     ],
     guide: {
       slug: "tinyurl-alternatives",
@@ -193,7 +195,7 @@ export const competitors = {
     pricing: "Free, paid plans from Essentials",
     whySwitch: [
       "Rebrandly Free gives 10 links a month and detailed stats on 100 clicks. iShortn Free gives 30 links a month and stats on up to 1,000 clicks and scans",
-      "Rebrandly Free includes 1 custom domain and 10 links a month. iShortn Pro includes 3 custom domains, 1,000 links a month and 10,000 tracked events for $8/month",
+      "Rebrandly Free includes 1 custom domain and 10 links a month. iShortn Pro includes 3 custom domains, 1,000 links a month and 10,000 tracked clicks for $8/month",
       "Rebrandly QR codes have watermarks on free — iShortn QR codes are clean on all plans",
       "iShortn Pro adds geo and device targeting for $8/month, and AI-powered phishing detection checks links on every plan",
       "Rebrandly is the better fit if you want a custom domain on a free plan: Rebrandly Free includes one, and iShortn's start on Pro",
@@ -331,7 +333,7 @@ export const competitors = {
     whySwitch: [
       "Dub Free allows 25 new links a month; iShortn Free allows 30 and includes 5 dynamic QR codes",
       "Dub's paid plans start at $30/month; iShortn Pro is $8/month with 3 custom domains",
-      "iShortn Pro unlocks unlimited analytics history for $8/month",
+      "iShortn Pro keeps a full year of detailed analytics for $8/month",
       "iShortn includes password protection and geo-targeting on the Pro plan",
       "Dub is the better fit if you run an affiliate or partner program (Dub Partners), or want 30 days of analytics and 3 custom domains on a free plan",
     ],
@@ -353,7 +355,7 @@ export const competitors = {
       {
         question: "What does Dub's free plan include?",
         answer:
-          "Dub Free includes 25 new links a month, 1,000 tracked events, 30 days of analytics and 3 custom domains for 1 user. iShortn Free includes 30 links a month, 1,000 tracked clicks and scans, 7 days of analytics and 5 dynamic QR codes; custom domains start on Pro. Dub figures from dub.co/pricing/links, checked 23 November 2026.",
+          "Dub Free includes 25 new links a month, 1,000 events, 30 days of analytics and 3 custom domains for 1 user. iShortn Free includes 30 links a month, 1,000 tracked clicks and scans, 7 days of analytics and 5 dynamic QR codes; custom domains start on Pro. Dub figures from dub.co/pricing/links, checked 23 November 2026.",
       },
       {
         question: "What are the best Dub.co alternatives?",
@@ -377,19 +379,88 @@ export const competitors = {
       label: "Looking at more options? Read our guide to Dub.co alternatives.",
     },
   },
+  cuttly: {
+    name: "Cuttly",
+    slug: "cuttly",
+    category: "URL shortener",
+    seoTitle: "Cuttly vs iShortn: Free Plan, Pricing and Analytics (2026)",
+    pricesCheckedOn: "2026-11-26",
+    tagline: "Link shortener with a branded domain on the free plan",
+    description:
+      "Cuttly gives free users 30 links a month, 30 days of click history and one branded domain, but free links can't be edited. See how iShortn compares on price, editing, QR codes and teams.",
+    metaDescription:
+      "Cuttly Free gives 30 links a month but no link editing; iShortn Free gives 30 you can edit, with stats. Pro is $8/mo vs Cuttly Starter $12. Checked Nov 2026.",
+    freeLinks: "30/month",
+    freeAnalytics: "Last 30 days (total clicks only, no unique clicks)",
+    customDomains: "1 on Free and Starter (automatic HTTPS from Single, $25/mo)",
+    qrCodes: "One style on Free (PNG, JPG, WEBP); SVG and styling on paid plans",
+    apiAccess: "Yes (Free: 3 calls a minute, up to 30 links a month)",
+    teamFeatures: "From Team ($99/mo): 3 teams of 5 members",
+    passwordProtection: "From Single ($25/mo)",
+    pricing:
+      "Free, Starter $12/mo, Single $25/mo, Team $99/mo, Team Enterprise $149/mo (one month free when billed yearly)",
+    whySwitch: [
+      "You can change where an iShortn link points on every plan, including Free; Cuttly Free can't edit a link's destination, and Starter and Single only allow a new URL on the same domain",
+      "iShortn Pro is $8 a month ($80 a year) with 3 custom domains, password protection and scheduled links; Cuttly's password links start on Single at $25 a month",
+      "iShortn Free includes 5 dynamic QR codes with colour and style options that never expire; Cuttly Free QR codes come in one style",
+      "iShortn counts unique visitors as well as total clicks on every plan; Cuttly Free and Starter count total clicks only",
+      "Cuttly is the better fit if you want a branded domain or 30 days of click history without paying: Cuttly Free includes 1 domain and 30 days of history, while iShortn's custom domains start on Pro and Free keeps 7 days in the dashboard",
+    ],
+    linksStayYours: true,
+    migrationSteps: [
+      "Check where your links live. Links on your own branded domain can keep their exact addresses. Links on cutt.ly stay with Cuttly, because Cuttly owns that domain.",
+      "Export your links and destinations as a CSV file. Cuttly's CSV export is on Single and higher; on Free or Starter, copy them from the dashboard into a spreadsheet.",
+      "Name the columns iShortn reads: url for the destination, alias for the back-half and domain for your own domain. Other columns are ignored.",
+      "On Pro, add the same domain in iShortn under Domains, then replace Cuttly's DNS records with the ones iShortn shows.",
+      "Upload the file with Upload CSV in the dashboard. On Pro, rows on your custom domain use a one-time 5,000-link import allowance instead of the monthly limit.",
+      "Open a few old links in a private window and scan a printed QR code. When they all redirect, you can cancel Cuttly.",
+    ],
+    faqs: [
+      {
+        question: "Is iShortn a good alternative to Cuttly?",
+        answer:
+          "If you want to edit your links and pay less for a paid plan, yes. Both free plans give 30 links a month with click stats. iShortn lets you change where a link points on Free and Pro is $8 a month with 3 custom domains; Cuttly Free can't edit destinations and Starter is $12 a month. Cuttly is the better fit if you need a branded domain without paying.",
+      },
+      {
+        question: "How much does Cuttly cost?",
+        answer:
+          "Cuttly lists Free, Starter at $12 a month, Single at $25, Team at $99 and Team Enterprise at $149. Billed yearly they cost $132, $275, $1,089 and $1,639, which works out to one month free. Prices from cutt.ly/pricing, checked 26 November 2026.",
+      },
+      {
+        question: "Can you edit a Cuttly link on the free plan?",
+        answer:
+          "No. Cuttly's plan table lists editing the destination URL as not included on Free. Starter and Single can change it to another URL on the same domain, and Team plans can change it to any URL. iShortn lets you change where a link points on every plan.",
+      },
+      {
+        question: "Does Cuttly show ads or expire links?",
+        answer:
+          "No to both. Cuttly's help center says it doesn't show ads before the redirect and that its short links don't expire. iShortn doesn't show ads either, and links stay live unless you set an expiry date or click limit yourself.",
+      },
+    ],
+    relatedGuides: [
+      { href: "/blog/best-free-url-shorteners", label: "The best free URL shorteners compared" },
+      { href: "/compare/bitly", label: "Bitly vs iShortn" },
+      { href: "/compare/tinyurl", label: "TinyURL vs iShortn" },
+      { href: "/docs/bulk-import", label: "CSV bulk import: file format and limits" },
+    ],
+  },
   linktree: {
     name: "Linktree",
     slug: "linktree",
     category: "link in bio",
-    pricesCheckedOn: "2026-11-22",
+    seoTitle: "Linktree vs iShortn: Custom Domain, Analytics and Price",
+    pricesCheckedOn: "2026-11-26",
     tagline: "The default link-in-bio — but you pay to see what's working",
     description:
       "Linktree is the most recognized link-in-bio tool, with a generous free page and a huge template library. The catch: the analytics that show which links convert sit behind paid plans. See how iShortn compares.",
+    metaDescription:
+      "Linktree has no custom domains on any plan, and per-link stats start on Starter. iShortn bio pages track every link on Free, and Pro adds your own domain.",
     freeLinks: "Unlimited links on the bio page",
-    freeAnalytics: "Last 28 days on Free; 90 days on Starter, 365 on Pro, lifetime on Premium",
+    freeAnalytics:
+      "Last 28 days; per-link insights from Starter, location, device and referrer from Pro",
     customDomains: "Not available on any plan",
     qrCodes: "Yes, all plans",
-    apiAccess: "No public REST API (offers an MCP server for AI assistants)",
+    apiAccess: "No self-serve public API (developer access by application)",
     teamFeatures: "Separate team plans with roles and permissions",
     passwordProtection: "Password and code lock on Pro and Premium",
     pricing:
@@ -402,6 +473,34 @@ export const competitors = {
       "Linktree doesn't support custom domains on any plan — iShortn Pro ($8/mo) serves your bio page and short links on your own domain",
       "iShortn Pro ($8/mo) includes password-protected links; Linktree's password and code lock needs its Pro plan ($17/mo, or $14/mo billed annually)",
       "iShortn Pro includes a REST API for links and analytics; Linktree has no public REST API",
+    ],
+    faqs: [
+      {
+        question: "Can I use my own domain with Linktree?",
+        answer:
+          "No. Linktree's help center says it doesn't support custom domains: every page uses linktr.ee/yourname, and it doesn't provide domain forwarding. iShortn Pro ($8 a month) puts your bio page and your short links on your own domain, with up to 3 domains.",
+      },
+      {
+        question: "Does Linktree's free plan show clicks on each link?",
+        answer:
+          "Linktree Free shows 28 days of page analytics, but individual link insights start on Starter, and location, device and referrer data start on Pro. On iShortn every bio link is a tracked short link, so the free plan shows clicks per link with country, device and referrer, for the last 7 days.",
+      },
+      {
+        question: "What does iShortn's free bio page include?",
+        answer:
+          "One bio page with up to 3 link blocks, each one a tracked short link, on the free plan. Pro gives you 3 bio pages on your own domain without iShortn branding, and Ultra makes bio pages unlimited.",
+      },
+      {
+        question: "When is Linktree the better choice?",
+        answer:
+          "If you want many links on one page for free, a large template library, or to sell digital products and bookings from your bio page, Linktree does more there. iShortn is the better fit when you want your own domain, per-link stats on the free plan, and short links and QR codes in the same tool.",
+      },
+    ],
+    relatedGuides: [
+      { href: "/blog/linktree-custom-domain", label: "Linktree and custom domains: what works" },
+      { href: "/blog/linktree-alternatives", label: "Linktree alternatives compared" },
+      { href: "/docs/bio-pages", label: "How iShortn bio pages work" },
+      { href: "/compare/beacons", label: "Beacons vs iShortn" },
     ],
     guide: {
       slug: "linktree-custom-domain",

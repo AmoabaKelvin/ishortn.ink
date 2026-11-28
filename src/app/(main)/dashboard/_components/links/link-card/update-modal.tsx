@@ -146,7 +146,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
           <DialogTitle className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
             Edit Link
           </DialogTitle>
-          <DialogDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+          <DialogDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
             Update your link settings
           </DialogDescription>
         </DialogHeader>
@@ -165,7 +165,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                     <span className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
                       Basic Information
                     </span>
-                    <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <span className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                       Main details of your link
                     </span>
                   </div>
@@ -256,7 +256,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                               </FormControl>
                               {selectedDomain &&
                                 selectedDomain.toLowerCase() !== link.domain.toLowerCase() && (
-                                  <FormDescription className="break-all text-[12px] text-neutral-400 dark:text-neutral-500">
+                                  <FormDescription className="break-all text-[12px] text-neutral-400 dark:text-muted-foreground">
                                     {link.domain}/{link.alias} will keep redirecting to this link.
                                   </FormDescription>
                                 )}
@@ -304,7 +304,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                     <span className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
                       Tags
                     </span>
-                    <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <span className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                       Organize with tags
                     </span>
                   </div>
@@ -388,7 +388,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                                   </div>
                                 </div>
                               </FormControl>
-                              <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                              <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                                 Press Enter to add a tag
                               </FormDescription>
                               <FormMessage />
@@ -420,7 +420,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                         </span>
                       )}
                     </div>
-                    <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <span className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                       Campaign tracking
                     </span>
                   </div>
@@ -489,7 +489,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                     <span className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
                       Advanced Settings
                     </span>
-                    <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <span className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                       Expiration options
                     </span>
                   </div>
@@ -527,7 +527,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                                   className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]"
                                 />
                               </FormControl>
-                              <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                              <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                                 Leave empty to never disable
                               </FormDescription>
                               <FormMessage />

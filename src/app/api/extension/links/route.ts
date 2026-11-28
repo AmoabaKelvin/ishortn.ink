@@ -1,21 +1,24 @@
 import { TRPCError } from "@trpc/server";
 import { getHTTPStatusCodeFromError } from "@trpc/server/http";
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
+import { planLimitKey } from "@/lib/billing/required-plan";
 import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { EXTENSION_UPGRADE_URL } from "@/lib/extension/connect";
 import { destinationUrlSchema } from "@/lib/utils/destination-url";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { captureServerEvent } from "@/server/lib/analytics/posthog-server";
+import { ServerTiming } from "@/server/lib/server-timing";
 
 import { readJsonBody } from "../../v1/errors";
 import { createTokenLink } from "../../v1/links/create";
-import { getApiReadableDomains } from "../../v1/utils";
+import { apiReadableLinkDomain } from "../../v1/utils";
 import { extensionError, extensionPreflight, withExtensionToken } from "../auth";
 
 import type { ApiToken } from "../../v1/utils";
+import type { ServerEventUser } from "@/server/lib/analytics/posthog-server";
 import type { NextRequest } from "next/server";
 
 export const OPTIONS = extensionPreflight;
@@ -30,13 +33,7 @@ export const GET = withExtensionToken(async (request: NextRequest, token) => {
   const rows = await db
     .select({ domain: link.domain, alias: link.alias, url: link.url, createdAt: link.createdAt })
     .from(link)
-    .where(
-      and(
-        eq(link.userId, token.userId),
-        isNull(link.teamId),
-        inArray(link.domain, await getApiReadableDomains(token.userId)),
-      ),
-    )
+    .where(and(eq(link.userId, token.userId), isNull(link.teamId), apiReadableLinkDomain(token)))
     .orderBy(desc(link.createdAt), desc(link.id))
     .limit(query.data.limit);
 
@@ -61,43 +58,55 @@ const createLinkBody = z.object({
   domain: z.string().trim().max(255).optional(),
 });
 
-export const POST = withExtensionToken(async (request: Request, token) => {
-  if (token.restrictedAt) return extensionError(403, ACCOUNT_RESTRICTED_MESSAGE);
+// Every response, refusals included, carries a Server-Timing header with the create steps.
+export async function POST(request: Request): Promise<Response> {
+  const serverTiming = new ServerTiming();
+  const response = await withExtensionToken(async (request: Request, token) => {
+    if (token.restrictedAt) return extensionError(403, ACCOUNT_RESTRICTED_MESSAGE);
 
-  const body = await readJsonBody(request);
-  if (!body.ok) return extensionError(400, "Request body must be valid JSON");
+    const body = await readJsonBody(request);
+    if (!body.ok) return extensionError(400, "Request body must be valid JSON");
 
-  const input = createLinkBody.safeParse(body.body);
-  if (!input.success) {
-    return extensionError(400, input.error.issues[0]?.message ?? "Request body is invalid");
-  }
+    const input = createLinkBody.safeParse(body.body);
+    if (!input.success) {
+      return extensionError(400, input.error.issues[0]?.message ?? "Request body is invalid");
+    }
 
-  try {
-    const created = await createTokenLink(token, input.data, "extension");
-    captureServerEvent(token.userId, "extension_link_created", { plan: token.plan });
-    return Response.json(
-      {
-        shortUrl: created.shortLink,
-        alias: created.alias,
-        domain: new URL(created.shortLink).hostname,
-        url: created.url,
-        createdAt: created.createdAt,
-      },
-      { status: 201 },
-    );
-  } catch (error) {
-    return creationErrorResponse(token, error);
-  }
-});
+    try {
+      const created = await createTokenLink(token, input.data, "extension", serverTiming);
+      captureServerEvent(eventUser(token), "extension_link_created", { plan: token.plan });
+      return Response.json(
+        {
+          shortUrl: created.shortLink,
+          alias: created.alias,
+          domain: new URL(created.shortLink).hostname,
+          url: created.url,
+          createdAt: created.createdAt,
+        },
+        { status: 201 },
+      );
+    } catch (error) {
+      return creationErrorResponse(token, error);
+    }
+  }, serverTiming)(request);
+  return serverTiming.apply(response);
+}
 
 /** Plan refusals (FORBIDDEN) carry the upgrade link; other client errors keep their message. */
 function creationErrorResponse(token: ApiToken, cause: unknown): Response {
   if (!(cause instanceof TRPCError)) return extensionError(500, "Something went wrong. Try again.");
   if (cause.code === "FORBIDDEN") {
-    captureServerEvent(token.userId, "extension_limit_hit", { plan: token.plan });
+    captureServerEvent(eventUser(token), "extension_limit_hit", {
+      plan: token.plan,
+      limit_key: planLimitKey(cause.message),
+    });
     return extensionError(403, cause.message, { upgradeUrl: EXTENSION_UPGRADE_URL });
   }
   const status = getHTTPStatusCodeFromError(cause);
   if (status >= 500) return extensionError(500, "Something went wrong. Try again.");
   return extensionError(status === 404 ? 400 : status, cause.message);
+}
+
+function eventUser(token: ApiToken): ServerEventUser {
+  return { id: token.userId, email: token.owner.email };
 }

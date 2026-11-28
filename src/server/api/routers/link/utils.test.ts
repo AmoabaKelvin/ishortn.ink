@@ -66,6 +66,18 @@ describe("parseLinkCsv", () => {
     ]);
   });
 
+  test("reads a title (or name) column as the link name", () => {
+    expect(
+      parseLinkCsv(`url,alias,title\nhttps://a.example,a, Spring sale \nhttps://b.example,b,`),
+    ).toEqual([
+      { row: 2, url: "https://a.example", alias: "a", name: "Spring sale" },
+      { row: 3, url: "https://b.example", alias: "b", name: undefined },
+    ]);
+    expect(parseLinkCsv(`url,Name\nhttps://a.example,${"x".repeat(300)}`)[0]?.name).toBe(
+      "x".repeat(255),
+    );
+  });
+
   test("refuses files without a url header", () => {
     expect(() => parseLinkCsv("https://a.example,alias\n")).toThrow('"url" column');
     expect(() => parseLinkCsv("")).toThrow('"url" column');
@@ -220,9 +232,12 @@ describe("reserved app route aliases", () => {
   test("app route names are reserved on platform domains, in any case", () => {
     for (const alias of [
       "utm-builder",
+      "url-expander",
       "qr-code-generator",
       "whatsapp-link-generator",
       "gerador-de-link-whatsapp",
+      "social",
+      "mcp",
       "Pricing",
     ]) {
       expect(isAppRouteAlias(alias, "ishortn.ink")).toBe(true);
@@ -237,6 +252,9 @@ describe("reserved app route aliases", () => {
   test("validateAlias rejects them before looking up the alias", () => {
     // Throws synchronously, before the database is queried.
     expect(() => validateAlias({ db }, "utm-builder", "ishortn.ink", true)).toThrow(
+      "This alias is reserved. Choose another one.",
+    );
+    expect(() => validateAlias({ db }, "mcp", "ishortn.ink", true)).toThrow(
       "This alias is reserved. Choose another one.",
     );
   });

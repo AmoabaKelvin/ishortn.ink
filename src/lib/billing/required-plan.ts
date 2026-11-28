@@ -28,3 +28,24 @@ export function linkEditLimitSource(message: string): string {
   if (/schedul/i.test(message)) return "link_schedule";
   return "link_edit";
 }
+
+/**
+ * The `limit_key` analytics property for a plan rejection, from the gate named in its message
+ * (the server's messages are the only signal the client and the extension route both get).
+ */
+export function planLimitKey(message: string): string {
+  if (/monthly limit of .* links/i.test(message)) return "monthly_links";
+  if (/email reports/i.test(message)) return "scheduled_reports";
+  if (/domain/i.test(message)) return "custom_domain";
+  if (/password/i.test(message)) return "password";
+  if (/\butm\b/i.test(message)) return "utm";
+  if (/schedul/i.test(message)) return "scheduling";
+  if (/targeting rule/i.test(message)) return "geo_rules";
+  if (/milestone/i.test(message)) return "milestones";
+  if (/cloaking/i.test(message)) return "cloaking";
+  if (/social media preview/i.test(message)) return "social_preview";
+  if (/qr code/i.test(message)) return "qr_codes";
+  if (/embed block/i.test(message)) return "bio_embed_blocks";
+  if (/image block/i.test(message)) return "bio_image_blocks";
+  return "other";
+}

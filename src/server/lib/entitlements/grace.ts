@@ -1,6 +1,6 @@
 import { and, eq, gt, inArray, isNotNull, isNull, lt, lte, or } from "drizzle-orm";
 
-import PlanGraceEmail from "@/emails/plan-grace";
+import { planGraceSubject } from "@/emails/_components/plan-grace-subject";
 import {
   describeOverPlanFeature,
   dueGraceEmail,
@@ -24,19 +24,22 @@ import {
   teamGraceAction,
   updatePaymentPath,
 } from "@/lib/billing/entitlements";
-import { getPlanCaps } from "@/lib/billing/plans";
+import { getPlanCaps, hasProviderSubscription } from "@/lib/billing/plans";
 import { getAppUrl } from "@/lib/constants/domains";
+import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { subscription, team, user } from "@/server/db/schema";
-import { resend } from "@/server/lib/notifications/resend-client";
-import { EMAIL_FROM } from "@/server/lib/notifications/send-email";
+import { renderEmail } from "@/server/lib/notifications/render-email";
+import { getResend } from "@/server/lib/notifications/resend-client";
+import { EMAIL_FROM_SYSTEM, withReplyTo } from "@/server/lib/notifications/send-email";
 
 import {
   FAILED_PAYMENT_STATUSES,
   isEndedProviderStatus,
   lookupProviderSubscription,
+  ProviderNotConfiguredError,
   ProviderSubscriptionNotFoundError,
   providerEndedSubscription,
 } from "./provider-status";
@@ -54,7 +57,7 @@ const log = logger.child({ component: "entitlements" });
 const DAY_MS = 24 * 60 * 60 * 1000;
 const EMAIL_BATCH_SIZE = 100; // Resend's batch limit
 const LOOKUP_CHUNK = 1000;
-// Local statuses the daily reconcile checks against Lemon Squeezy: still paid, or retrying a renewal.
+// Local statuses the daily reconcile checks with the provider: still paid, or retrying a renewal.
 const PROVIDER_CHECKED_STATUSES = ["active", "on_trial", ...FAILED_PAYMENT_STATUSES];
 // A subscription that ended longer ago than this gets no lapse grace or emails
 // when the reconcile finds it: the customer stopped paying long ago.
@@ -346,8 +349,22 @@ async function recordStaleLapse(dbClient: DbClient, sub: Subscription, endedAt: 
     );
 }
 
+// The provider's id for the row, matched by guarded updates and logged with it.
+const providerIdCondition = (sub: Subscription) =>
+  sub.billingProvider === "paddle"
+    ? eq(subscription.providerSubscriptionId, sub.providerSubscriptionId ?? "")
+    : eq(subscription.subscriptionId, sub.subscriptionId ?? 0);
+
+const subscriptionLogContext = (sub: Subscription) => ({
+  id: sub.id,
+  userId: sub.userId,
+  billingProvider: sub.billingProvider,
+  subscriptionId:
+    sub.billingProvider === "paddle" ? sub.providerSubscriptionId : sub.subscriptionId,
+});
+
 /**
- * Mirrors a subscription that Lemon Squeezy has ended (see
+ * Mirrors a subscription that its provider has ended (see
  * providerEndedSubscription) onto the local row still holding it as paid or
  * retrying a renewal, for when that webhook was missed: the same writes as the
  * webhook, with the entitlement sync in the same transaction. One that ended
@@ -360,7 +377,11 @@ export async function syncEndedSubscription(
   provider: ProviderSubscriptionState,
   now = new Date(),
 ): Promise<boolean> {
-  if (!sub.subscriptionId || !sub.status || !providerEndedSubscription(sub.status, provider, now)) {
+  if (
+    !hasProviderSubscription(sub) ||
+    !sub.status ||
+    !providerEndedSubscription(sub.status, provider, now)
+  ) {
     return false;
   }
   const changes =
@@ -380,7 +401,7 @@ export async function syncEndedSubscription(
       .where(
         and(
           eq(subscription.id, sub.id),
-          eq(subscription.subscriptionId, sub.subscriptionId ?? 0),
+          providerIdCondition(sub),
           eq(subscription.status, sub.status ?? ""),
           provider.updatedAt
             ? or(
@@ -400,9 +421,7 @@ export async function syncEndedSubscription(
     }
     log.info(
       {
-        id: sub.id,
-        userId: sub.userId,
-        subscriptionId: sub.subscriptionId,
+        ...subscriptionLogContext(sub),
         from: sub.status,
         to: provider.status,
         endsAt,
@@ -416,10 +435,11 @@ export async function syncEndedSubscription(
 
 /**
  * Checks every subscription held locally as paid or in a failed payment
- * against Lemon Squeezy and syncs the ones it has ended, so accounts the
+ * with its provider (Lemon Squeezy or Paddle) and syncs the ones it has ended, so accounts the
  * provider stopped billing lose their paid plan and failed payments stop asking
  * for a card update. A row the provider doesn't know, or that can't be checked,
- * is left unchanged (the latter for the next run). Returns how many rows changed.
+ * is left unchanged (the latter for the next run), as is a Paddle row while
+ * Paddle isn't configured. Returns how many rows changed.
  */
 export async function syncProviderEndedSubscriptions(
   now = new Date(),
@@ -431,18 +451,20 @@ export async function syncProviderEndedSubscriptions(
     .where(
       and(
         inArray(subscription.status, PROVIDER_CHECKED_STATUSES),
-        gt(subscription.subscriptionId, 0),
+        or(gt(subscription.subscriptionId, 0), isNotNull(subscription.providerSubscriptionId)),
       ),
     );
   let synced = 0;
   // Sequential: one lookup per paying account a day stays well inside the provider's rate limit.
   for (const sub of held) {
     try {
-      const provider = await lookup(sub.subscriptionId ?? 0);
+      const provider = await lookup(sub);
       if (await syncEndedSubscription(sub, provider, now)) synced++;
     } catch (err) {
-      const context = { id: sub.id, userId: sub.userId, subscriptionId: sub.subscriptionId };
-      if (err instanceof ProviderSubscriptionNotFoundError) {
+      const context = subscriptionLogContext(sub);
+      if (err instanceof ProviderNotConfiguredError) {
+        log.warn(context, "provider not configured; subscription not checked");
+      } else if (err instanceof ProviderSubscriptionNotFoundError) {
         log.warn(context, "subscription not found at provider; left unchanged");
       } else {
         log.warn({ err, ...context }, "could not check subscription with provider");
@@ -466,8 +488,8 @@ const PROVIDER_CHECK: ProviderCheck = {
 /**
  * Whether an email asking for a card update may go out for this subscription.
  * The local row may have missed the webhook that ended it, and the
- * update-payment-method link can't revive an expired subscription, so Lemon
- * Squeezy is asked first. An ended subscription is synced and its email skipped
+ * update-payment-method link can't revive an expired subscription, so the
+ * provider is asked first. An ended subscription is synced and its email skipped
  * (the next run sends the one for its new state); one that can't be checked is
  * left for the next run.
  */
@@ -477,18 +499,24 @@ export async function paymentUpdateEmailAllowed(
   check: ProviderCheck = PROVIDER_CHECK,
 ): Promise<boolean> {
   // Rows from before subscription ids were stored can't be checked.
-  if (!sub.subscriptionId) return true;
+  if (!hasProviderSubscription(sub)) return true;
+  const context = subscriptionLogContext(sub);
   try {
-    const provider = await check.lookup(sub.subscriptionId);
+    const provider = await check.lookup(sub);
     if (!isEndedProviderStatus(provider.status)) return true;
     await check.sync(sub, provider, now);
     log.info(
-      { userId: sub.userId, subscriptionId: sub.subscriptionId, status: provider.status },
+      { ...context, status: provider.status },
       "skipped card-update email for subscription ended at provider",
     );
   } catch (err) {
+    // Like a row without an id, one whose provider isn't configured here can't be checked.
+    if (err instanceof ProviderNotConfiguredError) {
+      log.warn(context, "provider not configured; card-update email sent unchecked");
+      return true;
+    }
     log.warn(
-      { err, userId: sub.userId, subscriptionId: sub.subscriptionId },
+      { err, ...context },
       "could not confirm failed payment with provider; card-update email deferred",
     );
   }
@@ -529,7 +557,7 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
     emailsSent: 0,
   };
 
-  // 0. Paid or failed-payment subscriptions Lemon Squeezy has since ended
+  // 0. Paid or failed-payment subscriptions the provider has since ended
   //    (webhook missed), so the steps below and the emails see the real state.
   result.subscriptionsSynced = await syncProviderEndedSubscriptions(now);
 
@@ -703,7 +731,7 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
 type PendingEmail = {
   to: string;
   subject: string;
-  react: ReturnType<typeof PlanGraceEmail>;
+  props: PlanGraceEmailProps;
   /** Moves the row to this email's stage; false when another run already did. */
   claim: () => Promise<boolean>;
   /** Undoes the claim after a failed send, so the next run retries it. */
@@ -725,28 +753,8 @@ function timeLeft(endsAt: Date, now: Date): string {
 }
 
 // pricing-cards.tsx opens on the plan named in `?plan=`.
-const upgradeUrl = (plan: Plan) => getAppUrl(`/dashboard/pricing?plan=${plan}`);
-
-function accountSubject(
-  kind: GraceEmailKind,
-  reason: GraceReason,
-  planName: string,
-  endsOn: string,
-  paymentFailed: boolean,
-) {
-  if (kind === "ended") return "Your iShortn account is on the Free plan now";
-  if (paymentFailed && kind === "started") {
-    return `Your iShortn ${planName} payment didn't go through`;
-  }
-  if (reason === "lapsed") {
-    return kind === "started"
-      ? `Your iShortn ${planName} access continues until ${endsOn}`
-      : `Your iShortn ${planName} access ends on ${endsOn}`;
-  }
-  return kind === "started"
-    ? `Some of your iShortn features need ${planName} after ${endsOn}`
-    : `Reminder: some of your iShortn features need ${planName} from ${endsOn}`;
-}
+const upgradeUrl = (plan: Plan) =>
+  plan === "free" ? getAppUrl("/dashboard/pricing") : emailLinkUrl(EMAIL_LINKS.planGrace[plan]);
 
 /**
  * The team grace email to its owner. When the owner's Ultra payment failed it
@@ -754,7 +762,6 @@ function accountSubject(
  */
 export function teamGraceEmail(options: {
   teamName: string;
-  ownerName: string | null;
   ownerSubscription: Subscription | null;
   endsAt: Date;
   kind: GraceEmailKind;
@@ -763,25 +770,18 @@ export function teamGraceEmail(options: {
   const { teamName, endsAt, kind, now } = options;
   const endsOn = formatDay(endsAt);
   const paymentFailed = teamGraceAction(options.ownerSubscription) === "update_payment";
-  let subject: string;
-  if (kind !== "started") subject = `${teamName} becomes read-only on ${endsOn}`;
-  else if (paymentFailed) subject = "Your iShortn Ultra payment didn't go through";
-  else subject = `${teamName} needs Ultra to stay editable after ${endsOn}`;
-  return {
-    subject,
-    props: {
-      recipientName: options.ownerName,
-      kind,
-      reason: "team",
-      planName: "Ultra",
-      endsOn,
-      timeLeft: timeLeft(endsAt, now),
-      teamName,
-      items: [],
-      upgradeUrl: upgradeUrl("ultra"),
-      updatePaymentUrl: paymentFailed ? getAppUrl(updatePaymentPath("email")) : undefined,
-    } satisfies PlanGraceEmailProps,
+  const props: PlanGraceEmailProps = {
+    kind,
+    reason: "team",
+    planName: "Ultra",
+    endsOn,
+    timeLeft: timeLeft(endsAt, now),
+    teamName,
+    items: [],
+    upgradeUrl: upgradeUrl("ultra"),
+    updatePaymentUrl: paymentFailed ? getAppUrl(updatePaymentPath("email")) : undefined,
   };
+  return { subject: planGraceSubject(props), props };
 }
 
 /** Free-plan limits listed when a lapsed account uses no feature above Free. */
@@ -801,7 +801,6 @@ function freePlanSummary(): string[] {
  * list: the account no longer uses anything the grace covers.
  */
 export function accountGraceEmail(options: {
-  name: string | null;
   subscription: Subscription | null;
   usage: PlanUsage;
   gracePlan: Plan;
@@ -819,20 +818,19 @@ export function accountGraceEmail(options: {
   const planName = PLAN_NAMES[gracePlan];
   const endsOn = formatDay(endsAt);
   const paymentFailed = graceAction(reason, subscription, gracePlan) === "update_payment";
-  return {
-    subject: accountSubject(kind, reason, planName, endsOn, paymentFailed),
-    props: {
-      recipientName: options.name,
-      kind,
-      reason,
-      planName,
-      endsOn,
-      timeLeft: timeLeft(endsAt, now),
-      items: items.length > 0 || reason !== "lapsed" ? items : freePlanSummary(),
-      upgradeUrl: upgradeUrl(gracePlan),
-      updatePaymentUrl: paymentFailed ? getAppUrl(updatePaymentPath("email")) : undefined,
-    } satisfies PlanGraceEmailProps,
+  const itemsAreFreePlan = reason === "lapsed" && items.length === 0;
+  const props: PlanGraceEmailProps = {
+    kind,
+    reason,
+    planName,
+    endsOn,
+    timeLeft: timeLeft(endsAt, now),
+    items: itemsAreFreePlan ? freePlanSummary() : items,
+    itemsAreFreePlan,
+    upgradeUrl: upgradeUrl(gracePlan),
+    updatePaymentUrl: paymentFailed ? getAppUrl(updatePaymentPath("email")) : undefined,
   };
+  return { subject: planGraceSubject(props), props };
 }
 
 /**
@@ -873,7 +871,6 @@ export async function sendDueGraceEmails(options: {
   for (const { account, email, endsAt, gracePlan, reason, kind } of due) {
     const stage = GRACE_EMAIL_STAGE[kind];
     const message = accountGraceEmail({
-      name: account.name,
       subscription: account.subscriptions,
       usage: usage.get(account.id) ?? EMPTY_USAGE,
       gracePlan,
@@ -895,7 +892,7 @@ export async function sendDueGraceEmails(options: {
     pending.push({
       to: email,
       subject: message.subject,
-      react: PlanGraceEmail(message.props),
+      props: message.props,
       claim: async () => {
         const [result] = await db
           .update(user)
@@ -921,7 +918,6 @@ export async function sendDueGraceEmails(options: {
         endsAt: team.ownerPlanGraceEndsAt,
         stage: team.ownerPlanGraceEmailStage,
         ownerEmail: user.email,
-        ownerName: user.name,
         ownerSubscription: subscription,
       })
       .from(team)
@@ -946,7 +942,6 @@ export async function sendDueGraceEmails(options: {
       const stage = GRACE_EMAIL_STAGE[kind];
       const { subject, props } = teamGraceEmail({
         teamName: row.name,
-        ownerName: row.ownerName,
         ownerSubscription: row.ownerSubscription,
         endsAt: row.endsAt,
         kind,
@@ -962,7 +957,7 @@ export async function sendDueGraceEmails(options: {
       pending.push({
         to: row.ownerEmail,
         subject,
-        react: PlanGraceEmail(props),
+        props,
         claim: async () => {
           const [result] = await db
             .update(team)
@@ -980,7 +975,12 @@ export async function sendDueGraceEmails(options: {
     }
   }
 
-  if (!resend || pending.length === 0) return 0;
+  if (pending.length === 0) return 0;
+  const resend = await getResend();
+  if (!resend) return 0;
+  // Imported here, not at the top: the template pulls React into every route that imports this
+  // module (API auth, workspace context), and only this path renders it.
+  const { default: PlanGraceEmail } = await import("@/emails/plan-grace");
 
   // Claimed before sending, so concurrent runs (batched first requests, the
   // webhook and the cron) never send the same stage twice.
@@ -993,14 +993,17 @@ export async function sendDueGraceEmails(options: {
   for (const batch of chunk(claimed, EMAIL_BATCH_SIZE)) {
     let error: Error | null = null;
     try {
-      ({ error } = await resend.batch.send(
-        batch.map((email) => ({
-          from: EMAIL_FROM,
-          to: email.to,
-          subject: email.subject,
-          react: email.react,
-        })),
-      ));
+      const emails = await Promise.all(
+        batch.map(async (email) =>
+          withReplyTo({
+            from: EMAIL_FROM_SYSTEM,
+            to: email.to,
+            subject: email.subject,
+            ...(await renderEmail(PlanGraceEmail(email.props), email.to)),
+          }),
+        ),
+      );
+      ({ error } = await resend.batch.send(emails));
     } catch (err) {
       error = err instanceof Error ? err : new Error(String(err));
     }

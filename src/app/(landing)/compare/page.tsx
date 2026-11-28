@@ -163,6 +163,13 @@ export default function CompareHubPage() {
             Link shorteners compared: free plans and prices
           </h1>
           <p className={cn(leadClass, "mt-5 max-w-[60ch]")}>{compareIntro()}</p>
+          <p className={cn(bodyClass, "mt-4 max-w-[60ch]")}>
+            Want to self-host? See{" "}
+            <Link href="/open-source-url-shortener" className={toolLinkClass}>
+              open-source URL shorteners compared
+            </Link>
+            .
+          </p>
         </div>
       </Section>
 

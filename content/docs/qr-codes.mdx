@@ -1,26 +1,51 @@
 ---
 title: QR codes
-description: Dynamic QR codes you can repoint after printing, styling options, downloads, limits and scan analytics.
+description: Dynamic link QR codes, contact card (vCard) codes, and static Wi-Fi, email, SMS, phone and text codes. Styling, downloads, limits and scan analytics.
 ---
 
-Every QR code made in the dashboard is **dynamic**. The code encodes a short tracking link, not your destination, so you can change where it points after it's printed and see how often it's scanned.
+The dashboard makes three kinds of QR code:
+
+- **Link** codes are dynamic. The code encodes a short tracking link, not your destination, so you can change where it points after it's printed and see how often it's scanned.
+- **vCard** (contact card) codes are dynamic too. They open a hosted contact page with a **Save contact** button. You can edit the details after printing, and scans are tracked. Pro and Ultra.
+- **Wi-Fi, Email, SMS, Phone and Text** codes are static. The content is stored in the code itself, so they don't use a short link and scans aren't tracked. Available on every plan.
 
 | | Free | Pro | Ultra |
 | --- | --- | --- | --- |
 | QR codes | 5 in total | Unlimited | Unlimited |
-| Counts toward monthly links | Yes | Yes | Yes |
-| Scan analytics | Last 7 days | Full history | Full history |
+| Link and vCard codes count toward monthly links | Yes | Yes | Yes |
+| Contact card (vCard) codes | No | Yes | Yes |
+| Scan analytics | Last 7 days | 1 year | All time |
 
-Each QR code creates one short link, so it also uses one slot of your [monthly link limit](/docs/short-links#monthly-link-limit). QR codes in a [team workspace](/docs/teams) have no count limit.
+Each link or vCard code creates one short link, so it also uses one slot of your [monthly link limit](/docs/short-links#monthly-link-limit). Static codes count toward the QR code total but not the monthly link limit. QR codes in a [team workspace](/docs/teams) have no count limit.
 
 To make a one-off code without an account, use the free [QR code generator](/qr-code-generator). Those codes are static: they encode the URL directly and can't be edited or tracked.
 
 ## Create a QR code
 
 1. Open [QR Codes](/dashboard/qrcodes) and click **New QR Code**.
-2. Enter the destination URL and, optionally, a title.
+2. Pick a type (see below), fill in its fields and, optionally, add a title.
 3. Style the code (see below). The preview updates as you go.
 4. Pick PNG or SVG under **Download as**, then click **Generate & Download**.
+
+## QR code types
+
+Pick a type at the top of the create form.
+
+| Type | What a scan does | Fields | Tracked | Editable after printing |
+| --- | --- | --- | --- | --- |
+| Link | Opens your URL | Destination URL | Yes | Yes, the destination |
+| vCard | Opens a contact page with Save contact | Name, organisation, job title, two phones, email, website, address, note | Yes | Yes, the card details |
+| Wi-Fi | Joins a Wi-Fi network | Network name (up to 32 characters), password, security (WPA, WEP or none), hidden network | No | No |
+| Email | Opens a new email | Address, subject, message (up to 1,000 characters) | No | No |
+| SMS | Opens a text message | Phone number, message (up to 500 characters) | No | No |
+| Phone | Starts a call | Phone number | No | No |
+| Text | Shows the text | Text (up to 1,000 characters) | No | No |
+
+You can still edit a static code's content in the dashboard, but the pattern changes, so download it again and reprint it. A printed static code keeps its old content.
+
+### Contact card page
+
+A vCard code's page shows the details you entered and a **Save contact** button that downloads a `.vcf` file. iPhones and Android phones offer to add it to the contacts. The page isn't indexed by search engines. If your plan drops to Free, existing contact cards keep working and you can still edit them, but you can't create new ones.
 
 ## Styling
 
@@ -45,8 +70,10 @@ Both formats encode the same short link, so they scan to the same place and shar
 
 ## Change the destination
 
-Open the code and edit it. You can change the destination URL, title, note and tags, and use the same link options as any short link: expiry, a go-live time and targeting rules on Pro and Ultra, and UTM parameters on Ultra. Printed codes pick up the change straight away.
+Open the code and edit it. You can change the destination URL, title, note and tags, and use the same link options as any short link: expiry, and a go-live time, targeting rules and UTM parameters on Pro and Ultra. Printed codes pick up the change straight away.
+
+On Pro and Ultra, a link code's destination is checked once a day. If the page stops working, you get an email listing it, so you can point printed codes at a working page before people scan them. See [Broken-destination alerts](/docs/short-links#broken-destination-alerts).
 
 ## Scan analytics
 
-Each scan is a click on the code's short link, so QR codes get the same [analytics](/docs/analytics) as links: scans over time, countries, cities, devices and more. Free accounts see the last 7 days; Pro and Ultra see the full history and a world map.
+Each scan is a click on the code's short link, so QR codes get the same [analytics](/docs/analytics) as links: scans over time, countries, cities, devices and more. Free accounts see the last 7 days, Pro accounts the last year and Ultra accounts all time; Pro and Ultra also get a world map. Static codes don't use a short link, so they have no scan analytics.

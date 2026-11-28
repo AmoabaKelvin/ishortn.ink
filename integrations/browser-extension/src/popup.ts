@@ -1,10 +1,11 @@
-import { type Api, ApiError, type CreatedLink, type Me, createApi } from "./lib/api.ts";
+import { type Api, ApiError, type CreatedLink, type Me, type RecentLink, createApi } from "./lib/api.ts";
 import { ext } from "./lib/browser.ts";
 import { BASE_URL, urls } from "./lib/config.ts";
 import { h, icon } from "./lib/dom.ts";
-import { type UiError, mapApiError } from "./lib/errors.ts";
-import { defaultAutoShorten, planName, qrFileName, usageText } from "./lib/format.ts";
+import { type UiError, mapApiError, monthlyLimitError } from "./lib/errors.ts";
+import { planName, qrFileName, usageText } from "./lib/format.ts";
 import { type CachedLink, lookupCachedLink, withCachedLink } from "./lib/link-cache.ts";
+import { meCache, shouldAutoShorten } from "./lib/me-cache.ts";
 import { drawQr, qrPngDataUrl } from "./lib/qr.ts";
 import { displayUrl, isShortenableUrl, normalizePastedUrl } from "./lib/shortenable.ts";
 import { local, session } from "./lib/storage.ts";
@@ -196,15 +197,32 @@ const footer = (ctx: Ctx | null) => {
   return h("footer", { class: "footer" }, usage, links);
 };
 
-const refreshFooter = (ctx: Ctx, current: HTMLElement) => {
+const domainOptions = (domains: Me["domains"]) =>
+  domains.length
+    ? domains.map((d) => h("option", { value: d.domain, selected: d.isDefault }, d.domain))
+    : [h("option", { value: "" }, "Default domain")];
+
+/** Puts a fresh /me into the open view: plan badge, footer counts and the Customize domains. */
+const applyMe = (ctx: Ctx, me: Me) => {
+  const domainsChanged = JSON.stringify(ctx.me.domains) !== JSON.stringify(me.domains);
+  ctx.me = me;
+  void meCache.save(me);
+  setPlan(me);
+  app.querySelector(":scope > footer")?.replaceWith(footer(ctx));
+  const select = document.getElementById("custom-domain");
+  if (domainsChanged && select instanceof HTMLSelectElement) {
+    const chosen = select.value;
+    select.replaceChildren(...domainOptions(me.domains));
+    select.disabled = me.domains.length === 0;
+    if (me.domains.some((d) => d.domain === chosen)) select.value = chosen;
+  }
+};
+
+const refreshFooter = (ctx: Ctx) => {
   void ctx.api
     .me()
     .then((me) => {
-      if (ctx.gen !== generation) return;
-      ctx.me = me;
-      setPlan(me);
-      const next = footer(ctx);
-      current.replaceWith(next);
+      if (ctx.gen === generation) applyMe(ctx, me);
     })
     .catch(() => {
       // keep the previous counts; the next popup open refreshes them
@@ -283,6 +301,9 @@ const showNotConnected = async (notice?: string) => {
 };
 
 const disconnect = async (message: string) => {
+  // Bump first so a second failing request (or a late /me) can't render or cache over this.
+  generation++;
+  await meCache.clear();
   await local.remove("token");
   await session.remove("linkCache");
   await showNotConnected(message);
@@ -295,6 +316,7 @@ const signOut = async (api: Api | null) => {
     // Revoking is best effort: the local token is removed either way.
     await Promise.race([api.signOut(), timeout]).catch(() => undefined);
   }
+  await meCache.clear();
   await local.remove("token");
   await local.remove("autoShorten");
   await session.remove("linkCache");
@@ -334,28 +356,40 @@ const showConnected = async (token: string) => {
   loadingView("loading", "Loading");
 
   const mePromise = api.me();
+  mePromise.catch(() => undefined);
+  const recentPromise = isShortenableUrl(tabUrl) ? null : api.recentLinks(5);
+  recentPromise?.catch(() => undefined);
 
-  if (!isShortenableUrl(tabUrl)) {
-    const recentPromise = api.recentLinks(5);
-    recentPromise.catch(() => undefined);
-    let me: Me;
-    try {
-      me = await mePromise;
-    } catch (error) {
-      if (gen === generation) await handleFatal(error, retry);
-      return;
-    }
-    if (gen !== generation) return;
-    setPlan(me);
-    return showUnshortenable({ api, me, gen }, recentPromise);
-  }
+  const [cachedMe, linkCache, storedAuto] = await Promise.all([
+    meCache.load(),
+    session.get("linkCache"),
+    local.get("autoShorten"),
+  ]);
+  if (gen !== generation) return;
 
-  const pageUrl = tabUrl;
-  const cached = lookupCachedLink(await session.get("linkCache"), pageUrl, Date.now());
-  const storedAuto = await local.get("autoShorten");
-  // When the preference is already known to be on, create in parallel with /me.
-  const earlyCreate = !cached && storedAuto === true ? api.createLink({ url: pageUrl }) : null;
+  // An account cached at its monthly cap waits for /me instead of creating: showTarget then shows
+  // the limit screen without a request, or the usual flow once a new month has reset the count.
+  const usableMe = cachedMe && !monthlyLimitError(cachedMe) ? cachedMe : null;
+
+  // Start creating in parallel with /me whenever the answer is already known: from the saved
+  // switch, or from the cached plan's default.
+  const pageUrl = isShortenableUrl(tabUrl) ? tabUrl : null;
+  const cachedLink = pageUrl ? lookupCachedLink(linkCache, pageUrl, Date.now()) : null;
+  const autoKnown = usableMe
+    ? shouldAutoShorten(storedAuto, usableMe.plan)
+    : !cachedMe && storedAuto === true;
+  const earlyCreate = pageUrl && !cachedLink && autoKnown ? api.createLink({ url: pageUrl }) : null;
   earlyCreate?.catch(() => undefined);
+
+  const target: Target = { recentPromise, cachedLink, storedAuto, earlyCreate };
+
+  if (usableMe) {
+    // Render from the last known account now and revalidate behind it.
+    const ctx: Ctx = { api, me: usableMe, gen };
+    setPlan(usableMe);
+    revalidate(ctx, mePromise);
+    return showTarget(ctx, target);
+  }
 
   let me: Me;
   try {
@@ -365,11 +399,38 @@ const showConnected = async (token: string) => {
     return;
   }
   if (gen !== generation) return;
+  void meCache.save(me);
   setPlan(me);
-  const ctx: Ctx = { api, me, gen };
-  const auto = storedAuto ?? defaultAutoShorten(me.plan);
+  return showTarget({ api, me, gen }, target);
+};
 
-  if (cached) return showResult(ctx, toShown(cached, pageUrl), auto, true);
+const revalidate = (ctx: Ctx, mePromise: Promise<Me>) => {
+  mePromise
+    .then((me) => {
+      if (ctx.gen === generation) applyMe(ctx, me);
+    })
+    .catch((error: unknown) => {
+      if (ctx.gen !== generation) return;
+      const ui = toUiError(error);
+      if (ui.kind === "unauthorized") void disconnect(ui.message);
+      // Anything else keeps the cached view; the next open tries again.
+    });
+};
+
+type Target = {
+  recentPromise: Promise<RecentLink[]> | null;
+  cachedLink: CachedLink | null;
+  storedAuto: boolean | undefined;
+  earlyCreate: Promise<CreatedLink> | null;
+};
+
+const showTarget = (ctx: Ctx, { recentPromise, cachedLink, storedAuto, earlyCreate }: Target) => {
+  if (recentPromise) return showUnshortenable(ctx, recentPromise);
+  if (!isShortenableUrl(tabUrl)) return;
+  const auto = shouldAutoShorten(storedAuto, ctx.me.plan);
+  if (cachedLink) return showResult(ctx, toShown(cachedLink, tabUrl), auto, true);
+  const limit = monthlyLimitError(ctx.me);
+  if (limit) return showShortenError(ctx, auto, limit);
   if (!auto) return showManual(ctx, auto);
   return shortenPage(ctx, auto, earlyCreate);
 };
@@ -381,22 +442,56 @@ const toShown = (link: CachedLink | CreatedLink, url: string): ShownLink => ({
   url,
 });
 
+/** The tab's own QR card, shown before there is a short link. */
+const pageSection = async (pageUrl: string) =>
+  h(
+    "section",
+    { class: "stack", "aria-label": "This page" },
+    h("p", { class: "eyebrow" }, "This page"),
+    await qrCard(pageUrl, [h("p", { class: "url", title: pageUrl }, displayUrl(pageUrl)), qrActions(pageUrl, "Copy URL")]),
+  );
+
 const shortenPage = async (ctx: Ctx, auto: boolean, pending: Promise<CreatedLink> | null) => {
   if (!isShortenableUrl(tabUrl)) return;
   const pageUrl = tabUrl;
-  loadingView("creating", "Creating short link");
+  const request = pending ?? ctx.api.createLink({ url: pageUrl });
+  request.catch(() => undefined);
+
+  // While the link is created, show what's already useful: the page and its QR code.
+  const page = await pageSection(pageUrl);
+  if (ctx.gen !== generation) return;
+  mount(
+    "creating",
+    h(
+      "section",
+      { class: "stack", "aria-label": "Short link", "aria-busy": "true" },
+      h("label", { class: "eyebrow", for: "short-link" }, "Short link"),
+      h("input", {
+        class: "input short-field",
+        id: "short-link",
+        type: "text",
+        readonly: true,
+        disabled: true,
+        placeholder: "Creating short link…",
+      }),
+    ),
+    page,
+    autoShortenSwitch(auto),
+    footer(ctx),
+  );
+
   let link: CreatedLink;
   try {
-    link = await (pending ?? ctx.api.createLink({ url: pageUrl }));
+    link = await request;
   } catch (error) {
     if (ctx.gen !== generation) return;
     const ui = toUiError(error);
     if (ui.kind === "unauthorized") return disconnect(ui.message);
-    return showShortenError(ctx, auto, ui);
+    return showShortenError(ctx, readAuto(), ui);
   }
   if (ctx.gen !== generation) return;
   await cacheLink(pageUrl, link);
-  await showResult(ctx, toShown(link, pageUrl), auto, true, true);
+  await showResult(ctx, toShown(link, pageUrl), readAuto(), true, true);
 };
 
 const showManual = async (ctx: Ctx, auto: boolean) => {
@@ -408,14 +503,11 @@ const showManual = async (ctx: Ctx, auto: boolean) => {
     void shortenPage(ctx, readAuto(), null);
   }, { primary: true, block: true, large: true });
 
-  const card = await qrCard(pageUrl, [
-    h("p", { class: "url", title: pageUrl }, displayUrl(pageUrl)),
-    qrActions(pageUrl, "Copy URL"),
-  ]);
+  const page = await pageSection(pageUrl);
   if (ctx.gen !== generation) return;
   mount(
     "manual",
-    h("section", { class: "stack", "aria-label": "This page" }, h("p", { class: "eyebrow" }, "This page"), card),
+    page,
     shortenBtn,
     autoShortenSwitch(auto),
     footer(ctx),
@@ -432,15 +524,12 @@ const showShortenError = async (ctx: Ctx, auto: boolean, ui: UiError) => {
   if (!isShortenableUrl(tabUrl)) return;
   const pageUrl = tabUrl;
   const action = errorAction(ui, () => void shortenPage(ctx, readAuto(), null));
-  const card = await qrCard(pageUrl, [
-    h("p", { class: "url", title: pageUrl }, displayUrl(pageUrl)),
-    qrActions(pageUrl, "Copy URL"),
-  ]);
+  const page = await pageSection(pageUrl);
   if (ctx.gen !== generation) return;
   mount(
     ui.kind === "upgrade" ? "limit" : "shorten-error",
     alertBox(ui, action),
-    h("section", { class: "stack", "aria-label": "This page" }, h("p", { class: "eyebrow" }, "This page"), card),
+    page,
     autoShortenSwitch(auto),
     footer(ctx),
   );
@@ -504,7 +593,7 @@ const showResult = async (
   });
   mount(copyNow ? "created" : "result", block, panel, autoShortenSwitch(auto), foot);
   afterMount();
-  if (refreshUsage) refreshFooter(ctx, foot);
+  if (refreshUsage) refreshFooter(ctx);
 };
 
 const customize = (ctx: Ctx, link: ShownLink, onToggle: (open: boolean) => void) => {
@@ -516,13 +605,11 @@ const customize = (ctx: Ctx, link: ShownLink, onToggle: (open: boolean) => void)
     "Customize",
   );
 
-  const domains = ctx.me.domains.length ? ctx.me.domains : [];
+  const domains = ctx.me.domains;
   const select = h(
     "select",
     { class: "select", id: "custom-domain", disabled: domains.length === 0 },
-    ...(domains.length
-      ? domains.map((d) => h("option", { value: d.domain, selected: d.isDefault }, d.domain))
-      : [h("option", { value: "" }, "Default domain")]),
+    ...domainOptions(domains),
   );
   const alias = h("input", {
     class: "input",
@@ -653,7 +740,6 @@ const showUnshortenable = async (
     h("p", { class: "eyebrow" }, "Recent links"),
     recentSlot,
   );
-  let foot = footer(ctx);
 
   const form = h(
     "form",
@@ -693,10 +779,7 @@ const showUnshortenable = async (
         input.value = "";
         // The new link takes the recent list's place so the popup stays within 600px.
         recentSection.hidden = true;
-        const next = footer(ctx);
-        foot.replaceWith(next);
-        foot = next;
-        refreshFooter(ctx, foot);
+        refreshFooter(ctx);
       } catch (error) {
         if (ctx.gen !== generation) return;
         const ui = toUiError(error);
@@ -718,7 +801,7 @@ const showUnshortenable = async (
     form,
     resultSlot,
     recentSection,
-    foot,
+    footer(ctx),
   );
   input.focus();
 };
@@ -738,7 +821,9 @@ ext.storage.onChanged.addListener((changes, area) => {
   if (area !== "local" || !("token" in changes)) return;
   const { oldValue, newValue } = changes.token ?? {};
   if (oldValue === newValue) return;
-  if (newValue && !oldValue) void start();
+  void meCache.clear().then(() => {
+    if (newValue && !oldValue) return start();
+  });
 });
 
 // Enter runs the page's primary action when nothing in particular has focus.

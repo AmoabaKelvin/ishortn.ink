@@ -65,7 +65,7 @@ Do these while you're still on the paid plan.
 
 **1. Find out which domain your links use.** Open your Bitly links list and look at the domain column. For printed material, scan a few real QR codes and read the address your phone shows before it opens. People are often surprised to find that the codes on last year's catalogue are on `bit.ly` and the newer ones on a branded domain, or the other way round.
 
-**2. Check whether your branded domain is yours or Bitly's.** If you bought it from a registrar (GoDaddy, Namecheap, Cloudflare and so on) and added it to Bitly, it's yours and it can move. If you picked it when you signed up for Growth and never paid a registrar for it, it's probably Bitly's complimentary domain, and it stays behind.
+**2. Check whether your branded domain is yours or Bitly's.** If you bought it from a registrar (GoDaddy, Namecheap, Cloudflare and so on) and added it to Bitly, it's yours and it can move. If you picked it when you signed up for Growth and never paid a registrar for it, it's probably Bitly's complimentary domain, and it stays behind. [Bitly custom domains explained](/blog/bitly-custom-domain) covers the difference and what each costs.
 
 **3. Export your links.** In Bitly, open **Links**, click **Export**, choose an email address and download the CSV from the email Bitly sends ([export article](https://support.bitly.com/hc/en-us/articles/115000268051-How-to-export-all-the-data-in-a-range-from-the-All-Links-page)). Large exports can take up to 30 minutes. The file lists each link, its custom back-half, title, destination, creation date, total engagements and whether it was deleted. Selecting links and exporting them gives at most 100 rows, so use the full export.
 

@@ -6,7 +6,7 @@ endpoint:
   path: /api/v1/me
 ---
 
-Returns the account that owns the API key: its ID, email, name, plan and default domain. Automation tools such as Zapier, Make and n8n call it to test a connection, and it's a cheap way to check a key in your own code.
+Returns the account that owns the API key: its ID, email, name, plan, the workspace the key acts in, default domain, links created this month and API rate limits. Automation tools such as Zapier, Make and n8n call it to test a connection, and it's a cheap way to check a key in your own code.
 
 ## Request
 
@@ -55,11 +55,19 @@ print(response.json()["email"])
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `id` | string | The account ID. |
+| `id` | string | The account ID. For a team key, the member who created it. |
 | `email` | string \| null | The account's email address. |
 | `name` | string \| null | The account's name. |
-| `plan` | string | `free`, `pro` or `ultra`: the plan the API applies to this key's requests. A cancelled plan counts until the end of the paid period. |
+| `plan` | string | `free`, `pro` or `ultra`: the plan the API applies to this key's requests. A cancelled plan counts until the end of the paid period. Team keys use the team's plan (`ultra`). |
+| `workspace.type` | string | `personal` for a personal key, `team` for a [team key](/docs/teams#api-access). |
+| `workspace.id` | number | Team keys only: the team's ID. |
+| `workspace.name` | string | Team keys only: the team's name. |
+| `workspace.slug` | string | Team keys only: the team's slug (its `slug.ishortn.ink` subdomain). |
 | `defaultDomain` | string | The domain new links use when a request leaves out `domain`. See [Domains](/docs/api#domains). |
+| `usage.linksThisMonth` | number | Links created this calendar month, which count toward the monthly limit. For a team key, the team's links created this month. |
+| `usage.linksLimit` | number \| null | The plan's monthly link limit, or `null` when it's unlimited (Ultra). See [Plans and limits](/docs/api#plans-and-limits). |
+| `rateLimits.perMinute` | number | Requests per minute the plan allows. See [Rate limits](/docs/api#rate-limits). |
+| `rateLimits.perDay` | number | Requests per day the plan allows. |
 
 ```json
 {
@@ -67,8 +75,17 @@ print(response.json()["email"])
   "email": "ada@example.com",
   "name": "Ada Lovelace",
   "plan": "pro",
-  "defaultDomain": "isht.app"
+  "workspace": { "type": "personal" },
+  "defaultDomain": "isht.app",
+  "usage": { "linksThisMonth": 42, "linksLimit": 1000 },
+  "rateLimits": { "perMinute": 300, "perDay": 10000 }
 }
+```
+
+A team key returns the team instead:
+
+```json
+"workspace": { "type": "team", "id": 42, "name": "Acme Agency", "slug": "acme" }
 ```
 
 ## Errors
@@ -78,5 +95,5 @@ Error bodies use the [standard error shape](/docs/api#responses-and-errors), exc
 | Status | Code | Message | Cause |
 | --- | --- | --- | --- |
 | `401` | `unauthorized` | `Invalid or missing API key` | See [Authentication](/docs/api#authentication). |
-| `403` | | `{"error": "API access requires Pro", "upgrade_url": "https://ishortn.ink/pricing"}` (whole body) | The key's account isn't on Pro or Ultra and its notice period has ended. See [API access by plan](/docs/api#api-access-by-plan). |
+| `403` | | `{"error": "API access requires Pro", "upgrade_url": "https://ishortn.ink/pricing"}` (whole body) | The key's account isn't on Pro or Ultra and its notice period has ended, or a team key's team was deleted or is past its owner's plan grace period. See [API access by plan](/docs/api#api-access-by-plan). |
 | `429` | `rate_limited` | `Rate limit exceeded. Retry in N seconds.` | See [Rate limits](/docs/api#rate-limits). |

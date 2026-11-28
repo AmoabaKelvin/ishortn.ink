@@ -51,6 +51,8 @@ This is the most common way for a static code to "stop working". Someone redesig
 
 Shared-drive files are a common trap: check the sharing setting ("Anyone with the link"), and remember that uploading a new version as a new file gives it a new link.
 
+To catch this before customers do, see [how to check if a QR code works](/blog/how-to-check-if-a-qr-code-works), which covers manual checks and daily destination monitoring.
+
 ## Cause 3: The domain behind the code expired
 
 If the code points to your own domain, or to a branded short domain you set up, and that domain's registration lapses, every code that uses it stops working. Worse, once someone else registers an expired domain, your printed codes send customers to them.
@@ -106,8 +108,8 @@ A static code pointing at your own homepage is permanent for as long as you own 
 This is what we built iShortn's QR codes to do. On the [free plan](/pricing):
 
 - You get **5 dynamic QR codes**. You can change where each one points at any time, they don't expire, and there are no ads in front of your page.
-- They keep redirecting when you don't upgrade. If you go over the free plan's 1,000 tracked events a month, scans still redirect; we just stop recording new ones until the month resets.
-- Every code has **scan analytics**: total and unique scans, country and city, device and browser. Free shows the last 7 days of data, and Pro and Ultra keep the full history. See our guide to [tracking link clicks](/blog/how-to-track-link-clicks) for adding UTM tags so scans also show up in Google Analytics.
+- They keep redirecting when you don't upgrade. If you go over the free plan's 1,000 tracked clicks a month, scans still redirect; we just stop recording new ones until the month resets.
+- Every code has **scan analytics**: total and unique scans, country and city, device and browser. Free shows the last 7 days of data, and Pro and Ultra keep 1 year of detailed scan history. See our guide to [tracking link clicks](/blog/how-to-track-link-clicks) for adding UTM tags so scans also show up in Google Analytics.
 - You can **pause** a code (deactivate it) and switch it back on later, and you can optionally set a code to switch itself off after a date or a number of scans. That only happens if you set it.
 
 If you cancel a paid plan, the codes you've already made keep working.

@@ -34,7 +34,7 @@ export function TopLinksCard({ from, to }: TopLinksCardProps) {
         </div>
       ) : !data || data.length === 0 ? (
         <div className="flex flex-1 items-center justify-center px-5 py-12">
-          <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
+          <p className="text-[13px] text-neutral-400 dark:text-muted-foreground">
             No click data for this period
           </p>
         </div>
@@ -47,10 +47,10 @@ export function TopLinksCard({ from, to }: TopLinksCardProps) {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                  <span className="text-neutral-400 dark:text-neutral-500">{l.domain}/</span>
+                  <span className="text-neutral-400 dark:text-muted-foreground">{l.domain}/</span>
                   {l.alias}
                 </p>
-                <p className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">
+                <p className="truncate text-[11px] text-neutral-400 dark:text-muted-foreground">
                   {l.url}
                 </p>
               </div>
@@ -58,7 +58,7 @@ export function TopLinksCard({ from, to }: TopLinksCardProps) {
                 <p className="text-[12px] font-semibold tabular-nums text-neutral-700 dark:text-neutral-300">
                   {l.clicks.toLocaleString()}
                 </p>
-                <p className="text-[10px] text-neutral-400 dark:text-neutral-500">clicks</p>
+                <p className="text-[10px] text-neutral-400 dark:text-muted-foreground">clicks</p>
               </div>
             </div>
           ))}

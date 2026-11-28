@@ -46,7 +46,7 @@ export function QuickCreateLink({ onCreated }: QuickCreateLinkProps) {
     onSuccess: (data) => {
       setUrl("");
       trackEvent(POSTHOG_EVENTS.LINK_QUICK_SHORTENED, { domain: data.domain, source: "dashboard" });
-      onCreated({ alias: data.alias, domain: data.domain });
+      onCreated({ alias: data.alias, domain: data.domain, isFirstLink: data.isFirstLink });
       router.refresh();
     },
     onError: (mutationError) => {
@@ -77,12 +77,12 @@ export function QuickCreateLink({ onCreated }: QuickCreateLinkProps) {
   return (
     <div className="flex flex-col items-center py-12 text-center sm:py-20">
       <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
-        <IconLink size={24} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+        <IconLink size={24} stroke={1.5} className="text-neutral-400 dark:text-muted-foreground" />
       </div>
       <p className="mt-6 text-[14px] font-medium text-neutral-900 dark:text-foreground">
         No links yet
       </p>
-      <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-neutral-500">
+      <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-muted-foreground">
         {readOnly
           ? "Links created in this workspace will show up here."
           : "Shorten a long URL to get a link you can share and track."}

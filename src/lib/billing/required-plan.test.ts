@@ -1,12 +1,21 @@
 import { describe, expect, test } from "bun:test";
 
-import { isPlanLimitError, linkEditLimitSource, requiredPlanForLimit } from "./required-plan";
+import { LINK_UTM_PLAN_MESSAGE } from "@/lib/billing/plans";
+import { domainBeyondPlanMessage } from "@/server/api/routers/link/utils";
+import { monthlyLinkLimitMessage } from "@/server/lib/user-plan";
+
+import {
+  isPlanLimitError,
+  linkEditLimitSource,
+  planLimitKey,
+  requiredPlanForLimit,
+} from "./required-plan";
 
 describe("requiredPlanForLimit", () => {
   test("Ultra-only messages need Ultra", () => {
-    expect(
-      requiredPlanForLimit("UTM parameters are only available on the Ultra plan.", "free"),
-    ).toBe("ultra");
+    expect(requiredPlanForLimit("Link cloaking is only available on the Ultra plan.", "free")).toBe(
+      "ultra",
+    );
     expect(
       requiredPlanForLimit(
         "You've reached your monthly limit of 1,000 links. Upgrade to Ultra for unlimited links.",
@@ -19,6 +28,7 @@ describe("requiredPlanForLimit", () => {
     expect(
       requiredPlanForLimit("Targeting rules are only available on Pro and Ultra plans.", "free"),
     ).toBe("pro");
+    expect(requiredPlanForLimit(LINK_UTM_PLAN_MESSAGE, "free")).toBe("pro");
     expect(requiredPlanForLimit("You've reached your plan's limit of 5 QR codes.", "free")).toBe(
       "pro",
     );
@@ -73,5 +83,37 @@ describe("linkEditLimitSource", () => {
     expect(linkEditLimitSource("Link cloaking is only available on the Ultra plan.")).toBe(
       "link_edit",
     );
+  });
+});
+
+describe("planLimitKey", () => {
+  test("names the limit behind each link-create refusal", () => {
+    expect(planLimitKey(monthlyLinkLimitMessage("free", 30))).toBe("monthly_links");
+    expect(planLimitKey(monthlyLinkLimitMessage("pro", 1000))).toBe("monthly_links");
+    expect(planLimitKey(domainBeyondPlanMessage("go.acme.com", 0))).toBe("custom_domain");
+    expect(planLimitKey(domainBeyondPlanMessage("go.acme.com", 1))).toBe("custom_domain");
+    expect(planLimitKey("Domain not available for this account")).toBe("custom_domain");
+    expect(planLimitKey("You need to upgrade to a pro plan to use password protection")).toBe(
+      "password",
+    );
+    expect(planLimitKey(LINK_UTM_PLAN_MESSAGE)).toBe("utm");
+    expect(planLimitKey("Scheduled links are only available on Pro and Ultra plans")).toBe(
+      "scheduling",
+    );
+  });
+
+  test("names the bio block caps", () => {
+    expect(
+      planLimitKey(
+        "The free plan allows 1 embed block per bio page. Upgrade to Pro for unlimited embeds.",
+      ),
+    ).toBe("bio_embed_blocks");
+    expect(planLimitKey("Image blocks are available on Pro and Ultra plans.")).toBe(
+      "bio_image_blocks",
+    );
+  });
+
+  test("falls back to other for gates it doesn't know", () => {
+    expect(planLimitKey("Theme customization is available on Pro and Ultra plans.")).toBe("other");
   });
 });

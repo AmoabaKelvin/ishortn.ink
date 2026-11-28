@@ -11,7 +11,7 @@ These numbers are rendered from the same configuration the app enforces, so they
 
 <PlanLimits />
 
-[Team workspaces](/docs/teams) always get Ultra limits. Monthly limits (links and events) reset on the first day of each calendar month.
+[Team workspaces](/docs/teams) always get Ultra limits. Monthly limits (links and tracked clicks) reset on the first day of each calendar month.
 
 ## Features by plan
 
@@ -27,6 +27,7 @@ These numbers are rendered from the same configuration the app enforces, so they
 | [Geo and device targeting](/docs/short-links#geo-and-device-targeting) | No | Yes | Yes |
 | [Custom social previews](/docs/short-links#custom-social-previews) | No | Yes | Yes |
 | [Verified clicks](/docs/short-links#verified-clicks) | No | Yes | Yes |
+| [Broken-destination alerts](/docs/short-links#broken-destination-alerts) | No | Yes | Yes |
 | [CSV bulk import](/docs/bulk-import) | No | Yes | Yes |
 | Unlimited QR codes | No (5) | Yes | Yes |
 | [UTM parameters and templates](/docs/short-links#utm-parameters) | No | No | Yes |
@@ -45,6 +46,6 @@ See [Analytics](/docs/analytics#how-long-data-is-kept) for details.
 ## What happens at a limit
 
 - **Monthly links**: new links are refused with a message such as `You've reached your monthly limit of 30 links. Upgrade to Pro for more.` Existing links keep working.
-- **Monthly events**: links keep redirecting, but new clicks aren't recorded until the next month. You're emailed at 80%, 90% and 100%.
+- **Monthly tracked clicks**: links keep redirecting, but new clicks aren't recorded until the next month. You're emailed at 80%, 90% and 100%.
 - **Everything else** (domains, folders, bio pages, rules): the dashboard asks you to upgrade when you try to add one more.
 

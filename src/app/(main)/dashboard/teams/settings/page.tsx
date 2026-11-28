@@ -170,7 +170,7 @@ export default function TeamSettingsPage() {
         <IconLoader2
           size={20}
           stroke={1.5}
-          className="animate-spin text-neutral-400 dark:text-neutral-500"
+          className="animate-spin text-neutral-400 dark:text-muted-foreground"
         />
       </div>
     );
@@ -180,12 +180,16 @@ export default function TeamSettingsPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
-          <IconSettings size={20} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+          <IconSettings
+            size={20}
+            stroke={1.5}
+            className="text-neutral-400 dark:text-muted-foreground"
+          />
         </div>
         <p className="mt-4 text-[14px] font-medium text-neutral-900 dark:text-foreground">
           Team Settings
         </p>
-        <p className="mt-1 max-w-sm text-center text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-1 max-w-sm text-center text-[13px] text-neutral-400 dark:text-muted-foreground">
           Switch to a team workspace to access these settings.
         </p>
         <button
@@ -205,7 +209,7 @@ export default function TeamSettingsPage() {
         <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Team settings
         </h1>
-        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
           Manage your team configuration.
         </p>
       </div>
@@ -276,7 +280,7 @@ export default function TeamSettingsPage() {
                           Subdomain
                         </FormLabel>
                         <div className="flex items-center">
-                          <span className="inline-flex h-9 items-center rounded-l-lg border border-r-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 text-[13px] text-neutral-400 dark:text-neutral-500">
+                          <span className="inline-flex h-9 items-center rounded-l-lg border border-r-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 text-[13px] text-neutral-400 dark:text-muted-foreground">
                             https://
                           </span>
                           <FormControl>
@@ -287,7 +291,7 @@ export default function TeamSettingsPage() {
                               onChange={(e) => field.onChange(e.target.value.toLowerCase())}
                             />
                           </FormControl>
-                          <span className="inline-flex h-9 items-center rounded-r-lg border border-l-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 text-[13px] text-neutral-400 dark:text-neutral-500">
+                          <span className="inline-flex h-9 items-center rounded-r-lg border border-l-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 text-[13px] text-neutral-400 dark:text-muted-foreground">
                             .{APP_BASE_DOMAIN}
                           </span>
                         </div>
@@ -296,7 +300,7 @@ export default function TeamSettingsPage() {
                           debouncedSlug !== teamData.data?.slug && (
                             <div className="mt-2 flex items-center gap-1.5">
                               {slugCheck.isLoading ? (
-                                <div className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-neutral-500">
+                                <div className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-muted-foreground">
                                   <IconLoader2 size={12} stroke={1.5} className="animate-spin" />
                                   Checking...
                                 </div>
@@ -317,7 +321,7 @@ export default function TeamSettingsPage() {
                       </FormItem>
                     )}
                   />
-                  <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+                  <p className="text-[11px] text-neutral-400 dark:text-muted-foreground">
                     Changing the URL will require members to update bookmarks.
                   </p>
                   <div className="flex justify-end">
@@ -354,7 +358,7 @@ export default function TeamSettingsPage() {
                   <p className="text-[13px] font-medium text-neutral-900 dark:text-foreground">
                     Leave team
                   </p>
-                  <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+                  <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
                     Remove yourself from this team.
                   </p>
                 </div>
@@ -403,7 +407,7 @@ export default function TeamSettingsPage() {
                   <p className="text-[13px] font-medium text-neutral-900 dark:text-foreground">
                     Delete team
                   </p>
-                  <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+                  <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
                     Permanently delete this team and all resources.
                   </p>
                 </div>

@@ -1,5 +1,5 @@
 import FirstLinkNudgeEmail from "@/emails/first-link-nudge";
-import { getAppUrl } from "@/lib/constants/domains";
+import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 
 import { sendEmail } from "./send-email";
 import { productNotificationOptions } from "./unsubscribe";
@@ -9,8 +9,6 @@ type SendFirstLinkNudgeEmailInput = {
   email: string;
   name?: string | null;
 };
-
-const UTM = "utm_source=email&utm_medium=lifecycle&utm_campaign=first_link_nudge";
 
 /** Returns whether Resend accepted the email. */
 export function sendFirstLinkNudgeEmail({
@@ -28,8 +26,8 @@ export function sendFirstLinkNudgeEmail({
     subject: "Your first short link takes 10 seconds",
     react: FirstLinkNudgeEmail({
       userName: name,
-      createLinkUrl: getAppUrl(`/dashboard/link/new?${UTM}`),
-      createQrCodeUrl: getAppUrl(`/dashboard/qrcodes/create?${UTM}`),
+      createLinkUrl: emailLinkUrl(EMAIL_LINKS.firstLinkNudge.createLink),
+      createQrCodeUrl: emailLinkUrl(EMAIL_LINKS.firstLinkNudge.createQrCode),
       notificationSettingsUrl,
     }),
     headers,

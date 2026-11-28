@@ -1,5 +1,6 @@
 import { Link, Text } from "@react-email/components";
 
+import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 import { displayName } from "@/lib/utils/user-name";
 
 import { EmailButton, EmailLayout, link, smallText, text } from "./_components/layout";
@@ -67,7 +68,7 @@ export const ApiAccessSunsetEmail = ({
 ApiAccessSunsetEmail.PreviewProps = {
   userName: "Ama",
   sunsetDate: "November 28, 2026 at 12:00 PM UTC",
-  upgradeUrl: "https://ishortn.ink/pricing",
+  upgradeUrl: emailLinkUrl(EMAIL_LINKS.apiAccessSunset.pricing),
   kind: "notice",
 } satisfies ApiAccessSunsetEmailProps;
 

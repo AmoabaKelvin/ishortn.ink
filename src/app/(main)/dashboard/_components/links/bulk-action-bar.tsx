@@ -163,7 +163,9 @@ export function BulkActionBar({ archivedFilter }: BulkActionBarProps) {
                   {selectedLinkIds.length}
                 </motion.span>
               </div>
-              <span className="text-[13px] font-medium text-neutral-500">selected</span>
+              <span className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
+                selected
+              </span>
             </div>
 
             <div className="h-5 w-px bg-neutral-200 dark:bg-border" />

@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test";
 
+import { PaddleApiError } from "@/lib/paddle/client";
+
 import {
   createCheckoutWithPromoFallback,
+  lemonSqueezyPromoRejected,
+  paddleErrorToClient,
+  paddlePreviewCharge,
+  paddlePromoRejected,
   parseProviderUpdatedAt,
   pauseUpdate,
   providerErrorToClient,
@@ -29,6 +35,36 @@ describe("providerErrorToClient", () => {
       code: "INTERNAL_SERVER_ERROR",
       message: "Our payment provider is unavailable right now. Please try again in a few minutes.",
     });
+  });
+});
+
+describe("paddleErrorToClient", () => {
+  const GENERIC = {
+    code: "BAD_REQUEST",
+    message: "We couldn't apply this change. Please try again or contact support.",
+  };
+
+  test.each([
+    [400, "subscription_one_off_discount_not_valid"],
+    [400, "subscription_discount_not_valid_for_items"],
+    [400, "subscription_archived_discount_application_attempt"],
+    [409, "subscription_locked_renewal"],
+    [422, "subscription_new_items_not_valid"],
+  ])("a refused change (%p %s) gets the generic message", (status, code) => {
+    expect(paddleErrorToClient(status, code)).toEqual(GENERIC);
+    expect(paddleErrorToClient(status, code).message).not.toContain("payment");
+  });
+
+  test.each([
+    "subscription_payment_declined",
+    "subscription_payment_retry_attempts_exceeded",
+    "subscription_missing_payment_method_cannot_update",
+  ])("a payment failure (%s) points at the payment method", (code) => {
+    expect(paddleErrorToClient(400, code)).toEqual(providerErrorToClient(422));
+  });
+
+  test.each([404, 429, 500, null])("%p maps like providerErrorToClient", (status) => {
+    expect(paddleErrorToClient(status, "some_code")).toEqual(providerErrorToClient(status));
   });
 });
 
@@ -61,7 +97,7 @@ describe("createCheckoutWithPromoFallback", () => {
 
   test("without a code it calls once and never retries", async () => {
     const { calls, create } = recorder([rejected]);
-    expect(await createCheckoutWithPromoFallback(create)).toEqual({
+    expect(await createCheckoutWithPromoFallback(create, lemonSqueezyPromoRejected)).toEqual({
       result: rejected,
       discountCode: undefined,
     });
@@ -70,7 +106,11 @@ describe("createCheckoutWithPromoFallback", () => {
 
   test("a code that applies is sent once", async () => {
     const { calls, create } = recorder([ok]);
-    const { result, discountCode } = await createCheckoutWithPromoFallback(create, "BFCM20");
+    const { result, discountCode } = await createCheckoutWithPromoFallback(
+      create,
+      lemonSqueezyPromoRejected,
+      "BFCM20",
+    );
     expect(result).toBe(ok);
     expect(discountCode).toBe("BFCM20");
     expect(calls).toEqual(["BFCM20"]);
@@ -81,8 +121,11 @@ describe("createCheckoutWithPromoFallback", () => {
     const { calls, create } = recorder([rejected, retried]);
     const onPromoRejected: Result[] = [];
 
-    const { result, discountCode } = await createCheckoutWithPromoFallback(create, "BFCM20", (r) =>
-      onPromoRejected.push(r),
+    const { result, discountCode } = await createCheckoutWithPromoFallback(
+      create,
+      lemonSqueezyPromoRejected,
+      "BFCM20",
+      (r) => onPromoRejected.push(r),
     );
 
     expect(result).toBe(retried);
@@ -94,10 +137,48 @@ describe("createCheckoutWithPromoFallback", () => {
   test.each([500, 429, null])("a %p failure is returned without a retry", async (statusCode) => {
     const failed: Result = { error: new Error("boom"), statusCode };
     const { calls, create } = recorder([failed]);
-    const { result, discountCode } = await createCheckoutWithPromoFallback(create, "BFCM20");
+    const { result, discountCode } = await createCheckoutWithPromoFallback(
+      create,
+      lemonSqueezyPromoRejected,
+      "BFCM20",
+    );
     expect(result).toBe(failed);
     expect(discountCode).toBe("BFCM20");
     expect(calls).toEqual(["BFCM20"]);
+  });
+});
+
+describe("paddlePromoRejected", () => {
+  const paddleError = (status: number, code: string) => ({
+    error: new PaddleApiError({
+      method: "POST",
+      path: "/transactions",
+      status,
+      code,
+      detail: "detail",
+      requestId: null,
+    }),
+  });
+
+  test.each([
+    [400, "transaction_discount_not_eligible"],
+    [400, "discount_expired"],
+    [409, "discount_usage_limit_reached"],
+  ])("a %p %s is a rejected discount", (status, code) => {
+    expect(paddlePromoRejected(paddleError(status, code))).toBe(true);
+  });
+
+  test.each([
+    [400, "transaction_price_not_found"],
+    [500, "discount_internal_error"],
+    [429, "too_many_requests"],
+  ])("a %p %s is not", (status, code) => {
+    expect(paddlePromoRejected(paddleError(status, code))).toBe(false);
+  });
+
+  test("non-Paddle errors and successes are not", () => {
+    expect(paddlePromoRejected({ error: new Error("discount") })).toBe(false);
+    expect(paddlePromoRejected({ error: null })).toBe(false);
   });
 });
 
@@ -116,5 +197,35 @@ describe("resumeUpdate", () => {
 
   test("a cancelled subscription is uncancelled", () => {
     expect(resumeUpdate("cancelled")).toEqual({ cancelled: false });
+  });
+});
+
+describe("paddlePreviewCharge", () => {
+  const preview = (grandTotal: string, currencyCode = "USD") => ({
+    immediate_transaction: {
+      details: { totals: { grand_total: grandTotal, currency_code: currencyCode } },
+    },
+  });
+
+  test("reads the prorated, discounted amount due now", () => {
+    expect(paddlePreviewCharge(preview("609"))).toEqual({
+      type: "amount_due",
+      amount: 609,
+      currencyCode: "USD",
+    });
+  });
+
+  test("a change fully covered by credit is due as zero", () => {
+    expect(paddlePreviewCharge(preview("0", "EUR"))).toEqual({
+      type: "amount_due",
+      amount: 0,
+      currencyCode: "EUR",
+    });
+  });
+
+  test("no immediate transaction or an unreadable total falls back to prorated", () => {
+    expect(paddlePreviewCharge({ immediate_transaction: null })).toEqual({ type: "prorated" });
+    expect(paddlePreviewCharge(preview("6.09"))).toEqual({ type: "prorated" });
+    expect(paddlePreviewCharge(preview(""))).toEqual({ type: "prorated" });
   });
 });

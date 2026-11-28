@@ -59,7 +59,15 @@ describe("getCachedRedirectTarget", () => {
     for (const path of ["/", "/dashboard", "/pricing", "/api", "/robots.txt", "/a/b", "/abc/"]) {
       expect(getCachedRedirectTarget(visit(`https://ishortn.ink${path}`))).toBeNull();
     }
-    for (const path of ["/blocked/1", "/expired/1", "/verify-password/1", "/cloaked/x"]) {
+    for (const path of [
+      "/blocked/1",
+      "/expired/1",
+      "/scheduled/1",
+      "/verify-password/1",
+      "/cloaked/x",
+      "/c/AbCdEfGhIjKl",
+      "/c/AbCdEfGhIjKl/vcf",
+    ]) {
       expect(getCachedRedirectTarget(visit(`https://isht.app${path}`))).toBeNull();
     }
   });
@@ -74,6 +82,18 @@ describe("getCachedRedirectTarget", () => {
     const redirects: { source: string }[] = await config.redirects();
     expect(redirects.length).toBeGreaterThan(0);
     for (const { source } of redirects) {
+      expect(getCachedRedirectTarget(visit(`https://ishortn.ink${source}`))).toBeNull();
+    }
+  });
+
+  test("app-host paths with their own next.config.js headers or middleware rewrite go to Next", async () => {
+    const config = (await import("../../../next.config.js")).default;
+    const rules: { source: string }[] = await config.headers();
+    const sources = rules
+      .map(({ source }) => source.replace(/\/:path\*$/, ""))
+      .filter((source) => source !== "/(.*)" && source !== "");
+    expect(sources.length).toBeGreaterThan(0);
+    for (const source of [...sources, "/mcp"]) {
       expect(getCachedRedirectTarget(visit(`https://ishortn.ink${source}`))).toBeNull();
     }
   });

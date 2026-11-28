@@ -30,7 +30,11 @@ export const organizationSchema = {
   name: "iShortn",
   url: "https://ishortn.ink",
   logo: "https://ishortn.ink/icon.png",
-  sameAs: ["https://twitter.com/kelamoaba", "https://github.com/AmoabaKelvin/ishortn.ink"],
+  sameAs: [
+    "https://x.com/ishortn_ink",
+    "https://www.linkedin.com/company/ishortn",
+    "https://github.com/AmoabaKelvin/ishortn.ink",
+  ],
   description: SITE_DESCRIPTION,
 };
 
@@ -71,7 +75,7 @@ export const softwareApplicationSchema = {
       priceCurrency: "USD",
       name: "Pro",
       url: PRICING_URL,
-      description: `${formatCount(pro.linksLimit)} links a month, unlimited analytics history, ${pluralize(pro.domainLimit, "custom domain")}, link-in-bio on your domain, REST API`,
+      description: `${formatCount(pro.linksLimit)} links a month, 1 year of detailed analytics, ${pluralize(pro.domainLimit, "custom domain")}, link-in-bio on your domain, REST API`,
     },
     {
       "@type": "Offer",
@@ -79,7 +83,7 @@ export const softwareApplicationSchema = {
       priceCurrency: "USD",
       name: "Ultra",
       url: PRICING_URL,
-      description: "Unlimited links, events and custom domains, team workspaces",
+      description: "Unlimited links, tracked clicks and custom domains, team workspaces",
     },
   ],
 };
@@ -119,6 +123,7 @@ export function createWebApplicationSchema(app: {
   description: string;
   /** BCP 47 tag, for pages not in English. */
   inLanguage?: string;
+  applicationCategory?: string;
 }) {
   return {
     "@context": "https://schema.org",
@@ -127,7 +132,7 @@ export function createWebApplicationSchema(app: {
     url: app.url,
     description: app.description,
     ...(app.inLanguage && { inLanguage: app.inLanguage }),
-    applicationCategory: "BusinessApplication",
+    applicationCategory: app.applicationCategory ?? "BusinessApplication",
     operatingSystem: "Any",
     browserRequirements: "Requires JavaScript",
     isAccessibleForFree: true,

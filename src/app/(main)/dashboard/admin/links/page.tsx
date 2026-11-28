@@ -74,7 +74,7 @@ export default function AdminLinksPage() {
         <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Manage Links
         </h1>
-        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
           Search and moderate links across the platform
         </p>
       </div>
@@ -108,7 +108,7 @@ export default function AdminLinksPage() {
           <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
             Search for links to manage
           </p>
-          <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
+          <p className="mt-1 text-[12px] text-neutral-400 dark:text-muted-foreground">
             Enter a URL, short link alias, domain, or user email address
           </p>
         </div>
@@ -127,7 +127,7 @@ export default function AdminLinksPage() {
           <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
             No links found for &ldquo;{searchQuery}&rdquo;
           </p>
-          <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
+          <p className="mt-1 text-[12px] text-neutral-400 dark:text-muted-foreground">
             Try a different search term
           </p>
         </div>
@@ -135,7 +135,7 @@ export default function AdminLinksPage() {
 
       {data && data.links.length > 0 && (
         <>
-          <p className="mb-3 text-[12px] text-neutral-400 dark:text-neutral-500">
+          <p className="mb-3 text-[12px] text-neutral-400 dark:text-muted-foreground">
             {data.total} {data.total === 1 ? "result" : "results"} found
           </p>
 
@@ -170,12 +170,12 @@ export default function AdminLinksPage() {
                       <div className="flex items-center gap-2">
                         <div className="min-w-0">
                           <p className="text-[13px] font-medium text-neutral-800 dark:text-neutral-200">
-                            <span className="text-neutral-400 dark:text-neutral-500">
+                            <span className="text-neutral-400 dark:text-muted-foreground">
                               {link.domain}/
                             </span>
                             {link.alias}
                           </p>
-                          <p className="max-w-[320px] truncate text-[11px] text-neutral-400 dark:text-neutral-500">
+                          <p className="max-w-[320px] truncate text-[11px] text-neutral-400 dark:text-muted-foreground">
                             {link.url}
                           </p>
                         </div>
@@ -189,7 +189,7 @@ export default function AdminLinksPage() {
                         >
                           <IconExternalLink
                             size={14}
-                            className="text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300"
+                            className="text-neutral-400 hover:text-neutral-600 dark:text-muted-foreground dark:hover:text-neutral-300"
                           />
                         </a>
                       </div>
@@ -257,7 +257,7 @@ export default function AdminLinksPage() {
 
           {totalPages > 1 && (
             <div className="mt-4 flex items-center justify-between">
-              <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+              <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                 Page {page} of {totalPages}
               </p>
               <div className="flex gap-2">
@@ -305,12 +305,12 @@ export default function AdminLinksPage() {
           <DialogBody className="space-y-4">
             <div className="rounded-lg bg-neutral-50 dark:bg-accent/50 p-3">
               <p className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                <span className="text-neutral-400 dark:text-neutral-500">
+                <span className="text-neutral-400 dark:text-muted-foreground">
                   {linkToBlock?.domain}/
                 </span>
                 {linkToBlock?.alias}
               </p>
-              <p className="mt-0.5 truncate text-[12px] text-neutral-400 dark:text-neutral-500">
+              <p className="mt-0.5 truncate text-[12px] text-neutral-400 dark:text-muted-foreground">
                 {linkToBlock?.url}
               </p>
             </div>

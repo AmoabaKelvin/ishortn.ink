@@ -1,7 +1,9 @@
 name: PR Screenshots
 
 # UI changes must show desktop and mobile screenshots in a collapsed
-# <details><summary>Screenshots</summary> section of the PR description.
+# <details><summary>Screenshots</summary> section of the PR description, or
+# renders in collapsed <details><summary>Screenshots: <title></summary> sections
+# (emails, dialogs and interactive states a route capture can't reach).
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
@@ -33,12 +35,20 @@ jobs:
           fi
           echo "UI files changed:"
           printf '  %s\n' $ui
-          # Only the Screenshots section counts, up to its own closing tag.
+          # The main Screenshots section counts up to its own closing tag.
           section=$(printf '%s' "$BODY" | perl -0777 -ne 'print $1 if m{<summary>\s*Screenshots\s*</summary>(.*?)</details>}is')
-          images=$(printf '%s' "$section" | grep -oE '<img |!\[[^]]*\]\(https://' | wc -l)
+          images=$(printf '%s' "$section" | { grep -oE '<img |!\[[^]]*\]\(https://' || true; } | wc -l)
           if [ "$images" -ge 2 ] && printf '%s' "$section" | grep -qi 'desktop' && printf '%s' "$section" | grep -qi 'mobile'; then
             echo "Desktop and mobile screenshots found ($images images)."
             exit 0
           fi
-          echo "::error::This PR changes UI. Add desktop and mobile screenshots (labelled Desktop and Mobile) in a collapsed <details><summary>Screenshots</summary> section of the PR description."
+          # Renders the route capture can't reach (emails, dialogs, interactive states)
+          # come in their own <details><summary>Screenshots: <title></summary> sections.
+          named=$(printf '%s' "$BODY" | perl -0777 -ne 'while (m{<summary>\s*Screenshots:[^<]*</summary>(.*?)</details>}gis) { print "$1\n" }')
+          named_images=$(printf '%s' "$named" | { grep -oE '<img |!\[[^]]*\]\(https://' || true; } | wc -l)
+          if [ "$named_images" -ge 1 ]; then
+            echo "Screenshots found in titled sections ($named_images images)."
+            exit 0
+          fi
+          echo "::error::This PR changes UI. Add desktop and mobile screenshots (labelled Desktop and Mobile) in a collapsed <details><summary>Screenshots</summary> section of the PR description, or renders in a collapsed <details><summary>Screenshots: <title></summary> section."
           exit 1

@@ -112,7 +112,7 @@ const freeIncludes: { title: string; body: string; icon: ReactNode }[] = [
   },
   {
     title: "Scan analytics",
-    body: `See where and when people scan, with a ${free.analyticsRangeLimitDays}-day analytics window and ${(free.eventsLimit ?? 0).toLocaleString()} tracked events a month.`,
+    body: `See where and when people scan, with a ${free.analyticsRangeLimitDays}-day analytics window and ${(free.eventsLimit ?? 0).toLocaleString()} tracked clicks a month.`,
     icon: <IconChartAreaLineFilled aria-hidden="true" />,
   },
   {
@@ -133,7 +133,7 @@ const qrFaqs = [
   },
   {
     q: "How do I track QR code scans?",
-    a: `Create a dynamic code in your iShortn dashboard. Every scan is recorded with its date, country, and device. Free includes a ${free.analyticsRangeLimitDays}-day analytics window and ${(free.eventsLimit ?? 0).toLocaleString()} tracked events a month.`,
+    a: `Create a dynamic code in your iShortn dashboard. Every scan is recorded with its date, country, and device. Free includes a ${free.analyticsRangeLimitDays}-day analytics window and ${(free.eventsLimit ?? 0).toLocaleString()} tracked clicks a month.`,
   },
   {
     q: "Can I download the QR code as an SVG?",

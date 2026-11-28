@@ -45,7 +45,7 @@ export function SignupsChart({ data }: { data: SignupAttribution }) {
           <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Signups over time
           </h2>
-          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+          <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
             New accounts and those that later subscribed,{" "}
             {granularity === "day" ? "daily" : "weekly"} (UTC)
           </p>

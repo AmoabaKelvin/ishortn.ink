@@ -7,7 +7,7 @@ import { type MarketingCampaign, getSignupUrl } from "./utils";
  */
 export function ShortLinkAttribution({ campaign }: { campaign: MarketingCampaign }) {
   return (
-    <p className="mt-8 text-center text-[12px] text-neutral-400 dark:text-neutral-500">
+    <p className="mt-8 text-center text-[12px] text-neutral-400 dark:text-muted-foreground">
       Short link by iShortn &middot;{" "}
       <a
         href={getSignupUrl(campaign)}

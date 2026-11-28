@@ -11,13 +11,16 @@ import {
   restrictedLinkValues,
 } from "@/server/api/routers/link/utils";
 import { link, linkVisit, uniqueLinkVisit, user } from "@/server/db/schema";
+import { resetLinkHealth } from "@/server/lib/link-health/status";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import { recordSafetyFollowUp, workspaceSafetyAccount } from "@/server/lib/phishing/follow-up";
 import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 import { generateUnreservedAlias, reserveLinkAliases } from "@/server/lib/reserved-alias";
 import { workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
 
 import type { WorkspaceTRPCContext } from "@/server/api/trpc";
 import type { db } from "@/server/db";
+import type { UrlSafetyResult } from "@/server/lib/phishing";
 
 // A "hidden tracking link" is a regular Link row that backs another resource
 // (a QR code, or a bio-page link block) rather than appearing in the user's
@@ -28,7 +31,10 @@ import type { db } from "@/server/db";
 
 type TransactionClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export type TrackingLinkKind = "qr" | "bio";
+// "bio-image" backs a linked image block. Unlike a link block, which a per-page
+// cap limits on Free, it always takes a slot of the monthly link allowance, so
+// image blocks can't be used to create tracked links outside the quota.
+export type TrackingLinkKind = "qr" | "bio" | "bio-image";
 
 export type PreparedTrackingLink = {
   values: typeof link.$inferInsert;
@@ -37,6 +43,8 @@ export type PreparedTrackingLink = {
   domain: string;
   shouldIncrementCount: boolean;
   currentCount: number;
+  /** Follow-up from the URL safety check, recorded once the link is inserted. */
+  safety?: UrlSafetyResult;
 };
 
 /**
@@ -47,7 +55,10 @@ export async function checkTrackingLinkQuota(
   ctx: WorkspaceTRPCContext,
   kind: TrackingLinkKind,
 ): Promise<Pick<PreparedTrackingLink, "currentCount" | "shouldIncrementCount">> {
-  if (!countsTowardMonthlyLinkQuota(ctx.workspace.plan, { isBioLink: kind === "bio" })) {
+  if (
+    kind !== "bio-image" &&
+    !countsTowardMonthlyLinkQuota(ctx.workspace.plan, { isBioLink: kind === "bio" })
+  ) {
     return { currentCount: 0, shouldIncrementCount: false };
   }
   const { currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
@@ -62,15 +73,26 @@ export async function checkTrackingLinkQuota(
  * a transaction is opened: the link-quota check, URL safety scan, domain
  * authorization, and alias generation. Throws TRPCError("FORBIDDEN") when the
  * workspace's monthly link quota is reached. Bio links skip the quota on plans
- * with a per-page block cap, which callers enforce instead.
+ * with a per-page block cap, which callers enforce instead; image-block links
+ * always count.
  */
 export async function prepareHiddenTrackingLink(
   ctx: WorkspaceTRPCContext,
-  opts: { url: string; name: string; domain?: string; kind: TrackingLinkKind },
+  opts: {
+    url: string;
+    name: string;
+    domain?: string;
+    kind: TrackingLinkKind;
+    /** The URL the safety scan checks instead of `url` (null: none), for links to our own pages. */
+    safetyCheckUrl?: string | null;
+  },
 ): Promise<PreparedTrackingLink> {
   const { currentCount, shouldIncrementCount } = await checkTrackingLinkQuota(ctx, opts.kind);
 
-  await assertUrlSafe(opts.url);
+  const checkUrl = opts.safetyCheckUrl === undefined ? opts.url : opts.safetyCheckUrl;
+  const safety = checkUrl
+    ? await assertUrlSafe(checkUrl, { account: workspaceSafetyAccount(ctx) })
+    : undefined;
 
   const requestedDomain = opts.domain?.trim();
   if (requestedDomain) {
@@ -89,7 +111,7 @@ export async function prepareHiddenTrackingLink(
       domain,
       name: opts.name,
       isQrCode: opts.kind === "qr",
-      isBioLink: opts.kind === "bio",
+      isBioLink: opts.kind === "bio" || opts.kind === "bio-image",
       userId: ownership.userId ?? ctx.auth.userId,
       teamId: ownership.teamId,
       createdByUserId: ctx.auth.userId,
@@ -100,6 +122,7 @@ export async function prepareHiddenTrackingLink(
     domain,
     shouldIncrementCount,
     currentCount,
+    safety,
   };
 }
 
@@ -107,7 +130,8 @@ export async function prepareHiddenTrackingLink(
  * Insert a prepared hidden tracking link inside an existing transaction and
  * bump the workspace's monthly link count in the same transaction, so a
  * downstream failure rolls the link and the count back together (no orphan
- * links, no quota drift). Returns the new link id.
+ * links, no quota drift). Returns the new link id. Once the transaction commits, the caller
+ * passes `prepared.safety` to `recordSafetyFollowUp`, so a rollback leaves no orphan follow-up.
  */
 export async function insertHiddenTrackingLink(
   tx: TransactionClient,
@@ -137,9 +161,10 @@ export async function updateHiddenTrackingLink(
   linkId: number,
   opts: { url?: string; name?: string },
 ): Promise<void> {
-  if (opts.url !== undefined) {
-    await assertUrlSafe(opts.url);
-  }
+  const safety =
+    opts.url !== undefined
+      ? await assertUrlSafe(opts.url, { account: workspaceSafetyAccount(ctx) })
+      : undefined;
 
   const existing = await ctx.db.query.link.findFirst({
     where: and(eq(link.id, linkId), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
@@ -155,7 +180,11 @@ export async function updateHiddenTrackingLink(
 
   if (Object.keys(updates).length > 0) {
     await ctx.db.update(link).set(updates).where(eq(link.id, linkId));
+    if (updates.url !== undefined && updates.url !== existing.url) {
+      await resetLinkHealth(ctx.db, linkId);
+    }
   }
+  recordSafetyFollowUp(linkId, safety);
 
   if (existing.alias) {
     await deleteFromCache(buildCacheKey(existing.domain, existing.alias));

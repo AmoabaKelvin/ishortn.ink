@@ -127,7 +127,7 @@ export function AddLinksDialog({
                 ))}
               </div>
             ) : candidates.length === 0 ? (
-              <p className="p-4 text-center text-[13px] text-neutral-400 dark:text-neutral-500">
+              <p className="p-4 text-center text-[13px] text-neutral-400 dark:text-muted-foreground">
                 {search
                   ? "Nothing matches your search."
                   : "Everything is already in this campaign."}
@@ -159,7 +159,7 @@ export function AddLinksDialog({
                       <span className="block truncate text-[13px] font-medium text-neutral-900 dark:text-foreground">
                         {candidate.label}
                       </span>
-                      <span className="block truncate text-[12px] text-neutral-400 dark:text-neutral-500">
+                      <span className="block truncate text-[12px] text-neutral-400 dark:text-muted-foreground">
                         {candidate.detail}
                         {candidate.inOtherCampaign && " · moves from another campaign"}
                       </span>
@@ -183,7 +183,7 @@ export function AddLinksDialog({
               />
               <span>
                 <Label className="cursor-pointer text-[13px]">Apply campaign UTM defaults</Label>
-                <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+                <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
                   Sets utm_campaign={campaign.slug}
                   {campaign.utmSource && `, utm_source=${campaign.utmSource}`}
                   {campaign.utmMedium && `, utm_medium=${campaign.utmMedium}`} on the selected

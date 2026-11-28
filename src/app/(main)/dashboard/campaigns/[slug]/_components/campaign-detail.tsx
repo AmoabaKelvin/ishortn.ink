@@ -33,6 +33,7 @@ import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
 import { requiredPlanForLimit } from "@/lib/billing/required-plan";
 import { api } from "@/trpc/react";
 
+import { ScheduledReportsButton } from "../../../_components/scheduled-reports/scheduled-reports-button";
 import { useUpgradeOffer } from "../../../_components/upgrade-offer";
 import { CampaignStateBadge } from "../../_components/campaign-state-badge";
 import { CampaignLinks } from "./campaign-links";
@@ -127,49 +128,52 @@ export function CampaignDetail({ campaignId, initialData, plan }: CampaignDetail
               </h2>
               <CampaignStateBadge state={campaign.displayState} />
             </div>
-            <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
               utm_campaign={campaign.slug}
               {dateRange && ` · ${dateRange}`}
             </p>
           </div>
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              aria-label="Campaign actions"
-              className="rounded-md p-2 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-muted"
-            >
-              <IconDotsVertical size={16} stroke={1.5} />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() =>
-                updateCampaign.mutate({
-                  id: campaign.id,
-                  status: isArchived ? "active" : "archived",
-                })
-              }
-            >
-              {isArchived ? (
-                <>
-                  <IconArchiveOff size={14} className="mr-2" /> Restore campaign
-                </>
-              ) : (
-                <>
-                  <IconArchive size={14} className="mr-2" /> Archive campaign
-                </>
-              )}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="text-red-600 focus:text-red-600"
-              onClick={() => setConfirmDelete(true)}
-            >
-              <IconTrash size={14} className="mr-2" /> Delete campaign
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-1.5">
+          <ScheduledReportsButton targetType="campaign" targetId={campaign.id} />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                aria-label="Campaign actions"
+                className="rounded-md p-2 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-muted"
+              >
+                <IconDotsVertical size={16} stroke={1.5} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() =>
+                  updateCampaign.mutate({
+                    id: campaign.id,
+                    status: isArchived ? "active" : "archived",
+                  })
+                }
+              >
+                {isArchived ? (
+                  <>
+                    <IconArchiveOff size={14} className="mr-2" /> Restore campaign
+                  </>
+                ) : (
+                  <>
+                    <IconArchive size={14} className="mr-2" /> Archive campaign
+                  </>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-red-600 focus:text-red-600"
+                onClick={() => setConfirmDelete(true)}
+              >
+                <IconTrash size={14} className="mr-2" /> Delete campaign
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <Tabs defaultValue="overview">

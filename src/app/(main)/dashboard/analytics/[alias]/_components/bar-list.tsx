@@ -1,10 +1,15 @@
+import { IconInfoCircle } from "@tabler/icons-react";
+
 import { Card } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 type BarListProps = {
   records: {
     name: string;
     clicks: number;
+    /** Explains what the row means; shown in a tooltip beside the name. */
+    description?: string;
   }[];
   totalClicks: number;
   color?: "blue" | "green" | "red" | "orange" | "purple";
@@ -21,6 +26,14 @@ const colorMap = {
 export function BarList({ records, totalClicks, color = "blue" }: BarListProps) {
   const sortedRecords = [...records].sort((a, b) => b.clicks - a.clicks);
   const maxClicks = sortedRecords[0]?.clicks ?? 1;
+
+  if (sortedRecords.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-8 text-[13px] text-neutral-400 dark:text-muted-foreground">
+        No data available
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -43,16 +56,19 @@ export function BarList({ records, totalClicks, color = "blue" }: BarListProps) 
             />
 
             {/* Item name */}
-            <span className="relative z-10 truncate pr-4 text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-              {record.name}
-            </span>
+            <div className="relative z-10 flex min-w-0 items-center gap-1.5 pr-4">
+              <span className="truncate text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                {record.name}
+              </span>
+              {record.description && <RowHint label={record.name} text={record.description} />}
+            </div>
 
             {/* Stats */}
             <div className="relative z-10 flex items-center gap-2">
               <span className="text-[13px] font-semibold tabular-nums text-neutral-600 dark:text-neutral-400">
                 {record.clicks.toLocaleString()}
               </span>
-              <span className="w-0 overflow-hidden text-[13px] font-medium tabular-nums text-neutral-400 dark:text-neutral-500 opacity-0 transition-all duration-200 ease-out group-hover:w-10 group-hover:opacity-100">
+              <span className="w-0 overflow-hidden text-[13px] font-medium tabular-nums text-neutral-400 dark:text-muted-foreground opacity-0 transition-all duration-200 ease-out group-hover:w-10 group-hover:opacity-100">
                 {percentOfTotal}%
               </span>
             </div>
@@ -60,6 +76,26 @@ export function BarList({ records, totalClicks, color = "blue" }: BarListProps) 
         );
       })}
     </div>
+  );
+}
+
+/** Info icon with a tooltip, for rows whose meaning isn't obvious from the name. */
+export function RowHint({ label, text }: { label: string; text: string }) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            aria-label={`About ${label}`}
+            className="shrink-0 rounded-md text-neutral-400 hover:text-neutral-600 dark:text-muted-foreground dark:hover:text-neutral-300"
+          >
+            <IconInfoCircle size={14} stroke={1.5} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs text-[12px]">{text}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -79,9 +115,9 @@ function BarListTitle({ title, description, unit = "Clicks", children }: BarList
           <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             {title}
           </h2>
-          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">{description}</p>
+          <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">{description}</p>
         </div>
-        <span className="pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-300 dark:text-neutral-500">
+        <span className="pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-300 dark:text-muted-foreground">
           {unit}
         </span>
       </div>
@@ -104,16 +140,17 @@ function BarListTabViewSwitcher<View extends string>({
   onChangeView,
 }: BarListTabViewSwitcherProps<View>) {
   return (
-    <div className="mb-4 flex items-center gap-1 border-b border-neutral-100 dark:border-border/50 pb-2">
+    <div className="mb-4 flex items-center gap-1 overflow-x-auto border-b border-neutral-100 dark:border-border/50 pb-2">
       {views.map((name) => (
         <button
           key={name}
+          type="button"
           onClick={() => onChangeView(name)}
           className={cn(
-            "relative rounded-md px-3 py-1.5 text-[12px] font-medium transition-all duration-150",
+            "relative shrink-0 rounded-md px-3 py-1.5 text-[12px] font-medium transition-all duration-150",
             currentView === name
               ? "bg-neutral-100 dark:bg-muted text-neutral-900 dark:text-foreground"
-              : "text-neutral-400 dark:text-neutral-500 hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-600 dark:hover:text-neutral-300",
+              : "text-neutral-400 dark:text-muted-foreground hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-600 dark:hover:text-neutral-300",
           )}
         >
           {name.charAt(0).toUpperCase() + name.slice(1)}

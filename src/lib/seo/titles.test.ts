@@ -40,9 +40,6 @@ describe("page titles", () => {
   });
 
   it("frames link-in-bio competitors as a link in bio comparison", () => {
-    expect(comparisonTitle(competitors.linktree)).toBe(
-      "Linktree vs iShortn: link in bio comparison",
-    );
     expect(comparisonTitle(competitors.beacons)).toBe("Beacons vs iShortn: link in bio comparison");
   });
 
@@ -52,6 +49,9 @@ describe("page titles", () => {
     );
     expect(comparisonTitle(competitors.bitly)).toBe(
       "Bitly vs iShortn: Free Plan, Pricing and Migration (2026)",
+    );
+    expect(comparisonTitle(competitors.linktree)).toBe(
+      "Linktree vs iShortn: Custom Domain, Analytics and Price",
     );
     expect(comparisonTitle(competitors.dub)).toBe(
       "Dub.co vs iShortn: Pricing and Free Plan Compared (2026)",

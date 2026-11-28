@@ -10,8 +10,8 @@ import {
   isSocialMediaAgent,
 } from "@/lib/routing/short-link-request";
 import { noIndexMetadata } from "@/lib/seo/indexing";
+import { findLinkByAlias } from "@/middlewares/record-click";
 import { getLinkStateRoute, resolveShortLink } from "@/middlewares/resolve-link";
-import { findLinkByAlias } from "@/server/api/routers/link/link.service";
 import { toPublicLink } from "@/server/api/routers/link/utils";
 
 import CloakedPage from "../cloaked/[url]/page";

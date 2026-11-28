@@ -43,7 +43,7 @@ export function LinkDomainSelect({
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          <SelectLabel className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">
+          <SelectLabel className="text-[11px] font-medium text-neutral-400 dark:text-muted-foreground">
             Shared domains
           </SelectLabel>
           {shared.map((domain) => (
@@ -54,7 +54,7 @@ export function LinkDomainSelect({
         </SelectGroup>
         {customDomains.length > 0 && (
           <SelectGroup>
-            <SelectLabel className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">
+            <SelectLabel className="text-[11px] font-medium text-neutral-400 dark:text-muted-foreground">
               Your domains
             </SelectLabel>
             {customDomains.map((domain) => (

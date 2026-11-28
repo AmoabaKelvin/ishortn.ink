@@ -76,7 +76,7 @@ export function ProfileForm({ userProfile }: ProfileFormProps) {
           <p className="text-[14px] font-medium text-neutral-900 dark:text-foreground">
             {userProfile?.name ?? "Your Name"}
           </p>
-          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+          <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
             {userProfile?.email ?? "email@example.com"}
           </p>
         </div>
@@ -99,7 +99,7 @@ export function ProfileForm({ userProfile }: ProfileFormProps) {
                     {...field}
                   />
                 </FormControl>
-                <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+                <p className="text-[11px] text-neutral-400 dark:text-muted-foreground">
                   This is how your name will appear across the platform.
                 </p>
                 <FormMessage className="text-[11px]" />

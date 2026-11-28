@@ -48,7 +48,7 @@ export default function AdminFlaggedLinksPage() {
         <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Flagged Links
         </h1>
-        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
           Review and resolve flagged content
         </p>
       </div>
@@ -89,7 +89,7 @@ export default function AdminFlaggedLinksPage() {
               <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
                 No pending flags
               </p>
-              <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
+              <p className="mt-1 text-[12px] text-neutral-400 dark:text-muted-foreground">
                 All flagged links have been reviewed
               </p>
             </>
@@ -110,7 +110,7 @@ export default function AdminFlaggedLinksPage() {
 
       {data && data.flaggedLinks.length > 0 && (
         <>
-          <p className="mb-3 text-[12px] text-neutral-400 dark:text-neutral-500">
+          <p className="mb-3 text-[12px] text-neutral-400 dark:text-muted-foreground">
             {data.total} {data.total === 1 ? "result" : "results"}
           </p>
 
@@ -140,7 +140,7 @@ export default function AdminFlaggedLinksPage() {
                         {f.status}
                       </span>
                     </div>
-                    <p className="mt-0.5 max-w-[500px] truncate text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <p className="mt-0.5 max-w-[500px] truncate text-[12px] text-neutral-400 dark:text-muted-foreground">
                       {f.linkUrl ?? "N/A"}
                     </p>
                     {f.reason && (
@@ -167,7 +167,7 @@ export default function AdminFlaggedLinksPage() {
                         {f.reporterEmail}
                       </p>
                     )}
-                    <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
+                    <p className="mt-1 text-[11px] text-neutral-400 dark:text-muted-foreground">
                       Flagged{" "}
                       {f.flaggedAt
                         ? new Date(f.flaggedAt).toLocaleDateString("en-US", {
@@ -219,7 +219,7 @@ export default function AdminFlaggedLinksPage() {
 
           {totalPages > 1 && (
             <div className="mt-4 flex items-center justify-between">
-              <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+              <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                 Page {page} of {totalPages}
               </p>
               <div className="flex gap-2">

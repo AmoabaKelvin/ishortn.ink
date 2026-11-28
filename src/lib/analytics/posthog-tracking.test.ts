@@ -11,11 +11,12 @@ function page(pathname: string, search = "") {
   return { href: `https://ishortn.ink${pathname}${search}`, host: "ishortn.ink", pathname };
 }
 
-function fakePostHog(distinctId = "anon-1", userState = "anonymous") {
+function fakePostHog(distinctId = "anon-1", userState = "anonymous", optedOut = false) {
   const calls: string[] = [];
   const client = {
     distinctId,
     userState,
+    optedOut,
     capture: (event: string, properties: Record<string, string>) =>
       calls.push(`${event} ${properties.$pathname}`),
     identify: (id: string) => {
@@ -27,7 +28,17 @@ function fakePostHog(distinctId = "anon-1", userState = "anonymous") {
       calls.push("reset");
       client.distinctId = "anon-2";
       client.userState = "anonymous";
+      client.optedOut = false;
     },
+    opt_out_capturing: () => {
+      calls.push("opt out");
+      client.optedOut = true;
+    },
+    opt_in_capturing: () => {
+      calls.push("opt in");
+      client.optedOut = false;
+    },
+    has_opted_out_capturing: () => client.optedOut,
     get_distinct_id: () => client.distinctId,
     get_property: (name: string) => (name === "$user_state" ? client.userState : undefined),
   };
@@ -166,6 +177,30 @@ describe("createIdentityTracker", () => {
     const { client, calls } = fakePostHog("user_1", "identified");
     createIdentityTracker((call) => call(client))("user_2");
     expect(calls).toEqual(["reset", "identify user_2"]);
+  });
+
+  test("opts internal accounts out of capturing instead of identifying them", () => {
+    const { client, calls } = fakePostHog();
+    createIdentityTracker((call) => call(client))("user_qa", true);
+    expect(calls).toEqual(["opt out"]);
+    expect(client.optedOut).toBe(true);
+  });
+
+  test("an internal account leaves no identity behind from an earlier user", () => {
+    const { client, calls } = fakePostHog("user_1", "identified");
+    createIdentityTracker((call) => call(client))("user_qa", true);
+    expect(calls).toEqual(["reset", "opt out"]);
+  });
+
+  test("opts back in when a non-internal user signs in after an internal one", () => {
+    const { client, calls } = fakePostHog("anon-1", "anonymous", true);
+    const sync = createIdentityTracker((call) => call(client));
+
+    sync(null);
+    sync("user_1");
+
+    expect(calls).toEqual(["opt in", "identify user_1"]);
+    expect(client.optedOut).toBe(false);
   });
 
   test("a sign-out reset before Clerk navigates runs before the sign-out continues", async () => {

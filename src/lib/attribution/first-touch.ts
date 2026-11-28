@@ -1,13 +1,13 @@
 // First-touch attribution: the marketing/auth pages write the `ish_ft` cookie on
 // the visit that brought someone to iShortn, and the dashboard hands it to
 // `attribution.record` once after signup. Shared by both sides, so no
-// browser- or server-only imports here.
+// browser- or server-only imports here. Parsing a cookie back lives in
+// parse-first-touch.ts, so writing one doesn't ship zod to every marketing page.
 
-import { z } from "zod";
+import { clean, FIRST_TOUCH_VALUE_MAX_LENGTH } from "./clean-value";
 
 export const FIRST_TOUCH_COOKIE = "ish_ft";
 export const FIRST_TOUCH_MAX_AGE_SECONDS = 60 * 60 * 24 * 90;
-export const FIRST_TOUCH_VALUE_MAX_LENGTH = 255;
 
 export const UTM_PARAMS = [
   "utm_source",
@@ -51,12 +51,6 @@ export type FirstTouch = {
   referrerHost: string | null;
   firstSeenAt: Date;
 };
-
-function clean(value: string | null | undefined): string | null {
-  if (value == null) return null;
-  const trimmed = value.trim().slice(0, FIRST_TOUCH_VALUE_MAX_LENGTH);
-  return trimmed === "" ? null : trimmed;
-}
 
 const AUTH_PATH = /^\/auth(\/|$)/;
 
@@ -112,40 +106,6 @@ export function serializeFirstTouch(touch: FirstTouchCookie): string {
   return encodeURIComponent(JSON.stringify(touch));
 }
 
-// A field of the wrong type is dropped rather than failing the whole cookie.
-const cookieString = z.string().optional().catch(undefined);
-
-// z.object strips keys not listed here.
-const firstTouchCookieSchema = z.object({
-  utm_source: cookieString,
-  utm_medium: cookieString,
-  utm_campaign: cookieString,
-  utm_term: cookieString,
-  utm_content: cookieString,
-  gclid: cookieString,
-  gbraid: cookieString,
-  wbraid: cookieString,
-  msclkid: cookieString,
-  rdt_cid: cookieString,
-  fbclid: cookieString,
-  li_fat_id: cookieString,
-  landingPath: cookieString,
-  referrerHost: cookieString,
-  ts: z.number().optional().catch(undefined),
-});
-
-const firstTouchJson = z
-  .string()
-  .transform((raw, ctx) => {
-    try {
-      return JSON.parse(decodeURIComponent(raw));
-    } catch {
-      ctx.addIssue({ code: "custom", message: "Malformed cookie" });
-      return z.NEVER;
-    }
-  })
-  .pipe(firstTouchCookieSchema);
-
 /** True when the visit carried no UTM, click ID or external referrer. */
 export function isDirectTouch(touch: FirstTouch): boolean {
   return (
@@ -157,47 +117,4 @@ export function isDirectTouch(touch: FirstTouch): boolean {
     !touch.clickId &&
     !touch.referrerHost
   );
-}
-
-/**
- * Parses an `ish_ft` cookie value (URL-encoded JSON) from an untrusted client.
- * Unknown keys are dropped, strings trimmed to 255 chars, and a missing or
- * implausible timestamp falls back to `now`. Returns null when the value is
- * malformed or carries nothing to attribute (not even a landing path).
- */
-export function parseFirstTouch(raw: string, now: Date): FirstTouch | null {
-  const parsed = firstTouchJson.safeParse(raw);
-  if (!parsed.success) return null;
-  const record = parsed.data;
-
-  let clickId: string | null = null;
-  let clickIdType: ClickIdType | null = null;
-  for (const key of CLICK_ID_PARAMS) {
-    const value = clean(record[key]);
-    if (value) {
-      clickId = value;
-      clickIdType = key;
-      break;
-    }
-  }
-
-  const landingPath = clean(record.landingPath);
-  const maxAgeMs = FIRST_TOUCH_MAX_AGE_SECONDS * 1000;
-  const ts = record.ts;
-  const tsIsPlausible = ts !== undefined && ts <= now.getTime() && ts >= now.getTime() - maxAgeMs;
-
-  const touch: FirstTouch = {
-    utmSource: clean(record.utm_source),
-    utmMedium: clean(record.utm_medium),
-    utmCampaign: clean(record.utm_campaign),
-    utmTerm: clean(record.utm_term),
-    utmContent: clean(record.utm_content),
-    clickId,
-    clickIdType,
-    landingPath: landingPath?.startsWith("/") ? landingPath : null,
-    referrerHost: clean(record.referrerHost)?.toLowerCase() ?? null,
-    firstSeenAt: tsIsPlausible ? new Date(ts) : now,
-  };
-
-  return touch.landingPath || !isDirectTouch(touch) ? touch : null;
 }

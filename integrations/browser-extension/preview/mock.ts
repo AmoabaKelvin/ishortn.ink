@@ -4,6 +4,7 @@
 type Scenario =
   | "not-connected"
   | "manual"
+  | "creating"
   | "created"
   | "customize"
   | "limit"
@@ -22,7 +23,7 @@ const connected = scenario !== "not-connected";
 const limitReached = scenario === "limit";
 
 const localArea: Record<string, unknown> = connected ? { token: "preview-token" } : {};
-if (scenario === "created" || scenario === "customize" || scenario === "limit") localArea.autoShorten = true;
+if (["created", "creating", "customize", "limit"].includes(scenario)) localArea.autoShorten = true;
 const sessionArea: Record<string, unknown> = {};
 
 const area = (store: Record<string, unknown>) => ({
@@ -89,6 +90,10 @@ const recent =
         { shortUrl: `${BASE}/menu`, url: "https://cafe-luna.example/menu.pdf", createdAt: "2026-11-18T19:02:00Z" },
       ];
 
+// Connected states open from the cached account, as every open after the first does. The
+// network-error state has no cache so it shows the error screen of a first open.
+if (connected && scenario !== "network-error") localArea.meCache = { me, savedAt: Date.now() };
+
 let created = 0;
 
 window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -101,6 +106,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     return Response.json({ ...me, linksUsedThisMonth: me.linksUsedThisMonth + created });
   }
   if (url.pathname === "/api/extension/links" && method === "POST") {
+    if (scenario === "creating") return new Promise<Response>(() => undefined);
     if (limitReached) {
       return Response.json(
         { error: "You've used all 30 links included in Free this month.", upgradeUrl: me.upgradeUrl },

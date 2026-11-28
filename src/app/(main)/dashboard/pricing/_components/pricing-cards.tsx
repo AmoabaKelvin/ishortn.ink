@@ -2,13 +2,15 @@
 
 import { IconTag } from "@tabler/icons-react";
 import { Check, Loader2, Sparkles } from "lucide-react";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+import { checkoutSource, readAttribution, utmTags } from "@/lib/billing/attribution";
+import { STALE_BILLING_MESSAGE } from "@/lib/billing/plan-change-copy";
 import { PLAN_FEATURES } from "@/lib/billing/plan-features";
 import { getPlanCaps } from "@/lib/billing/plans";
 import { planPriceDisplay, resolveBillingInterval } from "@/lib/billing/pricing";
@@ -25,7 +27,7 @@ import { api } from "@/trpc/react";
 
 import { ResumeSubscriptionButton } from "../../settings/billing/resume-subscription-button";
 import { DowngradeFeedbackModal } from "./downgrade-feedback-modal";
-import { buildPlanChangeCopy, PlanChangeConfirmDialog } from "./plan-change-confirm-dialog";
+import { PlanChangeConfirmDialog } from "./plan-change-confirm-dialog";
 
 import type { BillingInterval, Plan, SubscriptionMode } from "@/lib/billing/plans";
 import type { Promo } from "@/lib/billing/promo";
@@ -39,6 +41,8 @@ type PricingCardsProps = {
   /** Running promo, only passed when the next upgrade is a new checkout that gets the code. */
   promo: Promo | null;
   subscription: ComponentProps<typeof DowngradeFeedbackModal>["subscription"];
+  /** `planMode` from subscriptions.get, sent with every change so a stale screen is refused. */
+  planMode: Plan;
 };
 
 type PricingPlanSpec = {
@@ -106,7 +110,10 @@ export function PricingCards({
   renewsAt,
   promo,
   subscription,
+  planMode,
 }: PricingCardsProps) {
+  const router = useRouter();
+  const [isRefreshing, startRefresh] = useTransition();
   const searchParams = useSearchParams();
   const [interval, setIntervalState] = useState<BillingInterval>(
     resolveBillingInterval(searchParams?.get("interval"), currentPlan, currentInterval),
@@ -122,6 +129,10 @@ export function PricingCards({
   // only preselects the plan that removes the limit; it never starts checkout.
   const highlightPlan = resolveHighlightPlan(searchParams?.get("highlight"), currentPlan);
   const source = searchParams?.get("source") ?? null;
+  // Source and UTM tags carried from /pricing through sign-up, read once on arrival and sent with
+  // the checkout.
+  const [attribution] = useState(() => readAttribution(searchParams));
+  const [utm] = useState(() => utmTags(attribution));
   const highlightReason = highlightPlan ? getUpgradeReason(source, highlightPlan) : null;
   const fromEventsCap = source?.startsWith("events_") ?? false;
   const autoCheckout = autoUpgrade && subscriptionMode === "checkout" ? autoUpgrade : null;
@@ -151,9 +162,19 @@ export function PricingCards({
       }
       setLoadingPlan(null);
     },
-    onError: (error) => {
-      toast.error(error.message);
+    onError: (error, variables) => {
       setLoadingPlan(null);
+      const plan = paidPlans.find((p) => p.id === variables.plan);
+      if (error.message === STALE_BILLING_MESSAGE && plan) {
+        // The subscription changed under this screen (e.g. the checkout webhook landed): reload
+        // the billing state and ask for confirmation instead of charging it straight away.
+        toast(error.message);
+        setPendingChange({ plan, kind: plan.id === currentPlan ? "switch" : "upgrade" });
+        setConfirmOpen(true);
+        startRefresh(() => router.refresh());
+        return;
+      }
+      toast.error(error.message);
     },
   });
 
@@ -177,7 +198,9 @@ export function PricingCards({
     createCheckoutOrUpdateMutation.mutate({
       plan: plan.id,
       interval,
-      source: source?.slice(0, 64),
+      displayedPlanMode: planMode,
+      source: checkoutSource(attribution),
+      utm,
     });
   };
 
@@ -210,12 +233,14 @@ export function PricingCards({
     if (!autoCheckout || autoCheckoutFired.current) return;
     autoCheckoutFired.current = true;
     replaceWithCheckoutReturn(autoCheckout.id);
-    createCheckoutOrUpdate({ plan: autoCheckout.id, interval, source: "auto_signup" });
-  }, [autoCheckout, createCheckoutOrUpdate, interval]);
-
-  const confirmCopy = pendingChange
-    ? buildPlanChangeCopy(pendingChange.kind, pendingChange.plan.id, interval)
-    : null;
+    createCheckoutOrUpdate({
+      plan: autoCheckout.id,
+      interval,
+      displayedPlanMode: planMode,
+      source: checkoutSource(attribution, "auto_signup"),
+      utm,
+    });
+  }, [attribution, autoCheckout, createCheckoutOrUpdate, interval, planMode, utm]);
 
   return (
     <div className="space-y-8">
@@ -264,8 +289,8 @@ export function PricingCards({
 
       {fromEventsCap && (
         <p className="mx-auto max-w-2xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center text-[13px] text-amber-700 dark:border-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
-          Pro records {PRO_EVENTS_LIMIT.toLocaleString()} visits a month; Ultra has no limit. Visits
-          from before the upgrade are not recovered.
+          Pro includes {PRO_EVENTS_LIMIT.toLocaleString()} tracked clicks a month; Ultra has no
+          limit. Clicks from before the upgrade are not recovered.
         </p>
       )}
 
@@ -353,7 +378,7 @@ export function PricingCards({
               >
                 <div className="flex items-baseline gap-1 whitespace-nowrap">
                   {price.compareAt && (
-                    <del className="mr-1 text-lg tabular-nums text-gray-400 dark:text-neutral-500">
+                    <del className="mr-1 text-lg tabular-nums text-gray-400 dark:text-muted-foreground">
                       <span className="sr-only">Regular price </span>${price.compareAt}
                     </del>
                   )}
@@ -452,7 +477,7 @@ export function PricingCards({
                     <ul className="space-y-3">
                       {plan.comingSoon.map((feature) => (
                         <li key={feature} className="flex items-start gap-3">
-                          <Check className="h-4 w-4 text-gray-400 dark:text-neutral-500 mt-0.5 shrink-0" />
+                          <Check className="h-4 w-4 text-gray-400 dark:text-muted-foreground mt-0.5 shrink-0" />
                           <span className="text-sm text-gray-500 dark:text-neutral-400">
                             {feature}
                           </span>
@@ -472,7 +497,7 @@ export function PricingCards({
                       {plan.limitations.map((limitation) => (
                         <li
                           key={limitation}
-                          className="text-xs text-gray-400 dark:text-neutral-500"
+                          className="text-xs text-gray-400 dark:text-muted-foreground"
                         >
                           • {limitation}
                         </li>
@@ -500,15 +525,14 @@ export function PricingCards({
         />
       )}
 
-      {pendingChange && confirmCopy && (
+      {pendingChange && (
         <PlanChangeConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
-          title={confirmCopy.title}
-          description={confirmCopy.description}
-          note={confirmCopy.note}
-          confirmLabel={confirmCopy.confirmLabel}
-          isLoading={createCheckoutOrUpdateMutation.isLoading}
+          kind={pendingChange.kind}
+          targetPlan={pendingChange.plan.id}
+          interval={interval}
+          isLoading={createCheckoutOrUpdateMutation.isLoading || isRefreshing}
           onConfirm={() => runUpgrade(pendingChange.plan)}
         />
       )}

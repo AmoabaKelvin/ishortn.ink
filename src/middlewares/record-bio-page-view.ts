@@ -1,3 +1,4 @@
+import { env } from "@/env.mjs";
 import { describeVisitor } from "@/lib/core/analytics/visitor";
 import { enqueueClickEvent } from "@/server/lib/click-queue";
 
@@ -18,7 +19,14 @@ type RecordBioPageViewOptions = {
 
 export async function recordBioPageView(opts: RecordBioPageViewOptions): Promise<void> {
   const { headers, bioPageId, ownerId, ip, country, city, referrer } = opts;
-  const visitor = await describeVisitor({ headers, ip, country, city, referrer });
+  const visitor = await describeVisitor({
+    headers,
+    ip,
+    country,
+    city,
+    referrer,
+    ipHashSecret: env.IP_HASH_SECRET,
+  });
   if (!visitor) return;
 
   await enqueueClickEvent({

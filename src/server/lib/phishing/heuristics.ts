@@ -189,13 +189,16 @@ export function runHeuristicChecks(url: string): HeuristicResult {
 
 // Open redirectors phishing mail wraps its links in, so the sender's own domain is what the
 // victim's mail filter sees. Paths are matched as prefixes.
-const OPEN_REDIRECTORS: { host: RegExp; paths: string[] }[] = [
-  { host: /^(www\.)?google\.(com?\.)?[a-z]{2,3}$/, paths: ["/url", "/amp/"] },
+export const OPEN_REDIRECTORS: { host: RegExp; paths: string[] }[] = [
+  {
+    host: /^(www\.)?google\.(com?\.)?[a-z]{2,3}$/,
+    paths: ["/url", "/amp/", "/aclk", "/interstitial"],
+  },
   { host: /^(www\.)?bing\.com$/, paths: ["/ck/"] },
   { host: /^(www\.)?duckduckgo\.com$/, paths: ["/l/"] },
-  { host: /^(l|lm)\.facebook\.com$/, paths: ["/l.php"] },
+  { host: /^((l|lm|m|www)\.)?facebook\.com$/, paths: ["/l.php"] },
   { host: /^l\.instagram\.com$/, paths: ["/"] },
-  { host: /^(www\.)?youtube\.com$/, paths: ["/redirect"] },
+  { host: /^(www\.|m\.)?youtube\.com$/, paths: ["/redirect"] },
   { host: /^(www\.)?linkedin\.com$/, paths: ["/redir/"] },
   { host: /^slack-redir\.net$/, paths: ["/link"] },
 ];
@@ -205,6 +208,15 @@ const OPEN_REDIRECTORS: { host: RegExp; paths: string[] }[] = [
 // email-shaped tokens like `x@y.co`.
 const EMAIL_VALUE_PATTERN =
   /[=#]([a-z0-9._%+-]{2,}@[a-z0-9-]{2,}(?:\.[a-z0-9-]+)*\.[a-z]{2,})(?=$|[&#])/i;
+
+/** Whether the URL points at an open-redirect endpoint listed in `OPEN_REDIRECTORS`. */
+export function isOpenRedirect(parsed: URL): boolean {
+  const host = parsed.hostname.toLowerCase();
+  const path = parsed.pathname.toLowerCase();
+  return OPEN_REDIRECTORS.some(
+    (r) => r.host.test(host) && r.paths.some((prefix) => path.startsWith(prefix)),
+  );
+}
 
 function decodeRepeatedly(value: string): string {
   // Nested redirects encode the target URL (and the email in it) once per hop.
@@ -236,8 +248,6 @@ export function findEmailInRedirect(url: string): string | null {
   } catch {
     return null;
   }
-  const host = parsed.hostname.toLowerCase();
-  const redirector = OPEN_REDIRECTORS.find((r) => r.host.test(host));
-  if (!redirector?.paths.some((path) => parsed.pathname.startsWith(path))) return null;
+  if (!isOpenRedirect(parsed)) return null;
   return EMAIL_VALUE_PATTERN.exec(decodeRepeatedly(`${parsed.search}${parsed.hash}`))?.[1] ?? null;
 }

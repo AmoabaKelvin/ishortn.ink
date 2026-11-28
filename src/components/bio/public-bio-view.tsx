@@ -17,6 +17,8 @@ function toRenderModel(page: PublicBioPage): BioRenderModel {
       switch (b.type) {
         case "link":
           return { id: b.id, type: "link", title: b.title, href: b.href };
+        case "whatsapp":
+          return { id: b.id, type: "whatsapp", title: b.title, href: b.href };
         case "email":
           return { id: b.id, type: "email", title: b.title, href: b.href };
         case "social":
@@ -25,6 +27,24 @@ function toRenderModel(page: PublicBioPage): BioRenderModel {
           return { id: b.id, type: "heading", title: b.title };
         case "text":
           return { id: b.id, type: "text", content: b.content };
+        case "embed":
+          return {
+            id: b.id,
+            type: "embed",
+            title: b.title,
+            provider: b.provider,
+            embedId: b.embedId,
+          };
+        case "image":
+          return {
+            id: b.id,
+            type: "image",
+            src: b.src,
+            alt: b.alt,
+            href: b.href,
+            width: b.width,
+            height: b.height,
+          };
         default:
           return { id: b.id, type: "divider" };
       }

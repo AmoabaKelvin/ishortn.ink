@@ -11,9 +11,13 @@ const MAX_HTML_BYTES = 2_000_000;
 
 const BLOCKED_HOSTS = /^(localhost|127\.|10\.|192\.168\.|169\.254\.|0\.|\[?::1)/i;
 
+// The name must follow whitespace (so `type` doesn't match inside `data-type`), and values may be
+// unquoted, as minified HTML often leaves them.
 function attr(tag: string, name: string): string | null {
-  const match = tag.match(new RegExp(`${name}\\s*=\\s*("([^"]*)"|'([^']*)')`, "i"));
-  return match ? (match[2] ?? match[3] ?? null) : null;
+  const match = tag.match(
+    new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>\`]+))`, "i"),
+  );
+  return match ? (match[1] ?? match[2] ?? match[3] ?? null) : null;
 }
 
 function findMeta(html: string, keys: string[]): string | null {
@@ -120,7 +124,25 @@ async function readCapped(response: Response, maxBytes: number): Promise<Uint8Ar
   return bytes;
 }
 
-export async function scrapeMetadata(url: string): Promise<ScrapedMetadata> {
+type FetchedPage = {
+  response: Response;
+  /** Final URL after redirects. */
+  base: string;
+  /** Null when the response isn't HTML. */
+  html: string | null;
+};
+
+// Sites gate their OG tags on link-preview crawlers; a plain browser UA gets a consent wall or JS
+// shell from e.g. YouTube, while Wikipedia blocks "facebookexternalhit". The Twitterbot token
+// passes both.
+const PREVIEW_USER_AGENT =
+  "Mozilla/5.0 (compatible; iShortn/1.0; +https://ishortn.ink) Twitterbot/1.0";
+
+/** A current desktop Chrome, for fetches that must see what a visitor sees, not a crawler. */
+export const BROWSER_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36";
+
+async function fetchPage(url: string, userAgent = PREVIEW_USER_AGENT): Promise<FetchedPage> {
   const target = new URL(url);
   if (target.protocol !== "http:" && target.protocol !== "https:") {
     throw new Error("only http(s) URLs are supported");
@@ -131,10 +153,7 @@ export async function scrapeMetadata(url: string): Promise<ScrapedMetadata> {
 
   const response = await fetch(target, {
     headers: {
-      // Sites gate their OG tags on link-preview crawlers; a plain browser UA
-      // gets a consent wall or JS shell from e.g. YouTube, while Wikipedia
-      // blocks "facebookexternalhit". The Twitterbot token passes both.
-      "User-Agent": "Mozilla/5.0 (compatible; iShortn/1.0; +https://ishortn.ink) Twitterbot/1.0",
+      "User-Agent": userAgent,
       Accept: "text/html,application/xhtml+xml",
     },
     redirect: "follow",
@@ -142,14 +161,20 @@ export async function scrapeMetadata(url: string): Promise<ScrapedMetadata> {
   });
 
   const base = response.url || target.toString();
-  const fallbackFavicon = absolutize("/favicon.ico", base);
-
   const contentType = response.headers.get("content-type");
   if (!(contentType ?? "").includes("html")) {
+    await response.body?.cancel().catch(() => {});
+    return { response, base, html: null };
+  }
+  const html = decodeHtml(await readCapped(response, MAX_HTML_BYTES), contentType);
+  return { response, base, html };
+}
+
+function parseMetadata(html: string | null, base: string): ScrapedMetadata {
+  const fallbackFavicon = absolutize("/favicon.ico", base);
+  if (html === null) {
     return { title: "", description: "", image: "", favicon: fallbackFavicon };
   }
-
-  const html = decodeHtml(await readCapped(response, MAX_HTML_BYTES), contentType);
 
   const title =
     findMeta(html, ["og:title", "twitter:title"]) ??
@@ -174,4 +199,125 @@ export async function scrapeMetadata(url: string): Promise<ScrapedMetadata> {
     image: absolutize(image, base),
     favicon: absolutize(favicon, base) || fallbackFavicon,
   };
+}
+
+export async function scrapeMetadata(url: string): Promise<ScrapedMetadata> {
+  const { base, html } = await fetchPage(url);
+  return parseMetadata(html, base);
+}
+
+/** What the phishing check reads from a page beyond its preview metadata. */
+export type PageSignals = {
+  status: number;
+  /** URL the request ended on after redirects. */
+  finalUrl: string;
+  hasPasswordInput: boolean;
+  /** A text, email or tel field (somewhere to type an email or username), or a prefilled hidden one. */
+  hasEmailInput: boolean;
+  /** Hosts that the page's forms submit to. */
+  formActionHosts: string[];
+  /** Start of the page's visible text, whitespace collapsed. */
+  visibleText: string;
+  imageAlts: string[];
+  /** A bot-challenge interstitial (Cloudflare "Just a moment...") rather than the page itself. */
+  isChallenge: boolean;
+};
+
+export type ScrapedPage = { metadata: ScrapedMetadata; signals: PageSignals };
+
+const VISIBLE_TEXT_CHARS = 500;
+const MAX_LIST_ITEMS = 10;
+const MAX_ALT_CHARS = 100;
+
+const CHALLENGE_TITLES = /^(just a moment\.*|attention required!?(\s*\|\s*cloudflare)?)$/i;
+// Only on the interstitial itself: ordinary Cloudflare-proxied pages also load
+// "/cdn-cgi/challenge-platform/" bot-detection scripts, so that path proves nothing.
+const CHALLENGE_MARKERS = /cf[-_]chl/i;
+const IDENTITY_FIELD = /e-?mail|user|login|account/i;
+// Fields that can take an email or username; `search` is left out so a site search box beside a
+// protected post's password field doesn't read as a sign-in form.
+const TEXT_ENTRY_TYPES = new Set(["text", "email", "tel"]);
+
+function inputTags(html: string): string[] {
+  return html.match(/<input\b[^>]*>/gi) ?? [];
+}
+
+function visibleText(html: string): string {
+  const text = html
+    .replace(/<(head|script|style|noscript|template|svg)\b[\s\S]*?<\/\1\s*>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ");
+  return decodeEntities(text).replace(/\s+/g, " ").trim().slice(0, VISIBLE_TEXT_CHARS);
+}
+
+function parsePageSignals(
+  html: string | null,
+  base: string,
+  status: number,
+  headers: Headers,
+): PageSignals {
+  const inputs = html === null ? [] : inputTags(html);
+  const typeOf = (tag: string) => attr(tag, "type")?.trim().toLowerCase() ?? "text";
+
+  const formActionHosts = new Set<string>();
+  for (const tag of html?.match(/<form\b[^>]*>/gi) ?? []) {
+    const action = absolutize(attr(tag, "action"), base);
+    const host = action ? new URL(action).hostname : "";
+    if (host) formActionHosts.add(host);
+  }
+
+  const imageAlts = new Set<string>();
+  for (const tag of html?.match(/<img\b[^>]*>/gi) ?? []) {
+    const alt = decodeEntities(attr(tag, "alt") ?? "").trim();
+    if (alt) imageAlts.add(alt.slice(0, MAX_ALT_CHARS));
+  }
+
+  const title = html?.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ?? "";
+  return {
+    status,
+    finalUrl: base,
+    hasPasswordInput: inputs.some((tag) => typeOf(tag) === "password"),
+    hasEmailInput: inputs.some((tag) => {
+      const type = typeOf(tag);
+      // Form builders give fields generated names ("_u123"), so any free-text field counts.
+      if (TEXT_ENTRY_TYPES.has(type)) return true;
+      // Kits that prefill the victim's address from the URL often carry it in a hidden field.
+      if (type !== "hidden") return false;
+      const names = ["name", "id", "autocomplete"].map((key) => attr(tag, key));
+      return names.some((value) => value && IDENTITY_FIELD.test(value));
+    }),
+    formActionHosts: [...formActionHosts].slice(0, MAX_LIST_ITEMS),
+    visibleText: html === null ? "" : visibleText(html),
+    imageAlts: [...imageAlts].slice(0, MAX_LIST_ITEMS),
+    isChallenge:
+      headers.get("cf-mitigated") === "challenge" ||
+      CHALLENGE_TITLES.test(decodeEntities(title).trim()) ||
+      (html !== null && CHALLENGE_MARKERS.test(html)),
+  };
+}
+
+export function parseScrapedPage(
+  html: string | null,
+  base: string,
+  status: number,
+  headers: Headers,
+): ScrapedPage {
+  return {
+    metadata: parseMetadata(html, base),
+    signals: parsePageSignals(html, base, status, headers),
+  };
+}
+
+/**
+ * The page's preview metadata plus the signals the phishing check needs. Same fetch and limits as
+ * `scrapeMetadata`, which link previews keep using unchanged. Phishing pages that cloak show
+ * crawlers a harmless page, so the re-scan passes `BROWSER_USER_AGENT`.
+ */
+export async function scrapePageForSafetyCheck(
+  url: string,
+  userAgent?: string,
+): Promise<ScrapedPage> {
+  const { response, base, html } = await fetchPage(url, userAgent);
+  return parseScrapedPage(html, base, response.status, response.headers);
 }

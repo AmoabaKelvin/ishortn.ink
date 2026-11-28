@@ -54,7 +54,15 @@ To hand your whole account's resources to another person, use **Account Transfer
 
 ## API access
 
-API keys belong to a person, not a team. Creating and using them needs a Pro or Ultra plan on the key owner's own account; being a member of a team doesn't count (see [API access by plan](/docs/api#api-access-by-plan)). Requests made with a key work in the key owner's personal workspace only; see [Which links the API can reach](/docs/api#which-links-the-api-can-reach).
+A team workspace has its own **team API keys**, listed under **Team API Keys** in [Settings](/dashboard/settings#team-api-keys) while you're in the team workspace:
+
+- Owners and admins can create and revoke team keys. Members see the list (name, prefix, who created each key, when it was last used) but can't change it.
+- A request made with a team key acts in the team workspace: it creates, lists, reads, updates and deletes the team's links, on platform domains or the team's active custom domains, with the team's Ultra limits. It never reaches anyone's personal links or another team's.
+- Team keys belong to the team. Removing the member who created a key doesn't revoke it.
+- If the team is deleted, or the owner's Ultra plan lapses and the team's grace period ends (the team turns read-only), its keys stop working with the same `403` a lapsed personal key gets.
+- Zapier, n8n, Make, Raycast and the [MCP server](/docs/integrations/mcp) work with team keys unchanged; [`GET /api/v1/me`](/docs/api/get-me) reports the team in its `workspace` field.
+
+Personal API keys still belong to a person and work only in their personal workspace; they need a Pro or Ultra plan on the key owner's own account (see [API access by plan](/docs/api#api-access-by-plan) and [Which links the API can reach](/docs/api#which-links-the-api-can-reach)).
 
 ## Deleting a team
 

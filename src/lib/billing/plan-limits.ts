@@ -2,8 +2,11 @@
 export const PLAN_LIMIT_KEYS = [
   "monthly_links",
   "qr_codes",
+  "bulk_qr_codes",
   "bio_pages",
   "bio_link_blocks",
+  "bio_embed_blocks",
+  "bio_image_blocks",
   "campaigns",
   "custom_domains",
   "folders",
@@ -11,6 +14,8 @@ export const PLAN_LIMIT_KEYS = [
   "milestones",
   "api_keys",
   "api_v1",
+  "webhooks",
+  "scheduled_reports",
 ] as const;
 
 /** Gated screens shown to a free user; logged via `planLimits.recordView`. */
@@ -19,6 +24,7 @@ export const PLAN_LIMIT_VIEW_KEYS = [
   "domains_page_view",
   "folders_page_view",
   "tokens_page_view",
+  "webhooks_page_view",
 ] as const;
 
 export type PlanLimitKey = (typeof PLAN_LIMIT_KEYS)[number];

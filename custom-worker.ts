@@ -9,7 +9,7 @@ import { getWwwRedirectUrl } from "./src/lib/routing/www-redirect";
 
 import type { ClickEvent } from "./src/lib/core/analytics/click-event";
 
-type Env = CloudflareEnv & { CRON_SECRET: string };
+type Env = CloudflareEnv & { CRON_SECRET: string; IP_HASH_SECRET?: string };
 
 // Maps each cron expression (see triggers.crons in wrangler.jsonc) to the
 // Next.js routes it runs. Hourly jobs share a slot rather than adding cron
@@ -20,15 +20,17 @@ const CRON_ROUTES = new Map([
   ["0 2 * * SUN", ["/api/cron/cleanup-analytics"]],
   ["0 4 * * *", ["/api/cron/cleanup-expired"]],
   ["0 5 * * *", ["/api/cron/entitlements"]],
+  ["0 7 * * *", ["/api/cron/link-health"]],
   ["25 * * * *", ["/api/cron/entitlements?emails=1"]],
   ["30 */6 * * *", ["/api/cron/phishing-rescan"]],
-  ["5,20,35,50 * * * *", ["/api/cron/phishing-rescan?backlog=1"]],
+  ["5,20,35,50 * * * *", ["/api/cron/phishing-rescan?backlog=1", "/api/cron/webhook-retries"]],
   [
     "10 * * * *",
     [
       "/api/cron/api-access-sunset",
       "/api/cron/first-link-nudge",
       "/api/cron/promo-paused-notice",
+      "/api/cron/scheduled-reports",
       "/api/cron/upgrade-nudge",
     ],
   ],
@@ -68,10 +70,10 @@ async function redirectFromCache(
     return await runWithCloudflareRequestContext(request, env, ctx, async () => {
       const target = getCachedRedirectTarget(request);
       if (!target) return null;
-      // Loaded on first use: it pulls in env.mjs, which needs the process.env
-      // that entering the request context populates.
+      // Evaluated on first use, so requests that aren't short-link visits never
+      // load the visitor parsing it pulls in.
       const cached = await import("./src/middlewares/cached-redirect");
-      const redirect = await cached.redirectFromCache(request, target);
+      const redirect = await cached.redirectFromCache(request, target, env.IP_HASH_SECRET);
       if (!redirect) return null;
       ctx.waitUntil(redirect.click.catch((error) => console.error("Failed to queue click", error)));
       return redirect.response;
@@ -86,10 +88,11 @@ export default {
   async fetch(request, env, ctx) {
     const wwwRedirect = getWwwRedirectUrl(request.url);
     if (wwwRedirect) return Response.redirect(wwwRedirect, 301);
-    const cached = await redirectFromCache(request, env, ctx);
-    if (cached) return cached;
     const render = (req: Request): Promise<Response> => handler.fetch(req, env, ctx);
-    return render(request).then((response) => applyLinkStateStatus(request, response, render));
+    // A cached redirect goes through the state-route handling too, exactly as
+    // the page's redirect would (a destination may be a same-origin state route).
+    const response = (await redirectFromCache(request, env, ctx)) ?? (await render(request));
+    return applyLinkStateStatus(request, response, render);
   },
 
   async scheduled(controller, env) {

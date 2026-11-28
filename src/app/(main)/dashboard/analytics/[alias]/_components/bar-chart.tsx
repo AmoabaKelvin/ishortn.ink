@@ -170,7 +170,7 @@ export function BarChart({
             <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
               {chartView === "clicks" ? "Click Analytics" : "Targeting Overview"}
             </h2>
-            <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
               {chartView === "clicks"
                 ? "Track your link performance over time (UTC)"
                 : "See how targeting rules affect your traffic"}
@@ -187,7 +187,7 @@ export function BarChart({
                     "rounded-md p-1.5 transition-all duration-150",
                     chartType === "area"
                       ? "bg-white dark:bg-card text-neutral-900 dark:text-foreground shadow-sm"
-                      : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300",
+                      : "text-neutral-400 dark:text-muted-foreground hover:text-neutral-600 dark:hover:text-neutral-300",
                   )}
                   title="Area Chart"
                   aria-label="Area chart"
@@ -201,7 +201,7 @@ export function BarChart({
                     "rounded-md p-1.5 transition-all duration-150",
                     chartType === "bar"
                       ? "bg-white dark:bg-card text-neutral-900 dark:text-foreground shadow-sm"
-                      : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300",
+                      : "text-neutral-400 dark:text-muted-foreground hover:text-neutral-600 dark:hover:text-neutral-300",
                   )}
                   title="Bar Chart"
                   aria-label="Bar chart"
@@ -223,7 +223,7 @@ export function BarChart({
                       "rounded-md px-3 py-1.5 text-[12px] font-medium transition-all duration-150",
                       chartView === view
                         ? "bg-white dark:bg-card text-neutral-900 dark:text-foreground shadow-sm"
-                        : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300",
+                        : "text-neutral-400 dark:text-muted-foreground hover:text-neutral-600 dark:hover:text-neutral-300",
                     )}
                   >
                     {view === "clicks" ? "Clicks" : "Rules"}
@@ -365,7 +365,7 @@ export function BarChart({
                       <span className="text-[13px] font-semibold tabular-nums text-neutral-600 dark:text-neutral-400">
                         {entry.value.toLocaleString()}
                       </span>
-                      <span className="text-[12px] tabular-nums text-neutral-400 dark:text-neutral-500">
+                      <span className="text-[12px] tabular-nums text-neutral-400 dark:text-muted-foreground">
                         {entry.percentage}%
                       </span>
                     </div>
@@ -374,7 +374,7 @@ export function BarChart({
 
                 {/* Summary */}
                 <div className="mt-2 border-t border-neutral-100 dark:border-border/50 pt-3">
-                  <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                  <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                     <span className="font-medium text-neutral-600 dark:text-neutral-400">
                       {geoStats.redirectCount + geoStats.blockCount}
                     </span>{" "}
@@ -388,7 +388,7 @@ export function BarChart({
       </div>
 
       {isProPlan === false && (
-        <div className="px-5 pb-4 text-center text-[12px] text-neutral-400 dark:text-neutral-500">
+        <div className="px-5 pb-4 text-center text-[12px] text-neutral-400 dark:text-muted-foreground">
           Showing data for the last 7 days.{" "}
           <UpgradeText text="Upgrade to Pro" source="analytics_chart" /> for full analytics.
           <PromoOfferSuffix />

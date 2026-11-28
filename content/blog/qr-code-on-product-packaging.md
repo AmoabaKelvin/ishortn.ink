@@ -55,6 +55,8 @@ Keep the page light. People scan packaging in warehouses, plant rooms and baseme
 
 If you also print instructions in the box, our guide to [QR codes for instruction manuals](/blog/qr-code-for-instruction-manuals) covers manual codes in more detail, including the EU's 2027 rules for digital machinery instructions.
 
+For safety data sheet and warranty registration codes, including what OSHA allows for electronic SDS access, see [SDS QR codes](/blog/sds-qr-code).
+
 ## One code per product, per SKU or per batch?
 
 | Code per... | Use it when | Trade-off |

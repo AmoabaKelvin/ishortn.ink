@@ -21,11 +21,15 @@ const MARKETING_PATHS = new Set([
   "/features",
   "/qr-code-generator",
   "/utm-builder",
+  "/url-expander",
+  "/extension",
   "/whatsapp-link-generator",
   "/gerador-de-link-whatsapp",
   "/blog",
   "/compare",
+  "/open-source-url-shortener",
   "/solutions",
+  "/customers/airo",
   "/changelog",
   "/abuse",
   "/privacy",
@@ -35,9 +39,13 @@ const MARKETING_PATHS = new Set([
 ]);
 const MARKETING_PREFIXES = ["/blog/", "/compare/", "/solutions/"];
 
-// Short-link domains and subdomains of the app domain (www, status, team
-// subdomains). Team subdomains of the other short domains are left alone.
-const NON_PRIMARY_HOSTS = new Set(PLATFORM_DOMAINS.filter((domain) => domain !== APP_BASE_DOMAIN));
+// Short-link domains, their www hosts, and subdomains of the app domain (www,
+// status, team subdomains). Team subdomains of the other short domains are
+// left alone; "www" is a reserved team slug, so it never names a team.
+const NON_PRIMARY_HOSTS = new Set([
+  ...PLATFORM_DOMAINS.filter((domain) => domain !== APP_BASE_DOMAIN),
+  ...PLATFORM_DOMAINS.map((domain) => `www.${domain}`),
+]);
 
 function normalizeHost(host: string): string {
   return (host.split(":")[0] ?? host).replace(/\.$/, "").toLowerCase();
@@ -69,6 +77,8 @@ export function getMarketingRedirectUrl(
 // path falls through to the [linkAlias] route; indexing.test.ts fails when a
 // new top-level route under src/app is missing here.
 export const APP_TOP_LEVEL_SEGMENTS = new Set([
+  // Domain proofs such as /.well-known/mcp-registry-auth (app host only).
+  ".well-known",
   "abuse",
   "account",
   "api",
@@ -77,6 +87,7 @@ export const APP_TOP_LEVEL_SEGMENTS = new Set([
   "blog",
   "changelog",
   "compare",
+  "customers",
   "dashboard",
   "docs-site",
   "extension",
@@ -87,6 +98,9 @@ export const APP_TOP_LEVEL_SEGMENTS = new Set([
   "fonts",
   "llms.txt",
   "manifest.webmanifest",
+  // The MCP endpoint: src/middleware.ts rewrites /mcp on the app host to /api/mcp.
+  "mcp",
+  "open-source-url-shortener",
   "opengraph-image",
   "p",
   "p-host",
@@ -95,10 +109,13 @@ export const APP_TOP_LEVEL_SEGMENTS = new Set([
   "qr-code-generator",
   "robots.txt",
   "sitemap.xml",
+  // public/social: marketing images served as static assets, never short links.
+  "social",
   "solutions",
   "stats",
   "teams",
   "terms",
+  "url-expander",
   "utm-builder",
   "whatsapp-link-generator",
 ]);
@@ -110,6 +127,8 @@ const INTERSTITIAL_PREFIXES = [
   "/verify-password/",
   "/verified-redirect/",
   "/cloaked/",
+  // Contact card pages (/c/<id>) and their .vcf hold people's details.
+  "/c/",
 ];
 
 /**

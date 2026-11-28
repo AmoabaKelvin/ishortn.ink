@@ -3,7 +3,7 @@ import TeamInviteAcceptedEmail from "@/emails/team-invite-accepted";
 import TeamMemberRemovedEmail from "@/emails/team-member-removed";
 import { getAppUrl } from "@/lib/constants/domains";
 
-import { sendEmail } from "./send-email";
+import { EMAIL_FROM_SYSTEM, sendEmail } from "./send-email";
 
 type SendTeamInviteEmailInput = {
   email: string;
@@ -29,6 +29,7 @@ export function sendTeamInviteEmail({
 }: SendTeamInviteEmailInput): Promise<boolean> {
   return sendEmail({
     template: "team-invite",
+    from: EMAIL_FROM_SYSTEM,
     recipientId: recipientId ?? null,
     to: email,
     essential: true,
@@ -61,6 +62,7 @@ export function sendTeamInviteAcceptedEmail({
 }: SendTeamInviteAcceptedEmailInput): Promise<boolean> {
   return sendEmail({
     template: "team-invite-accepted",
+    from: EMAIL_FROM_SYSTEM,
     recipientId: inviterId,
     to: inviterEmail,
     essential: true,
@@ -94,6 +96,7 @@ export function sendTeamMemberRemovedEmail({
 }: SendTeamMemberRemovedEmailInput): Promise<boolean> {
   return sendEmail({
     template: "team-member-removed",
+    from: EMAIL_FROM_SYSTEM,
     recipientId: memberId,
     to: memberEmail,
     essential: true,

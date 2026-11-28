@@ -26,7 +26,7 @@ export function TierBreakdownCard({
         <p className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Plan Breakdown
         </p>
-        <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
           Distribution across tiers (current)
         </p>
       </div>
@@ -51,10 +51,10 @@ export function TierBreakdownCard({
                     <p className="text-[13px] font-semibold tabular-nums text-neutral-800 dark:text-neutral-200">
                       {tier.count.toLocaleString()}
                     </p>
-                    <p className="w-12 text-right text-[11px] tabular-nums text-neutral-400 dark:text-neutral-500">
+                    <p className="w-12 text-right text-[11px] tabular-nums text-neutral-400 dark:text-muted-foreground">
                       {tier.share}%
                     </p>
-                    <p className="w-16 text-right text-[11px] tabular-nums text-neutral-400 dark:text-neutral-500">
+                    <p className="w-16 text-right text-[11px] tabular-nums text-neutral-400 dark:text-muted-foreground">
                       {tier.mrr > 0
                         ? `${formatPrice(tier.mrr, { notation: "standard", maximumFractionDigits: 0 })}/mo`
                         : "—"}

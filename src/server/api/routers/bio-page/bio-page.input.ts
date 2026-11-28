@@ -1,6 +1,19 @@
 import { z } from "zod";
 
-export const bioBlockTypeSchema = z.enum(["link", "heading", "text", "social", "divider", "email"]);
+import { whatsappDetailsSchema } from "@/components/bio/whatsapp";
+
+// "whatsapp" isn't a stored type: it's saved as a link block (see components/bio/whatsapp.ts).
+export const bioBlockTypeSchema = z.enum([
+  "link",
+  "heading",
+  "text",
+  "social",
+  "divider",
+  "email",
+  "whatsapp",
+  "embed",
+  "image",
+]);
 
 export const bioThemeSchema = z.object({
   preset: z.string().max(50).optional(),
@@ -72,8 +85,12 @@ export const getBioPageAnalyticsSchema = z.object({
 const blockFieldsSchema = {
   title: z.string().max(255).nullish(),
   content: z.string().max(5000).nullish(), // text body
-  url: z.string().max(2048).nullish(), // link destination / email address
+  url: z.string().max(2048).nullish(), // link/image destination, email address, embed source URL
+  image: z.string().nullish(), // image blocks: base64 data URL (new upload) or the stored URL
+  imageWidth: z.number().int().min(1).max(20000).nullish(), // image blocks: intrinsic size of `image`
+  imageHeight: z.number().int().min(1).max(20000).nullish(),
   socials: z.array(bioSocialLinkSchema).max(20).optional(), // social blocks
+  whatsapp: whatsappDetailsSchema.optional(), // WhatsApp blocks
   scheduledAt: z.date().nullish(), // Ultra
   scheduledUntil: z.date().nullish(), // Ultra
 };
@@ -97,6 +114,7 @@ export const reorderBlocksSchema = z.object({
   blockIds: z.array(z.number()),
 });
 
+export type BioEditorBlockType = z.infer<typeof bioBlockTypeSchema>;
 export type CreateBioPageInput = z.infer<typeof createBioPageSchema>;
 export type UpdateBioPageInput = z.infer<typeof updateBioPageSchema>;
 export type AddBioBlockInput = z.infer<typeof addBioBlockSchema>;

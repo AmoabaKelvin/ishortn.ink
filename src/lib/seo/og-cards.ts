@@ -44,6 +44,12 @@ export const pageCards = {
     title: "Link shorteners compared: free plans and prices",
     subtitle: "Free-plan limits, custom domains, QR codes and prices, side by side.",
   }),
+  openSourceUrlShortener: card({
+    eyebrow: "MIT licence",
+    title: "Open-source URL shortener",
+    subtitle:
+      "Self-host it on Cloudflare Workers or use the free hosted plan. Open-source shorteners compared.",
+  }),
   changelog: card({
     eyebrow: "Changelog",
     title: "What's new in iShortn",
@@ -85,6 +91,21 @@ export const pageCards = {
     visual: "links",
     visualLabel: "example.com/sale?utm_source=newsletter&utm_medium=email&utm_campaign=spring",
   }),
+  urlExpander: card({
+    eyebrow: "Free tool",
+    title: "URL expander",
+    subtitle: "Paste a short link to see where it really goes.",
+    visual: "links",
+    visualLabel: "Final page: https://example.com/spring-launch",
+  }),
+  extension: card({
+    eyebrow: "Browser extension",
+    title: "iShortn for Chrome",
+    subtitle:
+      "Shorten the current tab in one click, copy the link and get its QR code, right from your browser toolbar.",
+    visual: "links",
+    visualLabel: "ishortn.ink/q4Lx9",
+  }),
   whatsappLinkGenerator: card({
     eyebrow: "Free tool",
     title: "Free WhatsApp link generator",
@@ -98,6 +119,11 @@ export const pageCards = {
     subtitle: "Crie um link wa.me com a mensagem já escrita e um QR code para imprimir.",
     visual: "links",
     visualLabel: "wa.me/5511912345678?text=Ol%C3%A1!%20Quero%20fazer%20um%20pedido.",
+  }),
+  customerAiro: card({
+    eyebrow: "Customers",
+    title: "AIRO stopped guessing which marketing works. Then they stopped paying for rack cards.",
+    subtitle: "Customer story: AIRO, Missouri and Arkansas",
   }),
 } satisfies Record<string, OgCard>;
 

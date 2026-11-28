@@ -17,6 +17,7 @@ import { linkMilestoneRouter } from "./routers/link-milestone/link-milestone.pro
 import { linkRouter } from "./routers/link/link.procedure";
 import { planLimitsRouter } from "./routers/plan-limits/plan-limits.procedure";
 import { qrCodeRouter } from "./routers/qrcode/qrcode.procedure";
+import { scheduledReportRouter } from "./routers/scheduled-report/scheduled-report.procedure";
 import { siteSettingsRouter } from "./routers/settings/settings.procedure";
 import { statsShareRouter } from "./routers/stats-share/stats-share.procedure";
 import { subscriptionsRouter } from "./routers/subscriptions/subscriptions.procedure";
@@ -25,6 +26,7 @@ import { teamRouter } from "./routers/team/team.procedure";
 import { tokenRouter } from "./routers/token/token.procedure";
 import { userRouter } from "./routers/user/user.procedure";
 import { utmTemplateRouter } from "./routers/utm-template/utm-template.router";
+import { webhookRouter } from "./routers/webhook/webhook.procedure";
 import { createTRPCRouter } from "./trpc";
 
 export const appRouter = createTRPCRouter({
@@ -34,6 +36,7 @@ export const appRouter = createTRPCRouter({
   admin: adminRouter,
   link: linkRouter,
   statsShare: statsShareRouter,
+  scheduledReport: scheduledReportRouter,
   token: tokenRouter,
   lemonsqueezy: lemonsqueezyRouter,
   subscriptions: subscriptionsRouter,
@@ -55,6 +58,7 @@ export const appRouter = createTRPCRouter({
   bioPage: bioPageRouter,
   campaign: campaignRouter,
   planLimits: planLimitsRouter,
+  webhook: webhookRouter,
 });
 
 export type AppRouter = typeof appRouter;

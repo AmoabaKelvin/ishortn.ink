@@ -74,7 +74,7 @@ export function LinkStatusPage({
 
         {details && (
           <div className="mt-5 rounded-lg border border-neutral-200 bg-white px-4 py-3 dark:border-border dark:bg-card">
-            <p className="text-[12px] font-medium text-neutral-400 dark:text-neutral-500">
+            <p className="text-[12px] font-medium text-neutral-400 dark:text-muted-foreground">
               {details.label}
             </p>
             <p className="mt-1 text-[13px] break-words text-neutral-700 dark:text-neutral-300">

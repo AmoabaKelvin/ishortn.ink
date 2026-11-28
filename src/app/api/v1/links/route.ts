@@ -3,9 +3,11 @@ import { z } from "zod";
 
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
+import { ServerTiming } from "@/server/lib/server-timing";
 
 import { apiError, errorResponse, readJsonBody, validationError } from "../errors";
 import {
+  apiLinkFilter,
   getApiReadableDomains,
   resolveApiDomainForUser,
   restrictedAccountResponse,
@@ -35,8 +37,8 @@ const listLinksQuery = z.object({
 });
 
 /**
- * Newest first. Scoped like GET /links/{alias}: the owner's personal workspace,
- * on a platform domain or one of their active custom domains.
+ * Newest first. Scoped like GET /links/{alias}: the key's workspace, on a platform
+ * domain or one of the workspace's active custom domains.
  */
 export const GET = withApiKey(async (request: NextRequest, token) => {
   const query = listLinksQuery.safeParse(Object.fromEntries(request.nextUrl.searchParams));
@@ -45,11 +47,11 @@ export const GET = withApiKey(async (request: NextRequest, token) => {
 
   let domainFilter;
   if (query.data.domain?.trim()) {
-    const domain = await resolveApiDomainForUser(token.userId, { domain: query.data.domain });
+    const domain = await resolveApiDomainForUser(token, { domain: query.data.domain });
     if (!domain) return apiError(403, "forbidden", "Domain not available for this API key");
     domainFilter = eq(link.domain, domain);
   } else {
-    domainFilter = inArray(link.domain, await getApiReadableDomains(token.userId));
+    domainFilter = inArray(link.domain, await getApiReadableDomains(token));
   }
 
   const rows = await db
@@ -64,14 +66,7 @@ export const GET = withApiKey(async (request: NextRequest, token) => {
       disableLinkAfterClicks: link.disableLinkAfterClicks,
     })
     .from(link)
-    .where(
-      and(
-        eq(link.userId, token.userId),
-        isNull(link.teamId),
-        domainFilter,
-        cursor ? afterCursor(cursor) : undefined,
-      ),
-    )
+    .where(and(apiLinkFilter(token), domainFilter, cursor ? afterCursor(cursor) : undefined))
     .orderBy(desc(link.createdAt), desc(link.id))
     .limit(limit + 1);
 
@@ -93,20 +88,25 @@ function afterCursor({ createdAt, id }: LinkCursor) {
   );
 }
 
-export const POST = withApiKey(async (request: Request, token) => {
-  const restricted = restrictedAccountResponse(token);
-  if (restricted) return restricted;
+// Every response, refusals included, carries a Server-Timing header with the create steps.
+export async function POST(request: Request): Promise<Response> {
+  const serverTiming = new ServerTiming();
+  const response = await withApiKey(async (request: Request, token) => {
+    const restricted = restrictedAccountResponse(token);
+    if (restricted) return restricted;
 
-  const body = await readJsonBody(request);
-  if (!body.ok) return body.response;
+    const body = await readJsonBody(request);
+    if (!body.ok) return body.response;
 
-  const input = shortenLinkSchema.safeParse(body.body);
-  if (!input.success) return validationError(input.error);
+    const input = shortenLinkSchema.safeParse(body.body);
+    if (!input.success) return validationError(input.error);
 
-  try {
-    const newLink = await createTokenLink(token, input.data, "api");
-    return Response.json(newLink, { status: 201 });
-  } catch (error) {
-    return errorResponse(error);
-  }
-});
+    try {
+      const newLink = await createTokenLink(token, input.data, "api", serverTiming);
+      return Response.json(newLink, { status: 201 });
+    } catch (error) {
+      return errorResponse(error);
+    }
+  }, serverTiming)(request);
+  return serverTiming.apply(response);
+}

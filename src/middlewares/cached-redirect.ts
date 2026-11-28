@@ -3,8 +3,9 @@
 // click; this is a KV read or two. Anything it can't answer exactly as that page would
 // returns null and goes to Next, so keep every check here conservative.
 //
-// Wrangler bundles this outside the Next build: no db, logger or `server-only`
-// in its imports (the logger's `server-only` throws there).
+// Wrangler bundles this outside the Next build: no db, logger, `server-only` or
+// env.mjs in its imports (the logger's `server-only` throws there, and env.mjs
+// validates process.env when it loads). cached-redirect.test.ts checks this.
 import { buildCacheKey, getFromCache, getGeoRulesFromCache } from "@/lib/core/cache";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { NO_INDEX_HEADER } from "@/lib/seo/indexing";
@@ -68,6 +69,8 @@ function isHttpUrl(value: string): boolean {
 export async function redirectFromCache(
   request: Request,
   target: CachedRedirectTarget,
+  /** `IP_HASH_SECRET` from the worker's bindings; see hashIp. */
+  ipHashSecret: string | undefined,
 ): Promise<CachedRedirect | null> {
   const link = await getFromCache(buildCacheKey(target.domain, target.alias));
   if (!link?.url || needsFullResolution(link)) return null;
@@ -80,6 +83,19 @@ export async function redirectFromCache(
   const destination = appendUtmParams(link.url, link.utmParams);
   if (!isHttpUrl(destination)) return null;
 
+  // Built before the click is queued: a destination that isn't a valid header
+  // value (raw non-ASCII, which only UTM rewriting would percent-encode) makes
+  // this throw, and Next must then answer without a click already queued here.
+  let response: Response;
+  try {
+    response = new Response(null, {
+      status: 307,
+      headers: { ...CACHED_REDIRECT_HEADERS, Location: destination },
+    });
+  } catch {
+    return null;
+  }
+
   const geo = getRequestGeo();
   const click = recordClick({
     headers: request.headers,
@@ -87,11 +103,7 @@ export async function redirectFromCache(
     ip: getClientIp(request.headers) ?? "",
     country: geo.country ?? "Unknown",
     city: geo.city ?? "Unknown",
-  });
-
-  const response = new Response(null, {
-    status: 307,
-    headers: { ...CACHED_REDIRECT_HEADERS, Location: destination },
+    ipHashSecret,
   });
   return { response, click };
 }

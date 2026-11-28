@@ -13,7 +13,7 @@ import type { MetadataRoute } from "next";
 // Floor for the derived dates below, so an empty post list still yields a valid date.
 const SITE_LASTMOD_FLOOR = "2026-09-19";
 // Bump when the docs pages change.
-const DOCS_LASTMOD = "2026-11-21";
+const DOCS_LASTMOD = "2026-11-26";
 const compareList = Object.values(competitors);
 // The WhatsApp link generator in each language; both entries list both (hreflang).
 const WHATSAPP_TOOL_LANGUAGES = {
@@ -82,6 +82,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
+      url: absoluteUrl("/url-expander"),
+      lastModified: "2026-11-26",
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
+      url: absoluteUrl("/extension"),
+      lastModified: "2026-11-25",
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
       url: absoluteUrl("/whatsapp-link-generator"),
       lastModified: "2026-11-22",
       changeFrequency: "monthly",
@@ -114,10 +126,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
+      url: absoluteUrl("/open-source-url-shortener"),
+      lastModified: "2026-11-26",
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
       url: absoluteUrl("/solutions"),
       lastModified: latestSolutionDate,
       changeFrequency: "monthly",
       priority: 0.8,
+    },
+    {
+      url: absoluteUrl("/customers/airo"),
+      lastModified: "2026-11-27",
+      changeFrequency: "yearly",
+      priority: 0.7,
     },
     {
       url: absoluteUrl("/abuse"),

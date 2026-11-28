@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:
 
 import { TRPCError } from "@trpc/server";
 
+import { LINK_UTM_PLAN_MESSAGE } from "@/lib/billing/plans";
 import { assertUrlSafe } from "@/server/lib/phishing";
 
 import { getAllUserAnalytics, updateLink } from "./link.service";
@@ -15,12 +16,14 @@ const EXISTING_URL = "https://example.com/landing";
 // pre-write check without touching a real database.
 class ReachedWrite extends Error {}
 
-function fakeContext() {
+function fakeContext(plan: "free" | "pro" | "ultra" = "free") {
   const update = mock(() => {
     throw new ReachedWrite();
   });
   const db = {
     query: {
+      // A new free account, so a changed URL gets the full check before the write.
+      user: { findFirst: async () => ({ createdAt: new Date() }) },
       link: {
         findFirst: async () => ({
           id: 1,
@@ -38,17 +41,18 @@ function fakeContext() {
     ...db,
     transaction: async <T>(run: (tx: typeof db) => Promise<T>) => run(db),
   };
-  // SAFETY: updateLink only touches ctx.db.query.link.findFirst, ctx.db.transaction,
-  // tx.update and ctx.workspace before the write, which is where ReachedWrite stops it.
+  // SAFETY: updateLink only touches ctx.db.query.{link,user}.findFirst, ctx.db.transaction,
+  // tx.update, ctx.auth and ctx.workspace before the write, which is where ReachedWrite stops it.
   const ctx = {
     db: dbWithTransaction,
+    auth: { userId: "user_1" },
     workspace: {
       type: "personal",
       userId: "user_1",
       teamId: null,
       teamSlug: null,
       role: "owner",
-      plan: "free",
+      plan,
     },
   } as WorkspaceTRPCContext;
   return { ctx, update };
@@ -101,6 +105,23 @@ describe("updateLink phishing check", () => {
       updateLink(ctx, { id: 1, url: EXISTING_URL, name: "Renamed" }),
     ).rejects.toBeInstanceOf(ReachedWrite);
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateLink UTM plan gating", () => {
+  const utmParams = { utm_source: "newsletter" };
+
+  test("refuses new UTM parameters on Free with a prompt that points to Pro", async () => {
+    const { ctx, update } = fakeContext("free");
+    await expect(updateLink(ctx, { id: 1, utmParams })).rejects.toThrow(LINK_UTM_PLAN_MESSAGE);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  test("lets Pro and Ultra set UTM parameters", async () => {
+    for (const plan of ["pro", "ultra"] as const) {
+      const { ctx } = fakeContext(plan);
+      await expect(updateLink(ctx, { id: 1, utmParams })).rejects.toBeInstanceOf(ReachedWrite);
+    }
   });
 });
 

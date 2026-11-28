@@ -15,8 +15,11 @@ type PlanCaps = {
   milestonesPerLinkLimit?: number; // Max milestones per link (undefined => unlimited)
   bioPageLimit?: number; // Max bio pages (undefined => unlimited)
   bioLinkBlocksPerPageLimit?: number; // Max link blocks per bio page (undefined => unlimited)
+  bioEmbedBlocksPerPageLimit?: number; // Max embed blocks per bio page (undefined => unlimited)
   campaignLimit?: number; // Max ACTIVE campaigns (archived don't count; undefined => unlimited)
   qrCodeLimit?: number; // Max QR codes in the personal workspace (undefined => unlimited)
+  bulkQrBatchLimit?: number; // Max QR codes created by one CSV import (0 => not available)
+  scheduledReportLimit?: number; // Max emailed report schedules per workspace (0 => not available)
 };
 
 // Lemon Squeezy variant IDs per plan + billing interval.
@@ -58,6 +61,37 @@ export function getIntervalFromVariantId(variantId?: number | null): BillingInte
   return variantId && ANNUAL_VARIANT_IDS.has(variantId) ? "annual" : "monthly";
 }
 
+type ProviderSubscriptionFields = {
+  billingProvider?: string | null;
+  subscriptionId?: number | null;
+  providerSubscriptionId?: string | null;
+  variantId?: number | null;
+  billingInterval?: BillingInterval | null;
+};
+
+// Partial rows without the column read as Lemon Squeezy, matching the column default.
+function isPaddle(subscription: ProviderSubscriptionFields): boolean {
+  return subscription.billingProvider === "paddle";
+}
+
+/** Whether the row is backed by a subscription the provider knows about. */
+export function hasProviderSubscription(subscription?: ProviderSubscriptionFields | null): boolean {
+  if (!subscription) return false;
+  if (isPaddle(subscription)) return !!subscription.providerSubscriptionId;
+  return (subscription.subscriptionId ?? 0) > 0;
+}
+
+/**
+ * The billing interval of a subscription: Lemon Squeezy rows map their variant, Paddle rows have
+ * no variant and read the stored `billingInterval`.
+ */
+export function subscriptionInterval(
+  subscription?: ProviderSubscriptionFields | null,
+): BillingInterval {
+  if (subscription && isPaddle(subscription)) return subscription.billingInterval ?? "monthly";
+  return getIntervalFromVariantId(subscription?.variantId);
+}
+
 type PlanCapsByPlan = { [P in Plan]: PlanCaps };
 
 export const PLAN_CAPS: PlanCapsByPlan = {
@@ -71,8 +105,11 @@ export const PLAN_CAPS: PlanCapsByPlan = {
     milestonesPerLinkLimit: 0,
     bioPageLimit: 1,
     bioLinkBlocksPerPageLimit: 3,
+    bioEmbedBlocksPerPageLimit: 1,
     campaignLimit: 1,
     qrCodeLimit: 5,
+    bulkQrBatchLimit: 0,
+    scheduledReportLimit: 0,
   },
   pro: {
     eventsLimit: 10000,
@@ -83,6 +120,8 @@ export const PLAN_CAPS: PlanCapsByPlan = {
     milestonesPerLinkLimit: 5,
     bioPageLimit: 3,
     campaignLimit: 2,
+    bulkQrBatchLimit: 100,
+    scheduledReportLimit: 3,
   },
   ultra: {
     // unlimited
@@ -160,19 +199,46 @@ export function resolvePlan(subscription?: Subscription | null, nowMs = Date.now
 /**
  * How a plan change applies to a user's subscription:
  * - `checkout`: no paid subscription, so start a new hosted checkout.
- * - `update`: a live paid subscription, changed in place on Lemon Squeezy.
+ * - `update`: a live paid subscription, changed in place with the provider.
  * - `resume`: cancelled but still inside the paid period, or paused; it must be
- *   resumed rather than replaced, or the user would end up with two subscriptions.
+ *   resumed rather than replaced, or the user would end up with two subscriptions. A Paddle
+ *   subscription with a scheduled pause is also resumed first.
  */
 export type SubscriptionMode = "checkout" | "update" | "resume";
 
 export function getSubscriptionMode(subscription?: Subscription | null): SubscriptionMode {
-  if (!subscription?.subscriptionId || subscription.subscriptionId <= 0) return "checkout";
+  if (!subscription || !hasProviderSubscription(subscription)) return "checkout";
   // A paused subscription grants only Free access but still exists with the provider.
   if (subscription.status === "paused") return "resume";
   if (resolvePlan(subscription) === "free") return "checkout";
+  // Paddle refuses item changes while a scheduled change exists, so a scheduled pause has to be
+  // removed (resumed) before the plan can change.
+  if (scheduledPause(subscription)) return "resume";
 
   return subscription.status === "cancelled" ? "resume" : "update";
+}
+
+/**
+ * A Paddle pause that is scheduled but not yet in effect: it starts at the end of the paid
+ * period (`renewsAt`, see normalizePaddleSubscription) and billing resumes on `pausedUntil`.
+ * Lemon Squeezy pauses take effect at once, so its rows never have one.
+ */
+export function scheduledPause(
+  subscription?: {
+    billingProvider?: string | null;
+    status?: string | null;
+    renewsAt?: Date | null;
+    pausedUntil?: Date | null;
+  } | null,
+): { startsAt: Date | null; resumesAt: Date } | null {
+  if (
+    subscription?.billingProvider !== "paddle" ||
+    subscription.status !== "active" ||
+    !subscription.pausedUntil
+  ) {
+    return null;
+  }
+  return { startsAt: subscription.renewsAt ?? null, resumesAt: subscription.pausedUntil };
 }
 
 export const PAUSE_MONTH_OPTIONS = [1, 2, 3] as const;
@@ -183,17 +249,12 @@ export const PAUSE_MONTH_OPTIONS = [1, 2, 3] as const;
  * its paid features away.
  */
 export function canOfferPause(
-  subscription?: {
-    status?: string | null;
-    subscriptionId?: number | null;
-    variantId?: number | null;
-  } | null,
+  subscription?: (ProviderSubscriptionFields & { status?: string | null }) | null,
 ): boolean {
   return (
-    !!subscription?.subscriptionId &&
-    subscription.subscriptionId > 0 &&
-    subscription.status === "active" &&
-    getIntervalFromVariantId(subscription.variantId) === "monthly"
+    hasProviderSubscription(subscription) &&
+    subscription?.status === "active" &&
+    subscriptionInterval(subscription) === "monthly"
   );
 }
 
@@ -256,6 +317,15 @@ export function getBioLinkBlockLimit(plan: Plan): number | undefined {
   return PLAN_CAPS[plan].bioLinkBlocksPerPageLimit;
 }
 
+export function getBioEmbedBlockLimit(plan: Plan): number | undefined {
+  return PLAN_CAPS[plan].bioEmbedBlocksPerPageLimit;
+}
+
+/** Pro+ may add image blocks to their bio page. */
+export function canUseBioImageBlocks(plan: Plan): boolean {
+  return plan !== "free";
+}
+
 /** Pro+ may remove the "Made with iShortn" badge from their bio page. */
 export function canRemoveBioBranding(plan: Plan): boolean {
   return plan !== "free";
@@ -282,6 +352,18 @@ export function canScheduleBioBlocks(plan: Plan): boolean {
 }
 
 // ----------------------------------------------------------------------------
+// Links
+// ----------------------------------------------------------------------------
+
+/** Pro+ may set UTM parameters on a link. Saved UTM templates stay Ultra-only. */
+export function canUseLinkUtmParams(plan: Plan): boolean {
+  return plan !== "free";
+}
+
+export const LINK_UTM_PLAN_MESSAGE =
+  "UTM parameters are available on Pro and Ultra plans. Please upgrade to use this feature.";
+
+// ----------------------------------------------------------------------------
 // Campaigns
 // ----------------------------------------------------------------------------
 
@@ -292,4 +374,16 @@ export function getCampaignLimit(plan: Plan): number | undefined {
 /** Pro+ campaigns carry UTM defaults stamped onto member links at save time. */
 export function canUseCampaignUtmDefaults(plan: Plan): boolean {
   return plan !== "free";
+}
+
+// ----------------------------------------------------------------------------
+// Webhooks
+// ----------------------------------------------------------------------------
+
+// Ultra has a ceiling too: every endpoint costs a fetch per event.
+const WEBHOOK_ENDPOINT_LIMITS = { free: 0, pro: 3, ultra: 10 } satisfies Record<Plan, number>;
+
+/** Max webhook endpoints per workspace; 0 means webhooks aren't available. */
+export function getWebhookEndpointLimit(plan: Plan): number {
+  return WEBHOOK_ENDPOINT_LIMITS[plan];
 }

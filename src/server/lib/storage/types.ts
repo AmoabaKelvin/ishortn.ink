@@ -3,9 +3,11 @@ export type ImageType =
   | "qr-logo"
   | "qr-code"
   | "qr-code-logo"
+  | "qr-code-bulk-logo"
   | "feedback"
   | "bio-avatar"
-  | "bio-og";
+  | "bio-og"
+  | "bio-block";
 export type WorkspaceType = "personal" | "team";
 
 export interface UploadImageParams {

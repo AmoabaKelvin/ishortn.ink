@@ -1,5 +1,5 @@
 import { subscribedPlan } from "@/lib/billing/entitlements";
-import { getIntervalFromVariantId } from "@/lib/billing/plans";
+import { subscriptionInterval } from "@/lib/billing/plans";
 import { getActivePromo } from "@/lib/billing/promo";
 import { api } from "@/trpc/server";
 
@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 async function PricingPage() {
   const subscriptions = await api.subscriptions.get.query();
   const subscription = subscriptions.subscriptions ?? null;
-  const currentInterval = getIntervalFromVariantId(subscription?.variantId);
+  const currentInterval = subscriptionInterval(subscription);
   // A paused subscriber resumes on the plan they hold instead of starting a new checkout.
   const isPaused = subscriptions.subscriptionMode === "resume" && subscription?.status === "paused";
   // The discount code only rides on new checkouts; plan changes for subscribers are not discounted.
@@ -28,6 +28,7 @@ async function PricingPage() {
       renewsAt={subscription?.renewsAt ?? null}
       promo={promo}
       subscription={subscription}
+      planMode={subscriptions.planMode}
     />
   );
 }

@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import { eq } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
-import { PLAN_VARIANT_IDS } from "@/lib/billing/plans";
+import { API_RATE_LIMITS, PLAN_VARIANT_IDS } from "@/lib/billing/plans";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 import { clearApiSunsetCache } from "@/server/lib/api-access";
@@ -78,17 +78,55 @@ describe.skipIf(!testDatabaseUrl)("GET /api/v1/me (MySQL)", () => {
       variantId: PLAN_VARIANT_IDS.pro.monthly,
     });
     await db.insert(schema.siteSettings).values({ userId: USER_ID, defaultDomain: "isht.ink" });
+    await db
+      .update(schema.user)
+      .set({ monthlyLinkCount: 12, lastLinkCountReset: new Date() })
+      .where(eq(schema.user.id, USER_ID));
 
     const response = await me();
     expect(response.status).toBe(200);
-    expect(response.headers.get("X-RateLimit-Limit")).not.toBeNull();
+    // The plan comes from the joined subscription, so the limits are Pro's.
+    expect(response.headers.get("X-RateLimit-Limit")).toBe(String(API_RATE_LIMITS.pro.perMinute));
     expect(await response.json()).toEqual({
       id: USER_ID,
       email: "api-me@example.com",
       name: "Ada Lovelace",
       plan: "pro",
+      workspace: { type: "personal" },
       defaultDomain: "isht.ink",
+      usage: { linksThisMonth: 12, linksLimit: 1000 },
+      rateLimits: API_RATE_LIMITS.pro,
     });
+  });
+
+  test("counts no links for a month that hasn't been reset yet, and no limit on Ultra", async () => {
+    await db.insert(schema.subscription).values({
+      userId: USER_ID,
+      status: "active",
+      plan: "ultra",
+      variantId: PLAN_VARIANT_IDS.ultra.monthly,
+    });
+    await db
+      .update(schema.user)
+      .set({ monthlyLinkCount: 40, lastLinkCountReset: new Date(Date.now() - 62 * DAY) })
+      .where(eq(schema.user.id, USER_ID));
+
+    const body = await (await me()).json();
+    expect(body.usage).toEqual({ linksThisMonth: 0, linksLimit: null });
+    expect(body.rateLimits).toEqual(API_RATE_LIMITS.ultra);
+  });
+
+  test("answers keys of banned or deleted accounts with 401", async () => {
+    for (const values of [{ banned: true }, { deletedAt: new Date() }]) {
+      await db.update(schema.user).set(values).where(eq(schema.user.id, USER_ID));
+      const response = await me();
+      expect(response.status).toBe(401);
+      expect(response.headers.get("X-RateLimit-Limit")).toBeNull();
+      await db
+        .update(schema.user)
+        .set({ banned: false, deletedAt: null })
+        .where(eq(schema.user.id, USER_ID));
+    }
   });
 
   test("falls back to the platform default domain", async () => {

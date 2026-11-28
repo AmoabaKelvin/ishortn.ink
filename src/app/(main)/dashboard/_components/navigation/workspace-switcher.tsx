@@ -77,7 +77,7 @@ export function WorkspaceSwitcher({
                 <p className="truncate text-[13px] font-medium text-neutral-900 dark:text-foreground">
                   Personal
                 </p>
-                <p className="text-[11px] capitalize text-neutral-400 dark:text-neutral-500">
+                <p className="text-[11px] capitalize text-neutral-400 dark:text-muted-foreground">
                   {currentWorkspace.plan} plan
                 </p>
               </div>
@@ -97,7 +97,7 @@ export function WorkspaceSwitcher({
                 <p className="truncate text-[13px] font-medium text-neutral-900 dark:text-foreground">
                   {currentWorkspace.teamName}
                 </p>
-                <p className="text-[11px] capitalize text-neutral-400 dark:text-neutral-500">
+                <p className="text-[11px] capitalize text-neutral-400 dark:text-muted-foreground">
                   {currentWorkspace.role}
                 </p>
               </div>
@@ -106,7 +106,7 @@ export function WorkspaceSwitcher({
           <IconSelector
             size={14}
             stroke={1.5}
-            className="shrink-0 text-neutral-400 dark:text-neutral-500"
+            className="shrink-0 text-neutral-400 dark:text-muted-foreground"
           />
         </button>
       </PopoverTrigger>
@@ -135,7 +135,7 @@ export function WorkspaceSwitcher({
           {teams.length > 0 && (
             <>
               <div className="my-1.5 h-px bg-neutral-100 dark:bg-border/50" />
-              <p className="px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+              <p className="px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-muted-foreground">
                 Teams
               </p>
               {teams.map((team) => {
@@ -200,7 +200,7 @@ export function WorkspaceSwitcher({
               <UpgradeCta
                 requiredPlan="ultra"
                 source="teams"
-                className="flex items-center gap-2 rounded-md px-2.5 py-2 text-[11px] text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-500 dark:hover:bg-accent dark:hover:text-foreground"
+                className="flex items-center gap-2 rounded-md px-2.5 py-2 text-[11px] text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-muted-foreground dark:hover:bg-accent dark:hover:text-foreground"
               >
                 <IconBuilding size={13} stroke={1.5} />
                 <span>Upgrade to Ultra to create teams</span>

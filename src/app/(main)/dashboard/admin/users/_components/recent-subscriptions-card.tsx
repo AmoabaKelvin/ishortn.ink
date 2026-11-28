@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { type PaidPlan } from "@/lib/constants/plan-pricing";
-import { timeAgo } from "@/lib/utils";
+import { timeAgo } from "@/lib/utils/time-ago";
 import { displayName } from "@/lib/utils/user-name";
 
 import type { RouterOutputs } from "@/trpc/shared";
@@ -32,7 +32,7 @@ export function RecentSubscriptionsCard({
         <p className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Recent Subscriptions
         </p>
-        <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
           Latest paid sign-ups
         </p>
       </div>
@@ -42,7 +42,7 @@ export function RecentSubscriptionsCard({
         </div>
       ) : !data || data.length === 0 ? (
         <div className="flex flex-1 items-center justify-center px-5 py-12">
-          <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
+          <p className="text-[13px] text-neutral-400 dark:text-muted-foreground">
             No paid subscriptions yet
           </p>
         </div>
@@ -68,7 +68,7 @@ export function RecentSubscriptionsCard({
                   <p className="truncate text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                     {displayName(s.userName) ?? "Unnamed"}
                   </p>
-                  <p className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">
+                  <p className="truncate text-[11px] text-neutral-400 dark:text-muted-foreground">
                     {s.userEmail}
                   </p>
                 </div>
@@ -80,7 +80,7 @@ export function RecentSubscriptionsCard({
                       {s.plan}
                     </span>
                   )}
-                  <p className="w-16 text-right text-[11px] text-neutral-400 dark:text-neutral-500">
+                  <p className="w-16 text-right text-[11px] text-neutral-400 dark:text-muted-foreground">
                     {timeAgo(s.createdAt)}
                   </p>
                 </div>

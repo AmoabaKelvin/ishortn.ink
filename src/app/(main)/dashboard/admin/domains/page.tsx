@@ -72,7 +72,7 @@ export default function AdminDomainsPage() {
         <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Domains
         </h1>
-        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
           Review held custom domains and manage the link destination blocklist.
         </p>
       </div>
@@ -114,7 +114,7 @@ export default function AdminDomainsPage() {
           <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
             No blocked domains yet
           </p>
-          <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
+          <p className="mt-1 text-[12px] text-neutral-400 dark:text-muted-foreground">
             Add domains to prevent users from shortening URLs from those sites
           </p>
           <Button variant="outline" size="sm" className="mt-4" onClick={() => setIsAddOpen(true)}>
@@ -249,7 +249,7 @@ export default function AdminDomainsPage() {
                 placeholder="e.g. evil-phishing.com"
                 className="text-[13px]"
               />
-              <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
+              <p className="mt-1 text-[11px] text-neutral-400 dark:text-muted-foreground">
                 You can paste a full URL and the domain will be extracted automatically.
               </p>
             </div>

@@ -87,20 +87,20 @@ This is where Bitly Free is weakest. On iShortn Free you get 5 dynamic QR codes.
 
 The trade-off is volume. Bitly lets you make 2 new QR codes every month, so after three months you'd have made 6 there. iShortn Free stops at 5 in total, and more needs Pro.
 
-Free analytics on iShortn shows the last 7 days and covers 1,000 tracked events a month, counting clicks, QR scans and bio page views. Above that, your links and codes keep working, but extra visits aren't counted until the next month.
+Free analytics on iShortn shows the last 7 days and covers 1,000 tracked clicks a month, counting clicks, QR scans and bio page views. Above that, your links and codes keep working, but extra visits aren't counted until the next month.
 
 ### If you need your own domain
 
 On Bitly, a custom domain starts on Growth at $29 a month. [iShortn Pro](/pricing) is $8 a month, or $80 a year, and includes:
 
 - 3 custom domains
-- 1,000 links and 10,000 tracked events a month
-- Full analytics history
+- 1,000 links and 10,000 tracked clicks a month
+- A full year of detailed analytics
 - Branded QR codes
 - Password-protected links, scheduled links, and geo and device targeting
 - The REST API
 
-Ultra is $15 a month for unlimited links, events and domains, plus team workspaces and UTM templates.
+Ultra is $15 a month for unlimited links, tracked clicks and domains, plus team workspaces and UTM templates.
 
 ## Where Bitly is still the better choice
 

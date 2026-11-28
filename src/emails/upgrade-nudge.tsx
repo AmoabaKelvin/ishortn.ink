@@ -2,12 +2,10 @@ import { Text } from "@react-email/components";
 
 import { PLAN_CAPS } from "@/lib/billing/plans";
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
-import { displayName } from "@/lib/utils/user-name";
+import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 
 import { EmailButton, EmailLayout, text } from "./_components/layout";
 import { formatClicks } from "./weekly-summary";
-
-import type { CSSProperties } from "react";
 
 /** The one angle an upgrade nudge leads with; dates are already formatted ("27 November"). */
 export type UpgradeNudgeAngle =
@@ -49,7 +47,7 @@ export function upgradeNudgeSubject(angle: UpgradeNudgeAngle): string {
     case "limit_hit":
       return `${angle.feature.charAt(0).toUpperCase()}${angle.feature.slice(1)} is part of Pro`;
     case "events":
-      return `Your links are on pace to pass ${fmt(free.eventsLimit)} clicks this month`;
+      return `Your links are on pace to pass ${fmt(free.eventsLimit)} tracked clicks this month`;
     case "links":
       return `You've used ${fmt(angle.monthlyLinkCount)} of your ${fmt(free.linksLimit)} free links this month`;
     case "analytics":
@@ -64,20 +62,19 @@ export function upgradeNudgeSentences(angle: UpgradeNudgeAngle): string[] {
   const days = free.analyticsRangeLimitDays;
   switch (angle.reason) {
     case "limit_hit":
-      return [
-        `On ${angle.hitDate} you tried ${angle.feature}.`,
-        "That comes with Pro, along with the rest of the list below.",
-      ];
+      return [`On ${angle.hitDate} you tried ${angle.feature}.`, "That comes with Pro."];
     case "events":
       return [
-        `Free records ${fmt(free.eventsLimit)} clicks a month.`,
+        `Free includes ${fmt(free.eventsLimit)} tracked clicks a month.`,
         `Your links are at ${fmt(angle.monthlyEventCount)}, so at this pace they'll pass it around ${angle.projectedDate}.`,
-        `After that your links keep working, but new clicks stop showing in your analytics until the count resets on ${angle.resetDate}.`,
+        `After that they keep working, but new clicks won't show in your analytics until the count resets on ${angle.resetDate}.`,
+        `Pro includes ${fmt(pro.eventsLimit)} tracked clicks a month.`,
       ];
     case "links":
       return [
         `Free includes ${fmt(free.linksLimit)} new links a month and you've used ${fmt(angle.monthlyLinkCount)}.`,
         `Your count resets on ${angle.resetDate}.`,
+        `Pro includes ${fmt(pro.linksLimit)} new links a month.`,
       ];
     case "analytics":
       return angle.ended
@@ -113,13 +110,13 @@ export const UpgradeNudgeEmail = ({
 
   return (
     <EmailLayout
+      variant="letter"
+      recipientName={userName}
       preview={sentences[0] ?? ""}
       notificationSettingsUrl={notificationSettingsUrl}
       footerReason="You're getting this one-time email because you have an iShortn account with product emails turned on."
       unsubscribeUrl={unsubscribeUrl}
     >
-      <Text style={text}>Hi {displayName(userName) ?? "there"},</Text>
-
       <Text style={text}>
         {clickCount > 0
           ? `You've made ${formatLinks(linkCount)} since you joined iShortn on ${signupDate}, and they've had ${formatClicks(clickCount)} so far.`
@@ -129,43 +126,21 @@ export const UpgradeNudgeEmail = ({
       <Text style={text}>{sentences.join(" ")}</Text>
 
       <Text style={text}>
-        {`Pro is $${PLAN_PRICES_USD.pro} a month, or $${PLAN_PRICES_ANNUAL_USD.pro} a year. It gives you:`}
+        {`Pro is $${PLAN_PRICES_USD.pro} a month, or $${PLAN_PRICES_ANNUAL_USD.pro} a year.`}
+        {promoLine && ` ${promoLine}`}
       </Text>
-      <ul style={list}>
-        <li style={listItem}>
-          {`${fmt(pro.linksLimit)} links and ${fmt(pro.eventsLimit)} tracked clicks a month`}
-        </li>
-        <li style={listItem}>{`${fmt(pro.domainLimit)} custom domains`}</li>
-        <li style={listItem}>your full analytics history</li>
-        <li style={listItem}>password protection, scheduled links and geo targeting</li>
-      </ul>
-
-      {promoLine && <Text style={text}>{promoLine}</Text>}
 
       <EmailButton href={upgradeUrl}>Compare plans</EmailButton>
 
       <Text style={text}>
-        If Free covers what you need, keep using it. Nothing changes, and we won&apos;t send you
-        this email again.
+        If Free covers what you need, keep using it. Nothing changes, and I won&apos;t send you this
+        email again.
       </Text>
 
-      <Text style={{ ...text, fontWeight: 500 }}>The iShortn team</Text>
+      <Text style={{ ...text, fontWeight: 500 }}>Kelvin</Text>
     </EmailLayout>
   );
 };
-
-const list: CSSProperties = {
-  margin: "0 0 16px",
-  paddingLeft: "20px",
-};
-
-const listItem: CSSProperties = {
-  ...text,
-  margin: "0 0 4px",
-};
-
-const UPGRADE_URL =
-  "https://ishortn.ink/dashboard/pricing?highlight=pro&source=upgrade_nudge&utm_source=lifecycle&utm_medium=email&utm_campaign=upgrade_nudge&utm_content=limit_hit";
 
 UpgradeNudgeEmail.PreviewProps = {
   userName: "Ama",
@@ -175,7 +150,7 @@ UpgradeNudgeEmail.PreviewProps = {
   angle: { reason: "limit_hit", feature: "custom domains", hitDate: "21 November" },
   promoLine:
     "Black Friday: Pro is 20% off your first year until Tuesday 1 December. The discount is applied at checkout.",
-  upgradeUrl: UPGRADE_URL,
+  upgradeUrl: emailLinkUrl(EMAIL_LINKS.upgradeNudge.limit_hit),
   unsubscribeUrl: "https://ishortn.ink/api/email/unsubscribe?token=user_1.sig",
   notificationSettingsUrl: "https://ishortn.ink/dashboard/settings#notifications",
 } satisfies UpgradeNudgeEmailProps;
@@ -192,13 +167,13 @@ export const UPGRADE_NUDGE_PREVIEWS = {
       projectedDate: "27 November",
       resetDate: "1 December",
     },
-    upgradeUrl: UPGRADE_URL.replace("limit_hit", "events"),
+    upgradeUrl: emailLinkUrl(EMAIL_LINKS.upgradeNudge.events),
   },
   links: {
     ...UpgradeNudgeEmail.PreviewProps,
     linkCount: 18,
     angle: { reason: "links", monthlyLinkCount: 18, resetDate: "1 December" },
-    upgradeUrl: UPGRADE_URL.replace("limit_hit", "links"),
+    upgradeUrl: emailLinkUrl(EMAIL_LINKS.upgradeNudge.links),
   },
   analytics: {
     ...UpgradeNudgeEmail.PreviewProps,
@@ -210,7 +185,7 @@ export const UPGRADE_NUDGE_PREVIEWS = {
       viewStartDate: "16 November",
     },
     promoLine: null,
-    upgradeUrl: UPGRADE_URL.replace("limit_hit", "analytics"),
+    upgradeUrl: emailLinkUrl(EMAIL_LINKS.upgradeNudge.analytics),
   },
   domain: {
     ...UpgradeNudgeEmail.PreviewProps,
@@ -218,7 +193,7 @@ export const UPGRADE_NUDGE_PREVIEWS = {
     clickCount: 0,
     angle: { reason: "domain" },
     promoLine: null,
-    upgradeUrl: UPGRADE_URL.replace("limit_hit", "domain"),
+    upgradeUrl: emailLinkUrl(EMAIL_LINKS.upgradeNudge.domain),
   },
 } satisfies Record<UpgradeNudgeReason, UpgradeNudgeEmailProps>;
 

@@ -106,7 +106,7 @@ export function QRAdvancedCustomization({
         <p className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Shape</p>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="space-y-1.5">
-            <Label className="text-[12px] text-neutral-400 dark:text-neutral-500">
+            <Label className="text-[12px] text-neutral-400 dark:text-muted-foreground">
               Pixel Style
             </Label>
             <Select
@@ -127,7 +127,7 @@ export function QRAdvancedCustomization({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[12px] text-neutral-400 dark:text-neutral-500">
+            <Label className="text-[12px] text-neutral-400 dark:text-muted-foreground">
               Marker Shape
             </Label>
             <Select
@@ -148,7 +148,7 @@ export function QRAdvancedCustomization({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[12px] text-neutral-400 dark:text-neutral-500">
+            <Label className="text-[12px] text-neutral-400 dark:text-muted-foreground">
               Inner Shape
             </Label>
             <Select
@@ -196,7 +196,7 @@ export function QRAdvancedCustomization({
         <p className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Effects</p>
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label className="text-[12px] text-neutral-400 dark:text-neutral-500">
+            <Label className="text-[12px] text-neutral-400 dark:text-muted-foreground">
               Effect Type
             </Label>
             <Select value={effect} onValueChange={selectFromOptions(qrEffects, setEffect)}>
@@ -216,7 +216,7 @@ export function QRAdvancedCustomization({
           {effect !== "none" && (
             <div className="space-y-2.5 rounded-lg border border-neutral-200 dark:border-border p-3">
               <div className="flex items-center justify-between">
-                <Label className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                <Label className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                   Effect Intensity
                 </Label>
                 <span className="text-[12px] tabular-nums font-medium text-neutral-900 dark:text-foreground">
@@ -241,7 +241,7 @@ export function QRAdvancedCustomization({
               >
                 Margin Noise
               </Label>
-              <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+              <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                 Add decorative dots around the QR code
               </p>
             </div>
@@ -251,7 +251,7 @@ export function QRAdvancedCustomization({
           {marginNoise && (
             <div className="space-y-2.5 rounded-lg border border-neutral-200 dark:border-border p-3">
               <div className="flex items-center justify-between">
-                <Label className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                <Label className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                   Noise Density
                 </Label>
                 <span className="text-[12px] tabular-nums font-medium text-neutral-900 dark:text-foreground">
@@ -295,7 +295,7 @@ export function QRAdvancedCustomization({
 
               <div className="space-y-2.5 rounded-lg border border-neutral-200 dark:border-border p-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                  <Label className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                     Logo Size
                   </Label>
                   <span className="text-[12px] tabular-nums font-medium text-neutral-900 dark:text-foreground">
@@ -313,7 +313,7 @@ export function QRAdvancedCustomization({
 
               <div className="space-y-2.5 rounded-lg border border-neutral-200 dark:border-border p-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                  <Label className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                     Logo Padding
                   </Label>
                   <span className="text-[12px] tabular-nums font-medium text-neutral-900 dark:text-foreground">
@@ -331,7 +331,7 @@ export function QRAdvancedCustomization({
 
               <div className="space-y-2.5 rounded-lg border border-neutral-200 dark:border-border p-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                  <Label className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                     Corner Radius
                   </Label>
                   <span className="text-[12px] tabular-nums font-medium text-neutral-900 dark:text-foreground">

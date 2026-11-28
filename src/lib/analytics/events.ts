@@ -66,6 +66,11 @@ export const POSTHOG_EVENTS = {
   ANNUAL_SWITCH_CARD_CLICKED: "annual_switch_card_clicked",
   ANNUAL_SWITCH_CARD_DISMISSED: "annual_switch_card_dismissed",
 
+  // Browser extension prompts; `source` names the surface (link_ready)
+  EXTENSION_PROMPT_SHOWN: "extension_prompt_shown",
+  EXTENSION_PROMPT_CLICKED: "extension_prompt_clicked",
+  EXTENSION_PROMPT_DISMISSED: "extension_prompt_dismissed",
+
   // Clerk replaced the sign-up/sign-in placeholder (auth-form-ready.tsx)
   AUTH_FORM_READY: "auth_form_ready",
 } as const;

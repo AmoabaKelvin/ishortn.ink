@@ -1,7 +1,17 @@
+import { addMonths } from "date-fns";
+
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 
-import { promoPrice } from "./promo";
+import { withAttribution } from "./attribution";
+import {
+  FIRST_YEAR_MONTHS,
+  planChangeDiscount,
+  promoDiscountActive,
+  promoFirstPaymentAt,
+} from "./first-year-discount";
+import { FIRST_YEAR_PROMOS, formatDayMonthYearShort, promoPrice } from "./promo";
 
+import type { Attribution } from "./attribution";
 import type { BillingInterval, Plan } from "./plans";
 import type { Promo } from "./promo";
 
@@ -77,8 +87,152 @@ export function planPriceDisplay(
   return { perMonth: formatUsd(PLAN_PRICES_USD[plan]), compareAt: null, note: "billed monthly" };
 }
 
-/** Sign-up link for a paid plan; after sign-up the dashboard pricing page starts its checkout. */
-export function planSignupHref(plan: Exclude<Plan, "free">, interval: BillingInterval): string {
-  const next = `/dashboard/pricing?plan=${plan}&interval=${interval}`;
+/** How long a Lemon Squeezy checkout discount lasts: 12 monthly payments, or one annual one. */
+const DISCOUNT_MONTHS = 12;
+
+export type SubscriptionDiscount = {
+  code: string;
+  /** Null for a code that isn't a known promo, so only "discount applied" can be shown. */
+  percentOff: number | null;
+  endsAt: Date;
+};
+
+type DiscountCheckout = {
+  plan: Plan;
+  interval: BillingInterval;
+  promoCode: string | null;
+  provider: string;
+  createdAt: Date;
+};
+
+type DiscountSubscription = {
+  plan: Plan;
+  interval: BillingInterval;
+  provider: string;
+  /** When the subscription row was created; an earlier time than the checkout's is ignored. */
+  startedAt?: Date | null;
+  /** End of the current billing period (renewal, or the end date of a cancelled one). */
+  periodEndsAt?: Date | null;
+  /** When a Paddle plan change removed the promo discount (Subscription.promoDiscountEndedAt). */
+  discountEndedAt?: Date | null;
+};
+
+/**
+ * The discount a subscription is still billed with, from the checkout that created it: the
+ * user's latest checkout start, since a live subscription can't start another. Paddle plan and
+ * interval changes carry the first-year promo over (promoDiscountActive); on Lemon Squeezy it
+ * counts only while the plan, interval and provider match that checkout, as a change may drop it.
+ */
+export function subscriptionDiscount(
+  checkout: DiscountCheckout | null | undefined,
+  subscription: DiscountSubscription,
+  now = new Date(),
+  promos: readonly Pick<Promo, "code" | "percentOff">[] = FIRST_YEAR_PROMOS,
+): SubscriptionDiscount | null {
+  if (!checkout?.promoCode || checkout.provider !== subscription.provider) return null;
+  const code = checkout.promoCode;
+  const percentOff = promos.find((candidate) => candidate.code === code)?.percentOff ?? null;
+
+  if (subscription.provider === "paddle") {
+    const active = promoDiscountActive({
+      checkoutInterval: checkout.interval,
+      interval: subscription.interval,
+      firstPaymentAt: promoFirstPaymentAt(subscription.startedAt, checkout.createdAt),
+      periodEndsAt: subscription.periodEndsAt ?? null,
+      endedAt: subscription.discountEndedAt,
+      now,
+    });
+    return active && { code, percentOff, endsAt: active.endsAt };
+  }
+
+  if (checkout.plan !== subscription.plan || checkout.interval !== subscription.interval) {
+    return null;
+  }
+  const endsAt = addMonths(checkout.createdAt, DISCOUNT_MONTHS);
+  if (now >= endsAt) return null;
+  return { code, percentOff, endsAt };
+}
+
+/**
+ * The discount a Paddle plan or interval change to `to` would be billed with, for the plan rows a
+ * promo subscriber can switch to. Mirrors promoDiscountUpdate in lemonsqueezy.procedure.ts: every
+ * change there bills now, so a switch to annual gets the discount once on that annual charge, and
+ * a monthly switch keeps it to the end of the first year. Lemon Squeezy changes may drop the
+ * checkout discount, so they show list prices.
+ */
+export function planChangeDiscountTo(
+  checkout: DiscountCheckout | null | undefined,
+  subscription: DiscountSubscription,
+  to: BillingInterval,
+  now = new Date(),
+  promos: readonly Pick<Promo, "code" | "percentOff">[] = FIRST_YEAR_PROMOS,
+): SubscriptionDiscount | null {
+  if (subscription.provider !== "paddle" || checkout?.provider !== "paddle") return null;
+  const code = checkout.promoCode;
+  const promo = code ? promos.find((candidate) => candidate.code === code) : undefined;
+  if (!code || !promo) return null;
+
+  const firstPaymentAt = promoFirstPaymentAt(subscription.startedAt, checkout.createdAt);
+  const { discountEndedAt } = subscription;
+  if (discountEndedAt && discountEndedAt >= firstPaymentAt) return null;
+  const change = planChangeDiscount({
+    firstPaymentAt,
+    from: subscription.interval,
+    to,
+    billsNow: true,
+    now,
+  });
+  if (change.action === "remove") return null;
+
+  // Annual to annual keeps the current period; monthly to annual starts a new one now.
+  const endsAt =
+    to === "monthly"
+      ? addMonths(firstPaymentAt, FIRST_YEAR_MONTHS)
+      : subscription.interval === "annual" && subscription.periodEndsAt
+        ? subscription.periodEndsAt
+        : addMonths(now, FIRST_YEAR_MONTHS);
+  return { code, percentOff: promo.percentOff, endsAt };
+}
+
+/** A subscriber's own price line: what they are billed, with the discount while it lasts. */
+export function subscribedPriceDisplay(
+  plan: Exclude<Plan, "free">,
+  interval: BillingInterval,
+  discount: SubscriptionDiscount | null,
+): PlanPriceDisplay {
+  const list = planPriceDisplay(plan, interval);
+  if (!discount) return list;
+  const { percentOff } = discount;
+  if (percentOff === null) return { ...list, note: `${list.note}, discount applied` };
+
+  const off = (price: number) => Math.round(price * (100 - percentOff)) / 100;
+  const label = `${percentOff}% off with ${discount.code}`;
+  if (interval === "annual") {
+    const yearly = PLAN_PRICES_ANNUAL_USD[plan];
+    const firstYear = off(yearly);
+    return {
+      perMonth: formatUsd(firstYear / 12),
+      compareAt: formatUsd(yearly / 12),
+      note: `billed $${formatUsd(firstYear)}, ${label} until ${formatDayMonthYearShort(discount.endsAt)}, then $${formatUsd(yearly)}/yr`,
+    };
+  }
+  const monthly = PLAN_PRICES_USD[plan];
+  return {
+    perMonth: formatUsd(off(monthly)),
+    compareAt: formatUsd(monthly),
+    note: `${label} until ${formatDayMonthYearShort(discount.endsAt)}, then $${formatUsd(monthly)}/mo`,
+  };
+}
+
+/**
+ * Sign-up link for a paid plan; after sign-up the dashboard pricing page starts its checkout,
+ * attributed to the visit's source and UTM tags.
+ */
+export function planSignupHref(
+  plan: Exclude<Plan, "free">,
+  interval: BillingInterval,
+  attribution: Attribution = {},
+): string {
+  const next = withAttribution(`/dashboard/pricing?plan=${plan}&interval=${interval}`, attribution);
   return `/auth/sign-up?next=${encodeURIComponent(next)}`;
 }

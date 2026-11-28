@@ -1,24 +1,32 @@
 import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { canUseLinkUtmParams, LINK_UTM_PLAN_MESSAGE } from "@/lib/billing/plans";
 import { destinationUrlSchema } from "@/lib/utils/destination-url";
 import { linkAliasSchema, linkDomainSchema } from "@/server/api/routers/link/link.input";
 import { restrictedLinkValues, validateAlias } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { trackLinkCreation } from "@/server/lib/link-creation/failures";
-import { assertUrlSafe } from "@/server/lib/phishing";
+import { assertUrlSafeFast } from "@/server/lib/phishing";
+import { checkUrlWithLlmAfterResponse } from "@/server/lib/phishing/follow-up";
 import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 import { generateUnreservedAlias } from "@/server/lib/reserved-alias";
-import { reserveMonthlyLinkSlot } from "@/server/lib/user-plan";
+import { ServerTiming } from "@/server/lib/server-timing";
+import { claimMonthlyLinkSlot, releaseMonthlyLinkSlot } from "@/server/lib/user-plan";
+import { emitWebhookEvents } from "@/server/lib/webhooks";
 
-import { apiDomainWriteError, resolveApiDomainForUser, toApiLink } from "../utils";
+import {
+  apiDomainWriteError,
+  apiSafetyAccount,
+  resolveApiDomainForUser,
+  toApiLink,
+} from "../utils";
 
 import type { ApiToken } from "../utils";
-import type { Plan } from "@/lib/billing/plans";
 import type { LinkCreationAttempt, LinkCreationSource } from "@/server/lib/link-creation/failures";
+import type { UrlSafetyDeps } from "@/server/lib/phishing";
 
 export const shortenLinkSchema = z.object({
   url: destinationUrlSchema,
@@ -41,18 +49,41 @@ export const shortenLinkSchema = z.object({
 
 export type ShortenLinkInput = z.infer<typeof shortenLinkSchema>;
 
+/** Seams for tests; the routes use the defaults. */
+export type TokenLinkSafetyDeps = UrlSafetyDeps & {
+  checkAfterResponse?: typeof checkUrlWithLlmAfterResponse;
+};
+
 /**
- * Creates a link in the token owner's personal workspace with the plan's checks, the URL safety
+ * Creates a link in the key's workspace (the creator's personal one, or the key's team) with the plan's checks, the URL safety
  * check and the monthly quota. Shared by POST /api/v1/links and the browser extension. Throws
- * TRPCErrors with user-facing messages; plan refusals are FORBIDDEN.
+ * TRPCErrors with user-facing messages; plan refusals are FORBIDDEN. Step durations go to
+ * `serverTiming` for the route's Server-Timing header.
+ *
+ * Only the fast safety layers (heuristics, blocklist, Safe Browsing) hold up the create. The page
+ * fetch and LLM check take seconds and almost never reject, so they run after the response and
+ * block or flag the link instead.
  */
 export async function createTokenLink(
   token: ApiToken,
   parsedData: ShortenLinkInput,
   source: LinkCreationSource,
+  serverTiming = new ServerTiming(),
+  safetyDeps: TokenLinkSafetyDeps = {},
 ) {
   return trackLinkCreation(db, source, token.userId, async (attempt) => {
-    const requestedDomain = await resolveApiDomainForUser(token.userId, parsedData);
+    // The safety check needs only the URL, so it overlaps the checks below. The no-op catch keeps
+    // a verdict from going unhandled when one of them throws first.
+    const safety = assertUrlSafeFast(parsedData.url, safetyDeps, serverTiming);
+    safety.catch(() => undefined);
+
+    const { requestedDomain, domainError } = await serverTiming.measure("domain", async () => {
+      const domain = await resolveApiDomainForUser(token, parsedData);
+      return {
+        requestedDomain: domain,
+        domainError: domain && (await apiDomainWriteError(token, token.graceUsagePlan, domain)),
+      };
+    });
     if (!requestedDomain) {
       throw new TRPCError({
         code: "FORBIDDEN",
@@ -63,11 +94,6 @@ export async function createTokenLink(
       });
     }
     const plan = token.plan;
-    const domainError = await apiDomainWriteError(
-      token.userId,
-      token.graceUsagePlan,
-      requestedDomain,
-    );
     if (domainError) {
       throw new TRPCError({ code: "FORBIDDEN", message: domainError });
     }
@@ -77,20 +103,34 @@ export async function createTokenLink(
         message: "Scheduled links are only available on Pro and Ultra plans",
       });
     }
-    if (parsedData.alias) {
-      await validateAlias({ db }, parsedData.alias, requestedDomain, plan !== "free");
+    const alias = parsedData.alias;
+    if (alias) {
+      await serverTiming.measure("alias", () =>
+        validateAlias({ db }, alias, requestedDomain, plan !== "free"),
+      );
     }
-    return createNewLink(parsedData, token.userId, plan, requestedDomain, attempt);
+    return createNewLink(
+      parsedData,
+      token,
+      requestedDomain,
+      safety,
+      attempt,
+      serverTiming,
+      safetyDeps,
+    );
   });
 }
 
 async function createNewLink(
   data: ShortenLinkInput,
-  userId: string,
-  plan: Plan,
+  token: ApiToken,
   domain: string,
+  safety: Promise<void>,
   attempt: LinkCreationAttempt,
+  serverTiming: ServerTiming,
+  { checkAfterResponse = checkUrlWithLlmAfterResponse, ...safetyDeps }: TokenLinkSafetyDeps,
 ) {
+  const { userId, plan } = token;
   if (data.password) {
     if (plan === "free") {
       throw new TRPCError({
@@ -103,50 +143,61 @@ async function createNewLink(
     data.password = hashedPassword;
   }
 
-  // Check for UTM params - Ultra plan only
   if (data.utmParams) {
     const utmParamsValues = Object.values(data.utmParams);
     const hasUtmParams = utmParamsValues.some(
       (value) => value !== undefined && value !== null && value !== "",
     );
-    if (hasUtmParams && plan !== "ultra") {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message:
-          "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
-      });
+    if (hasUtmParams && !canUseLinkUtmParams(plan)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: LINK_UTM_PLAN_MESSAGE });
     }
   }
 
   attempt.step = "safety";
-  await assertUrlSafe(data.url);
+  // The alias lookup doesn't depend on the safety verdict, so it runs alongside it.
+  const [, alias] = await Promise.all([
+    safety,
+    data.alias ?? serverTiming.measure("alias", () => generateUnreservedAlias(db, domain)),
+  ]);
 
   attempt.step = "db";
 
   const newLinkData = {
     url: data.url,
-    alias: data.alias ?? (await generateUnreservedAlias(db, domain)),
-    disableLinkAfterClicks: data.expiresAfter,
+    alias,
+    disableLinkAfterClicks: data.expiresAfter ?? null,
     disableLinkAfterDate: data.expiresAt ? new Date(data.expiresAt) : null,
     activateAt: data.activatesAt ? new Date(data.activatesAt) : null,
-    passwordHash: data.password,
+    passwordHash: data.password ?? null,
     domain,
     userId,
+    teamId: token.team?.id ?? null,
     createdByUserId: userId,
     utmParams: data.utmParams ?? null,
+    // TIMESTAMP keeps whole seconds; truncating here makes the response match the stored row.
+    createdAt: new Date(Math.floor(Date.now() / 1000) * 1000),
+    ...restrictedLinkValues(token.restrictedAt),
   };
 
-  // Count the link and insert it together so a failed insert doesn't consume
-  // quota and parallel requests can't exceed the monthly limit.
-  const newLinkId = await db.transaction(async (tx) => {
-    const { userRecord } = await reserveMonthlyLinkSlot(userId, tx);
-    const newLink = await tx
-      .insert(link)
-      .values({ ...newLinkData, ...restrictedLinkValues(userRecord.restrictedAt) });
-    return newLink[0].insertId;
+  // No transaction: the conditional UPDATE alone keeps parallel requests under the monthly
+  // limit, and a failed insert gives its slot back, so each step is one round trip.
+  const newLinkId = await serverTiming.measure("db", async () => {
+    await claimMonthlyLinkSlot(userId, plan);
+    try {
+      const [inserted] = await db.insert(link).values(newLinkData);
+      return inserted.insertId;
+    } catch (error) {
+      await releaseMonthlyLinkSlot(userId, plan).catch(() => undefined);
+      throw error;
+    }
+  });
+  void checkAfterResponse({ id: newLinkId, domain, alias }, data.url, {
+    ...safetyDeps,
+    account: apiSafetyAccount(token),
   });
   checkCampaignPatternsAfterResponse([{ linkId: newLinkId, url: data.url }]);
+  const created = toApiLink({ id: newLinkId, ...newLinkData });
+  emitWebhookEvents(db, { userId, teamId: newLinkData.teamId, plan }, "link.created", [created]);
 
-  const [retrievedLink] = await db.select().from(link).where(eq(link.id, newLinkId));
-  return { ...toApiLink(retrievedLink!), isProtected: !!retrievedLink!.passwordHash };
+  return { ...created, isProtected: !!newLinkData.passwordHash };
 }

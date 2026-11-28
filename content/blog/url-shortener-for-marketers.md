@@ -28,6 +28,8 @@ The short link counts clicks. Google Analytics only knows which campaign brought
 
 If the same link goes into your newsletter, your Instagram bio and a printed flyer, you can't tell which one worked. Make one short link for each placement, each with its own `utm_source` and `utm_medium`, and compare clicks side by side. For print, put the link in a QR code; the [free QR code generator](/qr-code-generator) makes one without sign-up.
 
+Customer story: [how AIRO cut its rack card spend](/customers/airo). AIRO's small marketing team tracks traffic from each source and partner with iShortn, and uses the numbers to hold partners to the visits they promised.
+
 ### Links you can edit later
 
 Campaign pages move and offers end. If the link is already in an email or on a poster, you need to change where it points without changing the link. Check how many edits a plan allows, because some tools count them.
@@ -40,7 +42,7 @@ Thirty days of click data is enough to check last week's post. It isn't enough f
 
 | | Own domain from | UTM help | Click history | Editing links | Shared access |
 |---|---|---|---|---|---|
-| **iShortn** | Pro, $8/mo (3 domains) | Free UTM builder; campaign UTM defaults on Pro; UTM fields and templates in the editor on Ultra | 7 days on Free; unlimited on Pro | Every plan | Ultra, $15/mo |
+| **iShortn** | Pro, $8/mo (3 domains) | Free UTM builder; campaign UTM defaults on Pro; UTM fields and templates in the editor on Ultra | 7 days on Free; 1 year on Pro; unlimited on Ultra | Every plan | Ultra, $15/mo |
 | **Bitly** | Growth, $29/mo billed yearly | UTM builder from Core | 30 days (Core), 4 months (Growth), 1 year (Premium) | From Core | Teams, custom pricing |
 | **Short.io** | Free (5 domains) | UTM builder on every plan | Not listed | Every plan | Team, $48/mo |
 | **Rebrandly** | Free (1 domain, 10 links/mo); Essentials, $11/mo billed yearly, has 2 | UTM builder on every plan | Not listed | 10 edits/mo on Essentials | Professional, $32/mo billed yearly |

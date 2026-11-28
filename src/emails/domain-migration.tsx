@@ -7,11 +7,12 @@ import {
   EmailButton,
   EmailLayout,
   fieldLabel,
-  panel,
+  monoFontFamily,
   recordTitle,
   Signoff,
   smallText,
   text,
+  Well,
 } from "./_components/layout";
 
 type MigrationDomain = {
@@ -59,13 +60,13 @@ export const DomainMigrationEmail = ({
       </Text>
 
       {domains.map((entry) => (
-        <Section key={entry.domain} style={panel}>
+        <Well key={entry.domain}>
           <Text style={recordTitle}>CNAME record</Text>
           <Text style={fieldLabel}>Host / Subdomain</Text>
           <CodeBlock>{entry.domain}</CodeBlock>
           <Text style={fieldLabel}>Value / Points to</Text>
           <CodeBlock>{cnameTarget}</CodeBlock>
-        </Section>
+        </Well>
       ))}
 
       <Text style={smallText}>
@@ -90,7 +91,7 @@ export const DomainMigrationEmail = ({
         </Text>
       )}
 
-      <Section style={warningBox}>
+      <Section className="email-warning" style={warningBox}>
         <Text style={warningText}>
           Your links keep working as normal until we complete the move {deadlineText}. After that,
           short links, QR codes, and bio pages on the {plural ? "domains" : "domain"} above will
@@ -115,9 +116,9 @@ export const DomainMigrationEmail = ({
 };
 
 const inlineCode = {
-  backgroundColor: "#f3f4f6",
+  backgroundColor: "#f5f5f5",
   borderRadius: "4px",
-  fontFamily: "ui-monospace,SFMono-Regular,Menlo,Consolas,monospace",
+  fontFamily: monoFontFamily,
   fontSize: "13px",
   padding: "1px 4px",
   wordBreak: "break-all" as const,
@@ -126,9 +127,9 @@ const inlineCode = {
 const warningBox = {
   backgroundColor: "#fffbeb",
   border: "1px solid #fde68a",
-  borderRadius: "8px",
+  borderRadius: "10px",
   padding: "4px 16px",
-  marginTop: "16px",
+  margin: "0 0 16px",
 };
 
 const warningText = {

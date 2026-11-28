@@ -1,0 +1,731 @@
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  spyOn,
+  test,
+} from "bun:test";
+import crypto from "node:crypto";
+
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+
+import { env } from "@/env.mjs";
+import { buildPaddleConfig } from "@/lib/paddle/config";
+import { db } from "@/server/db";
+import * as schema from "@/server/db/schema";
+import * as posthog from "@/server/lib/analytics/posthog-server";
+import * as billingEmails from "@/server/lib/notifications/billing";
+
+import { stubCloudflareContext } from "../../../../../test/cloudflare-context";
+import { eventKind, handlePaddleWebhook } from "./handler";
+import { paddleTransactionSchema } from "./transaction";
+
+import type { PaddleWebhookDeps } from "./handler";
+import type { Mock } from "bun:test";
+
+const SECRET = "pdl_ntfset_route_test_secret";
+const USER_ID = "paddle_route_test";
+const USER_EMAIL = "paddle-route-test@example.com";
+const CUSTOMER_ID = "ctm_01routetest931";
+const SUBSCRIPTION_ID = "sub_01routetest931";
+const PRICES = {
+  proMonthly: "pri_01pro_monthly",
+  proAnnual: "pri_01pro_annual",
+  ultraMonthly: "pri_01ultra_monthly",
+  ultraAnnual: "pri_01ultra_annual",
+};
+
+const config = buildPaddleConfig({
+  BILLING_PROVIDER: undefined,
+  PADDLE_ENVIRONMENT: "sandbox",
+  PADDLE_API_KEY: "pdl_sdbx_route_test",
+  PADDLE_WEBHOOK_SECRET: SECRET,
+  PADDLE_CLIENT_TOKEN: "test_route_test",
+  PADDLE_PRICE_PRO_MONTHLY: PRICES.proMonthly,
+  PADDLE_PRICE_PRO_ANNUAL: PRICES.proAnnual,
+  PADDLE_PRICE_ULTRA_MONTHLY: PRICES.ultraMonthly,
+  PADDLE_PRICE_ULTRA_ANNUAL: PRICES.ultraAnnual,
+  PADDLE_PRICE_PRO_LEGACY_MONTHLY: undefined,
+  PADDLE_CHECKOUT_USER_IDS: undefined,
+});
+
+// The same account in the live environment; only it sends order_completed.
+const productionConfig = buildPaddleConfig({
+  BILLING_PROVIDER: undefined,
+  PADDLE_ENVIRONMENT: "production",
+  PADDLE_API_KEY: "pdl_live_route_test",
+  PADDLE_WEBHOOK_SECRET: SECRET,
+  PADDLE_CLIENT_TOKEN: "live_route_test",
+  PADDLE_PRICE_PRO_MONTHLY: PRICES.proMonthly,
+  PADDLE_PRICE_PRO_ANNUAL: PRICES.proAnnual,
+  PADDLE_PRICE_ULTRA_MONTHLY: PRICES.ultraMonthly,
+  PADDLE_PRICE_ULTRA_ANNUAL: PRICES.ultraAnnual,
+  PADDLE_PRICE_PRO_LEGACY_MONTHLY: undefined,
+  PADDLE_CHECKOUT_USER_IDS: undefined,
+});
+
+const customerLookups: string[] = [];
+let customerEmail = USER_EMAIL;
+// Paddle's discounts by id; an id missing here fails the lookup like a Paddle outage.
+const DISCOUNTS = new Map([
+  ["dsc_01producthunt", "PRODUCTHUNT20"],
+  ["dsc_01producthuntannual", "PRODUCTHUNT20ANNUAL"],
+]);
+const getDiscount: NonNullable<PaddleWebhookDeps["client"]>["getDiscount"] = async (id) => {
+  const code = DISCOUNTS.get(id);
+  if (!code) throw new Error("Paddle unavailable");
+  return { id, code, recur: true, maximum_recurring_intervals: 12 };
+};
+const deps: PaddleWebhookDeps = {
+  config,
+  client: {
+    getCustomer: async (id) => {
+      customerLookups.push(id);
+      return { id, email: customerEmail, name: null };
+    },
+    getDiscount,
+  },
+};
+const productionDeps: PaddleWebhookDeps = { ...deps, config: productionConfig };
+
+function sign(body: string, ts = Math.floor(Date.now() / 1000)) {
+  const h1 = crypto.createHmac("sha256", SECRET).update(`${ts}:${body}`).digest("hex");
+  return `ts=${ts};h1=${h1}`;
+}
+
+type SubscriptionOverrides = Partial<{
+  status: string;
+  price: string;
+  scheduled_change: { action: string; effective_at: string; resume_at: string | null } | null;
+  canceled_at: string | null;
+  custom_data: Record<string, string> | null;
+}>;
+
+function event(
+  eventType: string,
+  updatedAt: string,
+  { price = PRICES.proAnnual, ...overrides }: SubscriptionOverrides = {},
+) {
+  return JSON.stringify({
+    event_id: `evt_${crypto.randomUUID()}`,
+    event_type: eventType,
+    occurred_at: updatedAt,
+    notification_id: `ntf_${crypto.randomUUID()}`,
+    data: {
+      id: SUBSCRIPTION_ID,
+      status: "active",
+      customer_id: CUSTOMER_ID,
+      created_at: "2026-11-20T00:00:00Z",
+      updated_at: updatedAt,
+      next_billed_at: "2027-11-20T00:00:00Z",
+      canceled_at: null,
+      scheduled_change: null,
+      items: [{ price: { id: price }, quantity: 1 }],
+      custom_data: { user_id: USER_ID },
+      ...overrides,
+    },
+  });
+}
+
+function transactionEvent(overrides: Partial<z.input<typeof paddleTransactionSchema>> = {}) {
+  return JSON.stringify({
+    event_id: `evt_${crypto.randomUUID()}`,
+    event_type: "transaction.completed",
+    occurred_at: "2026-11-20T00:00:05Z",
+    notification_id: `ntf_${crypto.randomUUID()}`,
+    data: {
+      id: "txn_01routetest932",
+      status: "completed",
+      origin: "web",
+      subscription_id: SUBSCRIPTION_ID,
+      customer_id: CUSTOMER_ID,
+      items: [{ price_id: PRICES.proAnnual, price: { id: PRICES.proAnnual }, quantity: 1 }],
+      details: { totals: { total: "5990", currency_code: "USD" } },
+      payments: [
+        {
+          status: "captured",
+          method_details: { type: "card", card: { type: "visa", last4: "4242" } },
+        },
+      ],
+      custom_data: { user_id: USER_ID, utm_source: "newsletter", discount_code: "BFCM20" },
+      ...overrides,
+    },
+  });
+}
+
+function deliver(
+  body: string,
+  signature: string | null = sign(body),
+  handlerDeps: PaddleWebhookDeps = deps,
+) {
+  const headers = new Headers({ "content-type": "application/json" });
+  if (signature !== null) headers.set("Paddle-Signature", signature);
+  return handlePaddleWebhook(
+    new Request("http://localhost/api/webhooks/paddle", { method: "POST", headers, body }),
+    handlerDeps,
+  );
+}
+
+describe("eventKind", () => {
+  const active = { status: "active" };
+  const cancelled = { status: "cancelled" };
+
+  test("maps lifecycle events to applier kinds", () => {
+    expect(eventKind("subscription.created", active)).toBe("created");
+    expect(eventKind("subscription.imported", active)).toBe("created");
+    expect(eventKind("subscription.canceled", { status: "expired" })).toBe("expired");
+    for (const type of [
+      "subscription.updated",
+      "subscription.activated",
+      "subscription.trialing",
+      "subscription.past_due",
+      "subscription.paused",
+      "subscription.resumed",
+    ]) {
+      expect(eventKind(type, active)).toBe("updated");
+    }
+  });
+
+  test("an update into the cancelled status is a cancellation", () => {
+    expect(eventKind("subscription.updated", cancelled)).toBe("cancelled");
+  });
+
+  test("an update into the expired status is an expiry", () => {
+    expect(eventKind("subscription.updated", { status: "expired" })).toBe("expired");
+  });
+
+  test("other events carry nothing to apply", () => {
+    expect(eventKind("subscription.something_new", active)).toBeNull();
+  });
+});
+
+describe("POST /api/webhooks/paddle without a database", () => {
+  const body = event("subscription.updated", "2026-11-20T00:00:00Z");
+
+  test("responds 404 while Paddle is not configured", async () => {
+    const response = await deliver(body, sign(body), { config: null, client: null });
+    expect(response.status).toBe(404);
+  });
+
+  test("rejects a missing signature with 401", async () => {
+    expect((await deliver(body, null)).status).toBe(401);
+  });
+
+  test("rejects a wrong signature with 401", async () => {
+    expect((await deliver(body, sign(`${body} `))).status).toBe(401);
+  });
+
+  test("rejects a signature older than the tolerance with 401", async () => {
+    expect((await deliver(body, sign(body, Math.floor(Date.now() / 1000) - 60))).status).toBe(401);
+  });
+
+  test("rejects a malformed envelope with 400", async () => {
+    const malformed = JSON.stringify({ event_type: "subscription.updated" });
+    expect((await deliver(malformed)).status).toBe(400);
+  });
+
+  test("acknowledges events it does not handle", async () => {
+    const other = JSON.stringify({
+      event_id: "evt_1",
+      event_type: "transaction.created",
+      occurred_at: "2026-11-20T00:00:00Z",
+      notification_id: "ntf_1",
+      data: { id: "txn_1" },
+    });
+    expect((await deliver(other)).status).toBe(200);
+  });
+
+  test("acknowledges an unhandled subscription event without reading its data", async () => {
+    const other = JSON.stringify({
+      event_id: "evt_2",
+      event_type: "subscription.something_new",
+      occurred_at: "2026-11-20T00:00:00Z",
+      notification_id: "ntf_2",
+      data: { id: "sub_1" },
+    });
+    expect((await deliver(other)).status).toBe(200);
+  });
+
+  test("acknowledges a completed transaction that isn't a subscription payment", async () => {
+    expect((await deliver(transactionEvent({ origin: "subscription_charge" }))).status).toBe(200);
+    expect((await deliver(transactionEvent({ subscription_id: null }))).status).toBe(200);
+  });
+
+  describe("with PostHog configured", () => {
+    const posthog = {
+      NEXT_PUBLIC_POSTHOG_KEY: env.NEXT_PUBLIC_POSTHOG_KEY,
+      NEXT_PUBLIC_POSTHOG_HOST: env.NEXT_PUBLIC_POSTHOG_HOST,
+    };
+    let fetchSpy: Mock<typeof fetch>;
+
+    // A fake PostHog with fetch intercepted, so nothing leaves the process.
+    beforeEach(() => {
+      Object.assign(env, {
+        NEXT_PUBLIC_POSTHOG_KEY: "phc_test",
+        NEXT_PUBLIC_POSTHOG_HOST: "https://posthog.invalid",
+      });
+      fetchSpy = spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }));
+    });
+    afterEach(() => {
+      fetchSpy.mockRestore();
+      Object.assign(env, posthog);
+    });
+
+    // Without a card there is no row to update, so this reaches order_completed without MySQL.
+    test("a sandbox first payment sends no order_completed", async () => {
+      const paypal = transactionEvent({
+        payments: [{ status: "captured", method_details: { type: "paypal", card: null } }],
+      });
+      expect((await deliver(paypal)).status).toBe(200);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  test("rejects a malformed transaction with 400", async () => {
+    expect((await deliver(transactionEvent({ id: undefined }))).status).toBe(400);
+  });
+
+  test("rejects a handled event with a malformed subscription with 400", async () => {
+    const malformed = JSON.stringify({
+      event_id: "evt_3",
+      event_type: "subscription.updated",
+      occurred_at: "2026-11-20T00:00:00Z",
+      notification_id: "ntf_3",
+      data: { id: "sub_1" },
+    });
+    expect((await deliver(malformed)).status).toBe(400);
+  });
+});
+
+// Runs against a disposable MySQL with the schema pushed (test/setup.ts points
+// the app's db client at it); see CONTRIBUTING.md, "Database tests".
+const testDatabaseUrl = process.env.TEST_DATABASE_URL;
+
+describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/paddle (MySQL)", () => {
+  let restoreContext = () => {};
+  let welcomeSpy: Mock<typeof billingEmails.sendWelcomeEmail>;
+  let cancelledSpy: Mock<typeof billingEmails.sendSubscriptionCancelledEmail>;
+  let captureSpy: Mock<typeof posthog.captureServerEvent>;
+
+  beforeAll(() => {
+    if (!env.DATABASE_URL) Object.assign(env, { DATABASE_URL: testDatabaseUrl });
+    // Emails go out through runBackgroundTask, which needs the Cloudflare context.
+    restoreContext = stubCloudflareContext();
+    welcomeSpy = spyOn(billingEmails, "sendWelcomeEmail").mockResolvedValue(true);
+    cancelledSpy = spyOn(billingEmails, "sendSubscriptionCancelledEmail").mockResolvedValue(true);
+    captureSpy = spyOn(posthog, "captureServerEvent").mockImplementation(() => {});
+  });
+
+  async function reset() {
+    await db.delete(schema.checkoutStart).where(eq(schema.checkoutStart.userId, USER_ID));
+    await db.delete(schema.subscription).where(eq(schema.subscription.userId, USER_ID));
+    await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
+    await db.insert(schema.user).values({ id: USER_ID, email: USER_EMAIL });
+    welcomeSpy.mockClear();
+    cancelledSpy.mockClear();
+    captureSpy.mockClear();
+    customerLookups.length = 0;
+    customerEmail = USER_EMAIL;
+  }
+
+  function storedSubscription() {
+    return db.query.subscription.findFirst({
+      where: eq(schema.subscription.userId, USER_ID),
+    });
+  }
+
+  // Background emails start after the response; let them run before asserting.
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
+
+  beforeEach(reset);
+
+  afterAll(async () => {
+    welcomeSpy.mockRestore();
+    cancelledSpy.mockRestore();
+    captureSpy.mockRestore();
+    restoreContext();
+    await db.delete(schema.checkoutStart).where(eq(schema.checkoutStart.userId, USER_ID));
+    await db.delete(schema.subscription).where(eq(schema.subscription.userId, USER_ID));
+    await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
+  });
+
+  test("created writes a Paddle row with the plan and interval from the price", async () => {
+    expect((await deliver(event("subscription.created", "2026-11-20T00:00:00Z"))).status).toBe(200);
+
+    const row = await storedSubscription();
+    expect(row).toMatchObject({
+      billingProvider: "paddle",
+      providerSubscriptionId: SUBSCRIPTION_ID,
+      providerCustomerId: CUSTOMER_ID,
+      providerPriceId: PRICES.proAnnual,
+      subscriptionId: 0,
+      status: "active",
+      plan: "pro",
+      billingInterval: "annual",
+    });
+    expect(row?.renewsAt?.toISOString()).toBe("2027-11-20T00:00:00.000Z");
+    await settle();
+    expect(welcomeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test("imported writes the row without a welcome email", async () => {
+    const body = event("subscription.imported", "2026-11-20T00:00:00Z", {
+      price: PRICES.ultraMonthly,
+    });
+    expect((await deliver(body)).status).toBe(200);
+
+    expect(await storedSubscription()).toMatchObject({ plan: "ultra", billingInterval: "monthly" });
+    await settle();
+    expect(welcomeSpy).not.toHaveBeenCalled();
+  });
+
+  test("a scheduled cancel marks the row cancelled until the period ends, emailing once", async () => {
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+    const scheduledCancel = {
+      scheduled_change: {
+        action: "cancel",
+        effective_at: "2027-11-20T00:00:00Z",
+        resume_at: null,
+      },
+    };
+
+    for (const updatedAt of ["2026-11-21T00:00:00Z", "2026-11-22T00:00:00Z"]) {
+      const response = await deliver(event("subscription.updated", updatedAt, scheduledCancel));
+      expect(response.status).toBe(200);
+    }
+
+    const row = await storedSubscription();
+    expect(row?.status).toBe("cancelled");
+    expect(row?.plan).toBe("pro");
+    expect(row?.endsAt?.toISOString()).toBe("2027-11-20T00:00:00.000Z");
+    await settle();
+    expect(cancelledSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test("canceled resets the row to free and starts the lapse grace", async () => {
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+    const body = event("subscription.canceled", "2026-11-21T00:00:00Z", {
+      status: "canceled",
+      canceled_at: "2026-11-21T00:00:00Z",
+    });
+    expect((await deliver(body)).status).toBe(200);
+
+    const row = await storedSubscription();
+    expect(row?.status).toBe("expired");
+    expect(row?.plan).toBe("free");
+    const account = await db.query.user.findFirst({ where: eq(schema.user.id, USER_ID) });
+    expect(account?.planGracePlan).toBe("pro");
+    expect(account?.planGraceReason).toBe("lapsed");
+    expect(account?.planGraceEndsAt).not.toBeNull();
+  });
+
+  test("an update to canceled followed by canceled resets the row to free once", async () => {
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+    const canceled = { status: "canceled", canceled_at: "2026-11-21T00:00:00Z" };
+
+    const update = event("subscription.updated", "2026-11-21T00:00:00Z", canceled);
+    expect((await deliver(update)).status).toBe(200);
+    const final = event("subscription.canceled", "2026-11-21T00:00:00Z", canceled);
+    expect((await deliver(final)).status).toBe(200);
+
+    const row = await storedSubscription();
+    expect(row?.status).toBe("expired");
+    expect(row?.plan).toBe("free");
+    const account = await db.query.user.findFirst({ where: eq(schema.user.id, USER_ID) });
+    expect(account?.planGracePlan).toBe("pro");
+    expect(account?.planGraceReason).toBe("lapsed");
+    expect(account?.planGraceEndsAt).not.toBeNull();
+  });
+
+  test("a redelivered older event is acknowledged without changing the row", async () => {
+    const older = event("subscription.past_due", "2026-11-20T00:00:00Z", { status: "past_due" });
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+    await deliver(event("subscription.updated", "2026-11-22T00:00:00Z"));
+
+    expect((await deliver(older)).status).toBe(200);
+    expect((await storedSubscription())?.status).toBe("active");
+  });
+
+  test("created replaces an expired Lemon Squeezy row", async () => {
+    await db.insert(schema.subscription).values({
+      userId: USER_ID,
+      subscriptionId: 931001,
+      customerId: 931002,
+      status: "expired",
+      plan: "free",
+      providerUpdatedAt: new Date("2026-12-01T00:00:00Z"),
+    });
+
+    expect((await deliver(event("subscription.created", "2026-11-20T00:00:00Z"))).status).toBe(200);
+
+    expect(await storedSubscription()).toMatchObject({
+      billingProvider: "paddle",
+      providerSubscriptionId: SUBSCRIPTION_ID,
+      subscriptionId: 0,
+      customerId: 0,
+      status: "active",
+      plan: "pro",
+    });
+  });
+
+  test("an update for a user on Lemon Squeezy leaves their row alone", async () => {
+    await db.insert(schema.subscription).values({
+      userId: USER_ID,
+      subscriptionId: 931001,
+      customerId: 931002,
+      status: "active",
+      plan: "pro",
+      providerUpdatedAt: new Date("2026-11-19T00:00:00Z"),
+    });
+
+    const body = event("subscription.paused", "2026-11-20T00:00:00Z", { status: "paused" });
+    expect((await deliver(body)).status).toBe(200);
+    expect(await storedSubscription()).toMatchObject({
+      billingProvider: "lemonsqueezy",
+      status: "active",
+    });
+  });
+
+  test("matches an event without user_id by customer, without calling Paddle", async () => {
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+    const body = event("subscription.past_due", "2026-11-21T00:00:00Z", {
+      status: "past_due",
+      custom_data: null,
+    });
+    expect((await deliver(body)).status).toBe(200);
+    expect((await storedSubscription())?.status).toBe("past_due");
+    expect(customerLookups).toEqual([]);
+  });
+
+  test("matches an event without user_id by the Paddle customer's email", async () => {
+    const body = event("subscription.created", "2026-11-20T00:00:00Z", { custom_data: null });
+    expect((await deliver(body)).status).toBe(200);
+    expect(customerLookups).toEqual([CUSTOMER_ID]);
+    expect((await storedSubscription())?.providerSubscriptionId).toBe(SUBSCRIPTION_ID);
+  });
+
+  test("acknowledges an event that matches no user, without writing", async () => {
+    customerEmail = "no-such-user-931@example.com";
+    const body = event("subscription.created", "2026-11-20T00:00:00Z", { custom_data: null });
+    expect((await deliver(body)).status).toBe(200);
+    expect(await storedSubscription()).toBeUndefined();
+  });
+
+  test("responds 500 when the Paddle API fails, so the event is retried", async () => {
+    const failing: PaddleWebhookDeps = {
+      config,
+      client: {
+        getDiscount,
+        getCustomer: async () => {
+          throw new Error("Paddle unavailable");
+        },
+      },
+    };
+    const body = event("subscription.created", "2026-11-20T00:00:00Z", { custom_data: null });
+    expect((await deliver(body, sign(body), failing)).status).toBe(500);
+    expect(await storedSubscription()).toBeUndefined();
+  });
+
+  test.each(["api", "web"])(
+    "a first payment from a %s checkout records the card and one order_completed",
+    async (origin) => {
+      await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+      expect((await deliver(transactionEvent({ origin }), undefined, productionDeps)).status).toBe(
+        200,
+      );
+
+      expect(await storedSubscription()).toMatchObject({ cardBrand: "visa", cardLastFour: "4242" });
+      expect(captureSpy).toHaveBeenCalledTimes(1);
+      expect(captureSpy).toHaveBeenCalledWith(
+        { id: USER_ID, email: USER_EMAIL },
+        "order_completed",
+        {
+          plan: "pro",
+          interval: "annual",
+          discount_code: "BFCM20",
+          utm_source: "newsletter",
+          order_id: "txn_01routetest932",
+          amount: 59.9,
+          currency: "USD",
+          test_mode: false,
+          provider: "paddle",
+          billing_env: "production",
+        },
+      );
+    },
+  );
+
+  test("a sandbox first payment records the card without an order_completed", async () => {
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+    expect((await deliver(transactionEvent())).status).toBe(200);
+
+    expect((await storedSubscription())?.cardLastFour).toBe("4242");
+    expect(captureSpy).not.toHaveBeenCalled();
+  });
+
+  test("a renewal records the card without an order_completed", async () => {
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+    const renewal = transactionEvent({
+      origin: "subscription_recurring",
+      payments: [
+        {
+          status: "captured",
+          method_details: { type: "card", card: { type: "mastercard", last4: "5555" } },
+        },
+      ],
+    });
+    expect((await deliver(renewal)).status).toBe(200);
+
+    expect(await storedSubscription()).toMatchObject({
+      cardBrand: "mastercard",
+      cardLastFour: "5555",
+    });
+    expect(captureSpy).not.toHaveBeenCalled();
+  });
+
+  test("a first payment without user_id records the card without an order_completed", async () => {
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+    expect((await deliver(transactionEvent({ custom_data: null }))).status).toBe(200);
+
+    expect((await storedSubscription())?.cardLastFour).toBe("4242");
+    expect(captureSpy).not.toHaveBeenCalled();
+  });
+
+  test("a payment without a card emits order_completed and leaves the card alone", async () => {
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+    await deliver(transactionEvent());
+
+    const paypal = transactionEvent({
+      id: "txn_01routetest932b",
+      payments: [{ status: "captured", method_details: { type: "paypal", card: null } }],
+    });
+    expect((await deliver(paypal, undefined, productionDeps)).status).toBe(200);
+
+    expect((await storedSubscription())?.cardLastFour).toBe("4242");
+    expect(captureSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test("a first payment before subscription.created is retried without emitting", async () => {
+    expect((await deliver(transactionEvent(), undefined, productionDeps)).status).toBe(500);
+    expect(captureSpy).not.toHaveBeenCalled();
+
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+    expect((await deliver(transactionEvent(), undefined, productionDeps)).status).toBe(200);
+    expect((await storedSubscription())?.cardLastFour).toBe("4242");
+    expect(captureSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test("later subscription events keep the card", async () => {
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+    await deliver(transactionEvent());
+
+    await deliver(event("subscription.updated", "2026-11-21T00:00:00Z"));
+
+    expect(await storedSubscription()).toMatchObject({ cardBrand: "visa", cardLastFour: "4242" });
+  });
+
+  test("created over a Lemon Squeezy row drops its card", async () => {
+    await db.insert(schema.subscription).values({
+      userId: USER_ID,
+      subscriptionId: 932001,
+      customerId: 932002,
+      status: "expired",
+      plan: "free",
+      cardBrand: "visa",
+      cardLastFour: "1111",
+    });
+
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+    expect(await storedSubscription()).toMatchObject({ cardBrand: null, cardLastFour: null });
+  });
+
+  describe("a discount code typed into Paddle's checkout", () => {
+    async function startCheckout(promoCode: string | null = null) {
+      await db.insert(schema.checkoutStart).values({
+        userId: USER_ID,
+        plan: "pro",
+        interval: "monthly",
+        promoCode,
+        provider: "paddle",
+      });
+    }
+    const storedPromoCode = async () =>
+      (
+        await db.query.checkoutStart.findFirst({
+          where: eq(schema.checkoutStart.userId, USER_ID),
+        })
+      )?.promoCode;
+    const typedCode = (discountId: string) =>
+      transactionEvent({
+        items: [{ price_id: PRICES.proMonthly, price: { id: PRICES.proMonthly } }],
+        discount_id: discountId,
+        custom_data: { user_id: USER_ID },
+      });
+
+    test("is stored on the checkout and sent with order_completed", async () => {
+      await startCheckout();
+      await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+      const response = await deliver(typedCode("dsc_01producthunt"), undefined, productionDeps);
+
+      expect(response.status).toBe(200);
+      expect(await storedPromoCode()).toBe("PRODUCTHUNT20");
+      expect(captureSpy).toHaveBeenCalledTimes(1);
+      expect(captureSpy.mock.calls[0]?.[2]).toMatchObject({ discount_code: "PRODUCTHUNT20" });
+    });
+
+    test("an annual promo code is stored as the promo it stands for", async () => {
+      await startCheckout();
+      await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+      await deliver(typedCode("dsc_01producthuntannual"));
+
+      expect(await storedPromoCode()).toBe("PRODUCTHUNT20");
+    });
+
+    test("replaces the code the checkout was created with", async () => {
+      await startCheckout("BFCM20");
+      await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+      await deliver(typedCode("dsc_01producthunt"));
+
+      expect(await storedPromoCode()).toBe("PRODUCTHUNT20");
+    });
+
+    test("a failed discount lookup is retried before order_completed is sent", async () => {
+      await startCheckout();
+      await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+      const response = await deliver(typedCode("dsc_01unknown"), undefined, productionDeps);
+
+      expect(response.status).toBe(500);
+      expect(await storedPromoCode()).toBeNull();
+      expect(captureSpy).not.toHaveBeenCalled();
+    });
+
+    test("a renewal with the discount leaves the checkout alone", async () => {
+      await startCheckout();
+      await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+      const renewal = transactionEvent({
+        origin: "subscription_recurring",
+        discount_id: "dsc_01unknown",
+        custom_data: { user_id: USER_ID },
+      });
+      expect((await deliver(renewal)).status).toBe(200);
+
+      expect(await storedPromoCode()).toBeNull();
+    });
+  });
+});

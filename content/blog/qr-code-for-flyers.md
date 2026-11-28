@@ -66,7 +66,7 @@ In iShortn:
 4. Style it if you want: colours, shapes, a logo in the middle. Keep it dark on a light background.
 5. Download the PNG, or the SVG if the code will be printed large.
 
-The free plan includes 5 dynamic QR codes. They don't expire, they show no ads, and you can edit the destination whenever you like. Each code uses one of your 30 free links for that month. Free analytics show the last 7 days and count up to 1,000 events a month; codes keep working past that, but scans above the cap aren't recorded until the month resets. [Pro](/pricing) is $8 a month if you need more codes or the full history.
+The free plan includes 5 dynamic QR codes. They don't expire, they show no ads, and you can edit the destination whenever you like. Each code uses one of your 30 free links for that month. Free analytics show the last 7 days and count up to 1,000 tracked clicks a month; codes keep working past that, but scans above the cap aren't recorded until the month resets. [Pro](/pricing) is $8 a month if you need more codes or a year of scan history.
 
 ## Step 4: Add it to your flyer
 
@@ -126,6 +126,8 @@ Use **one code per place or batch you want to compare**, for example:
 - Code 4: handed out at the weekend market
 
 Each code points to the same page, but each one counts its own scans. After two weeks you'll see that, say, the café brought 60 scans and the door drop brought 4, and you'll know where to put the next print run.
+
+Customer story: [how AIRO cut its rack card spend](/customers/airo). The helicopter tour company's iShortn click data showed its rack cards weren't working, so it is cancelling at least $5,000 of rack card printing for next year.
 
 Two ways to go further:
 

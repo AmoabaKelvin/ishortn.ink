@@ -18,7 +18,10 @@ import {
   varchar,
 } from "drizzle-orm/mysql-core";
 
+import type { StaticPayloadType, StaticQrPayload } from "@/lib/qr-generator/payload";
 import type { QRCodeStyle } from "@/lib/qr-generator/types";
+import type { VCardPayload } from "@/lib/qr-generator/vcard";
+import type { WebhookEventType } from "@/lib/webhooks";
 
 // ============================================================================
 // TEAM TABLES
@@ -173,8 +176,8 @@ export const user = mysqlTable(
     droppedEventCount: int("droppedEventCount").default(0),
     eventTrackingPausedAt: timestamp("eventTrackingPausedAt"),
     lastViewedChangelogSlug: varchar("lastViewedChangelogSlug", { length: 100 }),
-    // Milestone, usage-alert, domain-reminder, first-link nudge, upgrade nudge and weekly summary
-    // emails. Account, billing and team emails ignore it.
+    // Milestone, usage-alert, domain-reminder, broken-destination, first-link nudge, upgrade nudge
+    // and weekly summary emails. Account, billing and team emails ignore it.
     productEmailsEnabled: boolean("productEmailsEnabled").notNull().default(true),
     // Weekly click summary (see src/server/lib/weekly-summary.ts); sent only while
     // productEmailsEnabled is also on.
@@ -250,13 +253,32 @@ export const subscription = mysqlTable(
     // When a paused subscription starts billing again (the provider's pause.resumes_at); null
     // when not paused.
     pausedUntil: datetime("pausedUntil"),
+    // When an in-app Paddle plan change removed the subscription's first-year promo discount. The
+    // row is reused across subscriptions, so it only counts if later than the promo's checkout.
+    promoDiscountEndedAt: datetime("promoDiscountEndedAt"),
 
     // details about the payment to show in the dashboard
     cardBrand: varchar("cardBrand", { length: 255 }).default(""),
     cardLastFour: varchar("cardLastFour", { length: 4 }).default(""),
+
+    // Which provider manages this subscription. Rows created before a second provider existed
+    // read as Lemon Squeezy through the default, with no data rewrite.
+    billingProvider: varchar("billingProvider", { length: 16 }).notNull().default("lemonsqueezy"),
+    // Paddle ids are strings (`sub_…`, `ctm_…`, `pri_…`), so they can't use the int
+    // `subscriptionId` / `customerId` / `variantId` columns above, which stay as they are for
+    // Lemon Squeezy rows. Null on Lemon Squeezy rows.
+    providerSubscriptionId: varchar("providerSubscriptionId", { length: 64 }),
+    providerCustomerId: varchar("providerCustomerId", { length: 64 }),
+    providerPriceId: varchar("providerPriceId", { length: 64 }),
   },
   (table) => ({
     userIdx: index("userId_idx").on(table.userId),
+    providerSubscriptionIdIdx: index("subscription_providerSubscriptionId_idx").on(
+      table.providerSubscriptionId,
+    ),
+    providerCustomerIdIdx: index("subscription_providerCustomerId_idx").on(
+      table.providerCustomerId,
+    ),
   }),
 );
 
@@ -498,6 +520,39 @@ export const weeklySummaryEmail = mysqlTable(
   }),
 );
 
+// Emailed analytics report for a link, folder or campaign, sent weekly (Mondays, the previous
+// week) or monthly (the 1st, the previous calendar month) to addresses that need no account.
+// lastPeriodKey ("w:2026-11-16" / "m:2026-10-01") is claimed with a conditional update before a
+// period is sent, so a retried or overlapping run never sends it twice.
+export const scheduledReport = mysqlTable(
+  "ScheduledReport",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    teamId: int("teamId"), // null = personal workspace, non-null = team workspace
+    // Who set the report up: in a team, the report only covers links in folders they can see.
+    createdBy: varchar("createdBy", { length: 32 }),
+    targetType: mysqlEnum("targetType", ["link", "folder", "campaign"]).notNull(),
+    targetId: int("targetId").notNull(),
+    frequency: mysqlEnum("frequency", ["weekly", "monthly"]).notNull(),
+    recipients: json("recipients").$type<string[]>().notNull(),
+    // Addresses that used the unsubscribe link: kept so editing this schedule can't add them back.
+    unsubscribed: json("unsubscribed").$type<string[]>(),
+    lastPeriodKey: varchar("lastPeriodKey", { length: 16 }),
+    lastSentAt: timestamp("lastSentAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").onUpdateNow(),
+  },
+  (table) => ({
+    userIdIdx: index("scheduledReport_userId_idx").on(table.userId),
+    teamIdIdx: index("scheduledReport_teamId_idx").on(table.teamId),
+    targetIdx: index("scheduledReport_target_idx").on(table.targetType, table.targetId),
+    dueIdx: index("scheduledReport_due_idx").on(table.frequency, table.lastPeriodKey),
+  }),
+);
+
+export type ScheduledReport = typeof scheduledReport.$inferSelect;
+
 export const linkMilestone = mysqlTable(
   "LinkMilestone",
   {
@@ -536,11 +591,16 @@ export const token = mysqlTable(
     label: varchar("label", { length: 64 }),
     lastUsedAt: timestamp("lastUsedAt"),
     createdAt: timestamp("createdAt").defaultNow(),
+    // The creator. Personal keys act in this user's personal workspace.
     userId: varchar("userId", { length: 32 }).notNull(),
+    // Set on team keys (kind "api" only): the key belongs to and acts in this team workspace.
+    teamId: int("teamId"),
+    createdByUserId: varchar("createdByUserId", { length: 32 }),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     tokenIdx: index("token_idx").on(table.token),
+    teamIdIdx: index("teamId_idx").on(table.teamId),
   }),
 );
 
@@ -589,11 +649,21 @@ export const qrcode = mysqlTable(
 
     // Generator options used for the SVG download; null for codes saved before SVG export.
     style: json("style").$type<QRCodeStyle>(),
+
+    // Codes built from a form: which form, and its fields so the editor can re-open them. Static
+    // codes (contentType "text") and contact cards ("vcard", contentType "link"). Null for links,
+    // plain text and codes made before these types.
+    payloadType: varchar("payloadType", { length: 16 }).$type<StaticPayloadType | "vcard">(),
+    payloadFields: json("payloadFields").$type<StaticQrPayload | VCardPayload>(),
+
+    // A contact card's hosted page is /c/<publicId>: random, so cards can't be listed by id.
+    publicId: varchar("publicId", { length: 16 }),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
     linkIdIdx: index("linkId_idx").on(table.linkId),
+    publicIdUnique: unique("qrcode_publicId_unique").on(table.publicId),
   }),
 );
 
@@ -806,6 +876,55 @@ export const flaggedLink = mysqlTable(
   (table) => ({
     linkIdIdx: index("linkId_idx").on(table.linkId),
     statusIdx: index("status_idx").on(table.status),
+  }),
+);
+
+// Links whose destination the phishing re-scan fetches again after creation: pages the
+// creation-time check couldn't judge (a bot-challenge or error page, or a failed fetch), and new
+// links from new free accounts. Also the re-scan's progress, so no check runs twice.
+export const linkSafetyRecheck = mysqlTable(
+  "LinkSafetyRecheck",
+  {
+    id: serial("id").primaryKey(),
+    linkId: int("linkId").notNull(),
+    // "unverified-challenge", "scrape-failed" or "new-account"; varchar so new reasons need no
+    // migration.
+    reason: varchar("reason", { length: 32 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    // Scheduled content checks done so far (see CONTENT_CHECK_DELAYS_MS in the re-scan).
+    checksDone: int("checksDone").default(0).notNull(),
+    // Set when a run takes the row, so an overlapping run leaves it alone.
+    lastCheckedAt: timestamp("lastCheckedAt"),
+    // Outcome of the last check: "clean", "unverified", "phishing", "error" or "skipped"; while a
+    // run holds the row, that run's "claim:…" token.
+    result: varchar("result", { length: 16 }),
+  },
+  (table) => ({
+    linkIdIdx: index("linkId_idx").on(table.linkId),
+    createdAtIdx: index("createdAt_idx").on(table.createdAt),
+  }),
+);
+
+// Destination checks from the daily link-health job (src/server/lib/link-health). A link is
+// broken after BROKEN_AFTER_FAILURES consecutive failed checks and recovers on one success;
+// alertedAt is set once the owner has been told, and cleared on recovery so a link alerts once
+// per outage.
+export const linkHealth = mysqlTable(
+  "LinkHealth",
+  {
+    linkId: int("linkId").primaryKey(),
+    lastCheckedAt: timestamp("lastCheckedAt").notNull(),
+    // HTTP status of the last conclusive check; null when no response came back.
+    lastStatus: int("lastStatus"),
+    // LinkHealthError code ("dns_failure", "timeout", …) when no usable response came back.
+    lastError: varchar("lastError", { length: 32 }),
+    consecutiveFailures: int("consecutiveFailures").notNull().default(0),
+    brokenSince: timestamp("brokenSince"),
+    alertedAt: timestamp("alertedAt"),
+  },
+  (table) => ({
+    lastCheckedAtIdx: index("linkHealth_lastCheckedAt_idx").on(table.lastCheckedAt),
+    brokenSinceIdx: index("linkHealth_brokenSince_idx").on(table.brokenSince),
   }),
 );
 
@@ -1474,11 +1593,15 @@ export const bioBlock = mysqlTable(
       "social",
       "divider",
       "email",
+      "embed",
+      "image",
     ]).notNull(),
-    title: varchar("title", { length: 255 }), // button/heading label
-    content: text("content"), // text body, or JSON array of BioSocialLink for social blocks
-    url: text("url"), // destination for link blocks, email/mailto for email blocks
-    linkId: int("linkId"), // backing hidden Link row for link blocks (clicks reuse the redirect pipeline)
+    title: varchar("title", { length: 255 }), // button/heading label; alt text for image blocks
+    content: text("content"), // text body, JSON array of BioSocialLink for social blocks, JSON EmbedDetails for embed blocks, image URL for image blocks
+    url: text("url"), // destination for link/image blocks, email/mailto for email blocks, source URL for embed blocks
+    linkId: int("linkId"), // backing hidden Link row for link and linked image blocks (clicks reuse the redirect pipeline)
+    imageWidth: int("imageWidth"), // image blocks: intrinsic size, so the page reserves the space before the image loads
+    imageHeight: int("imageHeight"),
     position: int("position").notNull().default(0),
     isVisible: boolean("isVisible").default(true).notNull(),
     scheduledAt: datetime("scheduledAt"), // Ultra: reveal at
@@ -1617,6 +1740,31 @@ export const planLimitHit = mysqlTable(
 
 export type PlanLimitHit = typeof planLimitHit.$inferSelect;
 
+// One row per user and month with event usage, written by the lazy monthly reset
+// (normalizeMonthlyEventCount in src/server/lib/user-plan.ts) just before it zeroes the counters,
+// so recorded and dropped (over-cap) visits survive the reset.
+export const monthlyUsageSnapshot = mysqlTable(
+  "MonthlyUsageSnapshot",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    // YYYY-MM of the month the counts belong to.
+    month: char("month", { length: 7 }).notNull(),
+    recordedEventCount: int("recordedEventCount").notNull().default(0),
+    droppedEventCount: int("droppedEventCount").notNull().default(0),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    userMonthUnique: unique("monthlyUsageSnapshot_userId_month_unique").on(
+      table.userId,
+      table.month,
+    ),
+    monthIdx: index("monthlyUsageSnapshot_month_idx").on(table.month),
+  }),
+);
+
+export type MonthlyUsageSnapshot = typeof monthlyUsageSnapshot.$inferSelect;
+
 /** One row per hosted checkout handed to a user, so the funnel from checkout to payment can be measured. */
 export const checkoutStart = mysqlTable(
   "CheckoutStart",
@@ -1625,10 +1773,13 @@ export const checkoutStart = mysqlTable(
     userId: varchar("userId", { length: 32 }).notNull(),
     plan: mysqlEnum("plan", ["pro", "ultra"]).notNull(),
     interval: mysqlEnum("interval", ["monthly", "annual"]).notNull(),
-    // Pricing-page `source` param, `auto_signup` or `settings_billing`; null when none was given.
+    // Pricing-page `source` param, else the visit's `utm_source`, else `auto_signup` or
+    // `settings_billing`; null when none was given.
     source: varchar("source", { length: 64 }),
     // The discount code the checkout was created with; null when none was sent or the provider rejected it.
     promoCode: varchar("promoCode", { length: 64 }),
+    // Which billing provider hosted the checkout; existing rows read as Lemon Squeezy.
+    provider: varchar("provider", { length: 16 }).notNull().default("lemonsqueezy"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   (table) => ({
@@ -1656,6 +1807,9 @@ export const subscriptionCancellation = mysqlTable(
     offerShown: mysqlEnum("offerShown", ["pause", "none"]).notNull(),
     outcome: mysqlEnum("outcome", ["cancelled", "paused", "downgraded"]).notNull(),
     pauseMonths: int("pauseMonths"),
+    // Paddle subscription ids are strings (`sub_…`), so they can't use the int `subscriptionId`
+    // column, which stays as it is for Lemon Squeezy rows. Null on Lemon Squeezy rows.
+    providerSubscriptionId: varchar("providerSubscriptionId", { length: 64 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   (table) => ({
@@ -1665,3 +1819,73 @@ export const subscriptionCancellation = mysqlTable(
 );
 
 export type SubscriptionCancellation = typeof subscriptionCancellation.$inferSelect;
+
+// ============================================================================
+// OUTBOUND WEBHOOKS
+// ============================================================================
+
+// An endpoint a workspace sends signed events to (src/server/lib/webhooks).
+export const webhook = mysqlTable(
+  "Webhook",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    teamId: int("teamId"), // null = personal workspace, non-null = team workspace
+    url: varchar("url", { length: 2048 }).notNull(),
+    description: varchar("description", { length: 255 }),
+    events: json("events").$type<WebhookEventType[]>().notNull(),
+    // HMAC key for X-iShortn-Signature. Kept in plaintext because every delivery signs with it;
+    // the dashboard shows it only when it is created or rolled.
+    secret: varchar("secret", { length: 80 }).notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    // Failures counted since the last success (at most one per WEBHOOK_FAILURE_WINDOW_MS); the
+    // endpoint is disabled at WEBHOOK_DISABLE_AFTER.
+    consecutiveFailures: int("consecutiveFailures").notNull().default(0),
+    // When a failure was last counted toward consecutiveFailures.
+    lastFailureAt: timestamp("lastFailureAt"),
+    // Set when failures disabled the endpoint (not when the user switched it off).
+    disabledAt: timestamp("disabledAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").onUpdateNow(),
+  },
+  (table) => ({
+    userIdIdx: index("webhook_userId_idx").on(table.userId),
+    teamIdIdx: index("webhook_teamId_idx").on(table.teamId),
+  }),
+);
+
+export type Webhook = typeof webhook.$inferSelect;
+
+// One row per event per endpoint, updated on every attempt; the dashboard shows the latest 50.
+export const webhookDelivery = mysqlTable(
+  "WebhookDelivery",
+  {
+    id: serial("id").primaryKey(),
+    webhookId: int("webhookId").notNull(),
+    eventId: varchar("eventId", { length: 40 }).notNull(),
+    eventType: varchar("eventType", { length: 32 }).notNull(),
+    // The exact body sent, so every retry is signed over the same bytes.
+    payload: text("payload").notNull(),
+    status: mysqlEnum("status", ["pending", "succeeded", "failed"]).notNull().default("pending"),
+    // Attempts made so far; retries are attempts - 1.
+    attempts: int("attempts").notNull().default(0),
+    responseStatus: int("responseStatus"),
+    durationMs: int("durationMs"),
+    error: varchar("error", { length: 255 }),
+    // When the next attempt is due; null once the delivery succeeded or gave up.
+    nextAttemptAt: timestamp("nextAttemptAt"),
+    lastAttemptAt: timestamp("lastAttemptAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    webhookCreatedAtIdx: index("webhookDelivery_webhookId_createdAt_idx").on(
+      table.webhookId,
+      table.createdAt,
+    ),
+    eventIdIdx: index("webhookDelivery_eventId_idx").on(table.eventId),
+    createdAtIdx: index("webhookDelivery_createdAt_idx").on(table.createdAt),
+    dueIdx: index("webhookDelivery_status_nextAttemptAt_idx").on(table.status, table.nextAttemptAt),
+  }),
+);
+
+export type WebhookDelivery = typeof webhookDelivery.$inferSelect;

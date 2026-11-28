@@ -2,6 +2,7 @@ import { generateState, parseAuthRedirect } from "./lib/auth-fragment.ts";
 import { ext } from "./lib/browser.ts";
 import { BASE_URL, urls } from "./lib/config.ts";
 import { browserLabel } from "./lib/label.ts";
+import { meCache } from "./lib/me-cache.ts";
 import { local, session } from "./lib/storage.ts";
 
 // The connect flow runs here rather than in the popup: the popup closes as soon as the
@@ -44,6 +45,7 @@ const connect = async (): Promise<void> => {
     return;
   }
 
+  await meCache.clear();
   await local.set("token", result.token);
   await session.remove("connectStatus");
   await session.remove("linkCache");

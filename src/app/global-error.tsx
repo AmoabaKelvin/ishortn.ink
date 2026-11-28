@@ -5,6 +5,7 @@ import { IconAlertTriangle, IconRefresh } from "@tabler/icons-react";
 import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useVersionSkewReload } from "@/lib/hooks/use-version-skew-reload";
 import { clientLogger } from "@/lib/logger/client";
 
 // Replaces the root layout when it fails, so it renders its own <html> and
@@ -17,9 +18,20 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const reloading = useVersionSkewReload(error);
+
   useEffect(() => {
     clientLogger.error({ err: error, digest: error.digest }, "global error boundary caught error");
   }, [error]);
+
+  // A stale tab after a deploy: the page is reloading onto the current build.
+  if (reloading) {
+    return (
+      <html lang="en">
+        <body className="bg-neutral-50" aria-busy="true" />
+      </html>
+    );
+  }
 
   return (
     <html lang="en">
