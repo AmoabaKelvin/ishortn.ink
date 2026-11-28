@@ -69,14 +69,15 @@ function isHttpUrl(value: string): boolean {
 export async function redirectFromCache(
   request: Request,
   target: CachedRedirectTarget,
-  /** `IP_HASH_SECRET` from the worker's bindings; see hashIp. */
-  ipHashSecret: string | undefined,
+  /** The worker's bindings. */
+  bindings: { IP_HASH_SECRET?: string },
 ): Promise<CachedRedirect | null> {
   const link = await getFromCache(buildCacheKey(target.domain, target.alias));
   if (!link?.url || needsFullResolution(link)) return null;
 
   // Null is a cache miss. Links with rules stay on Next, which owns the
-  // matcher (it logs, so it can't load here).
+  // matcher (it logs, so it can't load here). On fallback the page reads the
+  // link and rules again; a KV read or two is cheap next to rendering.
   const rules = await getGeoRulesFromCache(link.id);
   if (rules === null || rules.length > 0) return null;
 
@@ -96,6 +97,11 @@ export async function redirectFromCache(
     return null;
   }
 
+  // Next's path reads env.mjs, i.e. process.env, which OpenNext fills from the
+  // bindings and from the build's .env files (production builds write server
+  // env into .env.production.local). Reading both keeps one secret per IP, so
+  // unique visitors aren't split between the two paths.
+  const ipHashSecret = bindings.IP_HASH_SECRET ?? process.env.IP_HASH_SECRET;
   const geo = getRequestGeo();
   const click = recordClick({
     headers: request.headers,

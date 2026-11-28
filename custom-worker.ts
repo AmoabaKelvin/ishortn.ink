@@ -73,7 +73,7 @@ async function redirectFromCache(
       // Evaluated on first use, so requests that aren't short-link visits never
       // load the visitor parsing it pulls in.
       const cached = await import("./src/middlewares/cached-redirect");
-      const redirect = await cached.redirectFromCache(request, target, env.IP_HASH_SECRET);
+      const redirect = await cached.redirectFromCache(request, target, env);
       if (!redirect) return null;
       ctx.waitUntil(redirect.click.catch((error) => console.error("Failed to queue click", error)));
       return redirect.response;

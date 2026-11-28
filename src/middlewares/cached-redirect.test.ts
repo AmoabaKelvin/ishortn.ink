@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:tes
 import { hashIp } from "@/lib/utils/ip-hash";
 
 import { CACHED_REDIRECT_HEADERS, redirectFromCache } from "./cached-redirect";
+import { recordClick } from "./enqueue-click";
 
 import type { ClickEvent } from "@/lib/core/analytics/click-event";
 import type { Link } from "@/lib/core/cache";
@@ -78,7 +79,7 @@ function visit(userAgent = BROWSER_UA, headers: Record<string, string> = {}) {
 }
 
 async function redirectAndSettle(request = visit()) {
-  const redirect = await redirectFromCache(request, TARGET, IP_HASH_SECRET);
+  const redirect = await redirectFromCache(request, TARGET, { IP_HASH_SECRET });
   await redirect?.click;
   return redirect;
 }
@@ -129,6 +130,37 @@ describe("redirectFromCache", () => {
       referer: "twitter",
       ipHash: hashIp("203.0.113.9", IP_HASH_SECRET),
     });
+  });
+
+  test("a secret only in process.env hashes the IP as the page's click does", async () => {
+    // Production builds write server env into .env.production.local, which
+    // OpenNext loads into process.env but not into the worker's bindings.
+    const previous = process.env.IP_HASH_SECRET;
+    process.env.IP_HASH_SECRET = IP_HASH_SECRET;
+    try {
+      const link = cachedLink();
+      cache(link);
+
+      const redirect = await redirectFromCache(visit(), TARGET, {});
+      await redirect?.click;
+      // The page's click (resolve-link.ts) passes env.mjs's IP_HASH_SECRET,
+      // which is process.env's.
+      await recordClick({
+        headers: visit().headers,
+        link,
+        ip: "203.0.113.9",
+        country: "GH",
+        city: "Accra",
+        ipHashSecret: process.env.IP_HASH_SECRET,
+      });
+
+      expect(sent).toHaveLength(2);
+      expect(sent[0]?.ipHash).toBe(hashIp("203.0.113.9", IP_HASH_SECRET));
+      expect(sent[0]?.ipHash).toBe(sent[1]?.ipHash);
+    } finally {
+      if (previous === undefined) delete process.env.IP_HASH_SECRET;
+      else process.env.IP_HASH_SECRET = previous;
+    }
   });
 
   test("traffic sources without a referrer match the page's click", async () => {
