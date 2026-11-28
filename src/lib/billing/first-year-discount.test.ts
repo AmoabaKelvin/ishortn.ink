@@ -5,6 +5,7 @@ import {
   paddleDiscountCode,
   planChangeDiscount,
   promoDiscountActive,
+  promoCodeFromPaddleCode,
   promoFirstPaymentAt,
 } from "./first-year-discount";
 
@@ -27,6 +28,13 @@ describe("checkout discounts", () => {
       maximumRecurringIntervals: null,
     });
     expect(paddleDiscountCode("BFCM20", "annual")).toBe("BFCM20ANNUAL");
+  });
+
+  test("a Paddle code maps back to the promo code the checkout stores", () => {
+    expect(promoCodeFromPaddleCode("PRODUCTHUNT20")).toBe("PRODUCTHUNT20");
+    expect(promoCodeFromPaddleCode("PRODUCTHUNT20ANNUAL")).toBe("PRODUCTHUNT20");
+    expect(promoCodeFromPaddleCode("FRIENDSANNUAL")).toBe("FRIENDSANNUAL");
+    expect(promoCodeFromPaddleCode("ANNUAL")).toBe("ANNUAL");
   });
 });
 

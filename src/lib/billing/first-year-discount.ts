@@ -1,5 +1,7 @@
 import { addMonths, differenceInMonths, subDays } from "date-fns";
 
+import { findFirstYearPromo } from "./promo";
+
 import type { BillingInterval } from "./plans";
 
 // A first-year promo covers the first 12 monthly payments, or the first annual payment. Paddle
@@ -32,6 +34,15 @@ export function checkoutDiscountTerms(interval: BillingInterval): DiscountTerms 
  */
 export function paddleDiscountCode(code: string, interval: BillingInterval): string {
   return interval === "monthly" ? code : `${code}ANNUAL`;
+}
+
+/**
+ * The promo code a Paddle discount code stands for, the reverse of `paddleDiscountCode`, so a code
+ * typed at checkout is stored the way the in-app checkout stores it. Other codes are kept as-is.
+ */
+export function promoCodeFromPaddleCode(paddleCode: string): string {
+  const base = paddleCode.endsWith("ANNUAL") ? paddleCode.slice(0, -"ANNUAL".length) : null;
+  return (base && findFirstYearPromo(base)?.code) || paddleCode;
 }
 
 // Paddle rejects a one-off discount on a subscription update

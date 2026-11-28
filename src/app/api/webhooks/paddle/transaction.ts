@@ -30,6 +30,9 @@ export const paddleTransactionSchema = z.object({
   status: z.string(),
   origin: z.string().nullish(),
   subscription_id: z.string().nullish(),
+  // The discount applied at checkout, whether the in-app checkout set it or the customer typed a
+  // code into Paddle's checkout.
+  discount_id: z.string().nullish(),
   items: z
     .array(
       z.object({
@@ -108,7 +111,11 @@ const ZERO_DECIMAL_CURRENCIES = new Set(["JPY", "KRW"]);
  * Lemon Squeezy event (see lemonsqueezy/order-event.ts). Null when the transaction isn't a
  * completed first payment from the in-app checkout (no user_id) or is for an unknown price.
  */
-export function orderCompletedEvent(transaction: PaddleTransaction, config: PaddleConfig) {
+export function orderCompletedEvent(
+  transaction: PaddleTransaction,
+  config: PaddleConfig,
+  discountCode = transaction.custom_data?.discount_code,
+) {
   if (!isFirstPayment(transaction)) return null;
   const customData = transaction.custom_data;
   const userId = customData?.user_id;
@@ -130,7 +137,7 @@ export function orderCompletedEvent(transaction: PaddleTransaction, config: Padd
     properties: checkoutEventProperties({
       plan: price.plan,
       interval: price.interval,
-      discount_code: customData?.discount_code,
+      discount_code: discountCode,
       ...readAttribution({ get: (key) => customData?.[key] }),
       order_id: transaction.id,
       amount,

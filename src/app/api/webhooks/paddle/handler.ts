@@ -1,11 +1,12 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { promoCodeFromPaddleCode } from "@/lib/billing/first-year-discount";
 import { logger } from "@/lib/logger";
 import { normalizePaddleSubscription, paddleSubscriptionSchema } from "@/lib/paddle/normalize";
 import { verifyPaddleSignature } from "@/lib/paddle/webhook";
 import { db } from "@/server/db";
-import { subscription, user } from "@/server/db/schema";
+import { checkoutStart, subscription, user } from "@/server/db/schema";
 import { captureServerEvent } from "@/server/lib/analytics/posthog-server";
 import { applySubscriptionEvent } from "@/server/lib/billing/apply-subscription-event";
 import { syncEntitlementsAfterBillingEvent } from "@/server/lib/entitlements/grace";
@@ -26,7 +27,7 @@ import type { SubscriptionEventKind } from "@/server/lib/billing/apply-subscript
 
 const log = logger.child({ webhook: "paddle" });
 
-const CUSTOMER_LOOKUP_TIMEOUT_MS = 3_000;
+const PADDLE_LOOKUP_TIMEOUT_MS = 3_000;
 
 const envelopeSchema = z.object({
   event_id: z.string(),
@@ -73,7 +74,7 @@ export function eventKind(
 
 export type PaddleWebhookDeps = {
   config: PaddleConfig | null;
-  client: Pick<PaddleClient, "getCustomer"> | null;
+  client: Pick<PaddleClient, "getCustomer" | "getDiscount"> | null;
 };
 
 // Paddle retries any non-2xx delivery and wants a response within 5 seconds, so the request path
@@ -115,7 +116,7 @@ export async function handlePaddleWebhook(
       );
       return new Response("Malformed transaction payload", { status: 400 });
     }
-    return handleTransactionCompleted(eventId, transaction.data, config);
+    return handleTransactionCompleted(eventId, transaction.data, config, client);
   }
   if (!HANDLED_EVENTS.has(eventType)) return new Response("OK", { status: 200 });
 
@@ -206,11 +207,13 @@ export async function handlePaddleWebhook(
   }
 }
 
-// The card on file and the funnel's order_completed both come from the subscription's payments.
+// The card on file, the checkout's promo code and the funnel's order_completed all come from the
+// subscription's payments.
 async function handleTransactionCompleted(
   eventId: string,
   transaction: PaddleTransaction,
   config: PaddleConfig,
+  client: Pick<PaddleClient, "getDiscount">,
 ): Promise<Response> {
   const subscriptionId = paidSubscriptionId(transaction);
   if (!subscriptionId) return new Response("OK", { status: 200 });
@@ -244,9 +247,18 @@ async function handleTransactionCompleted(
       }
     }
 
+    // Runs before order_completed, so a failed lookup is retried without sending the event twice.
+    const discountCode = await recordCheckoutDiscount(transaction, client);
+
     // Sandbox purchases are test runs; sending them would count them as sales in the funnel.
     const completed =
-      config.environment === "sandbox" ? null : orderCompletedEvent(transaction, config);
+      config.environment === "sandbox"
+        ? null
+        : orderCompletedEvent(
+            transaction,
+            config,
+            discountCode ?? transaction.custom_data?.discount_code,
+          );
     if (completed) {
       const account = await db.query.user.findFirst({
         where: eq(user.id, completed.userId),
@@ -261,7 +273,12 @@ async function handleTransactionCompleted(
       }
     }
     log.info(
-      { ...logContext, card: Boolean(card), orderCompleted: Boolean(completed) },
+      {
+        ...logContext,
+        card: Boolean(card),
+        discountCode,
+        orderCompleted: Boolean(completed),
+      },
       "processed webhook",
     );
     return new Response("OK", { status: 200 });
@@ -269,6 +286,37 @@ async function handleTransactionCompleted(
     log.error({ ...logContext, err }, "processing failed");
     return new Response("Processing failed", { status: 500 });
   }
+}
+
+/**
+ * Stores the promo code of the discount a first payment was made with on the checkout it came
+ * from, which plan changes read the first-year promo rules from (promoDiscountUpdate). A code the
+ * customer typed into Paddle's checkout appears only here, not in custom_data. Returns the code.
+ */
+async function recordCheckoutDiscount(
+  transaction: PaddleTransaction,
+  client: Pick<PaddleClient, "getDiscount">,
+): Promise<string | null> {
+  const userId = transaction.custom_data?.user_id;
+  if (!isFirstPayment(transaction) || !transaction.discount_id || !userId) return null;
+
+  // Paddle's transaction payload carries only the discount's id.
+  const discount = await client.getDiscount(transaction.discount_id, {
+    timeoutMs: PADDLE_LOOKUP_TIMEOUT_MS,
+  });
+  if (!discount.code) return null;
+  const promoCode = promoCodeFromPaddleCode(discount.code);
+
+  // The same row findLatestCheckoutStart reads; a live subscription can't start another checkout.
+  const checkout = await db.query.checkoutStart.findFirst({
+    where: eq(checkoutStart.userId, userId),
+    orderBy: [desc(checkoutStart.createdAt), desc(checkoutStart.id)],
+    columns: { id: true, provider: true, promoCode: true },
+  });
+  if (checkout?.provider === "paddle" && checkout.promoCode !== promoCode) {
+    await db.update(checkoutStart).set({ promoCode }).where(eq(checkoutStart.id, checkout.id));
+  }
+  return promoCode;
 }
 
 // Subscriptions started outside the in-app checkout carry no user_id. Fall back to a row we
@@ -287,7 +335,7 @@ async function resolveUserId(
 
   // Paddle drops deliveries not answered within 5s; time out first so the retry can succeed.
   const customer = await client.getCustomer(normalized.providerCustomerId, {
-    timeoutMs: CUSTOMER_LOOKUP_TIMEOUT_MS,
+    timeoutMs: PADDLE_LOOKUP_TIMEOUT_MS,
   });
   const byEmail = await db.query.user.findFirst({
     where: eq(user.email, customer.email),

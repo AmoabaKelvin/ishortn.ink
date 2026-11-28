@@ -197,11 +197,22 @@ describe("Paddle client", () => {
     await expect(attempt).rejects.toMatchObject({ code: "invalid_response" });
   });
 
+  test("getDiscount reads a discount's code by id", async () => {
+    const client = createPaddleClient(sandbox);
+    fetchSpy.mockResolvedValueOnce(
+      ok({ id: "dsc_1", code: "PRODUCTHUNT20", recur: true, maximum_recurring_intervals: 12 }),
+    );
+
+    expect(await client.getDiscount("dsc_1")).toMatchObject({ id: "dsc_1", code: "PRODUCTHUNT20" });
+    expect(call().url).toBe(`${BASE}/discounts/dsc_1`);
+    expect(call().method).toBe("GET");
+  });
+
   test("findActiveDiscountByCode queries active discounts and caches for 10 minutes", async () => {
     const client = createPaddleClient(sandbox);
     setSystemTime(new Date("2026-11-27T00:00:00Z"));
-    const discount = { id: "dsc_1", recur: true, maximum_recurring_intervals: 12 };
-    fetchSpy.mockResolvedValueOnce(ok([{ ...discount, code: "BFCM20", status: "active" }]));
+    const discount = { id: "dsc_1", code: "BFCM20", recur: true, maximum_recurring_intervals: 12 };
+    fetchSpy.mockResolvedValueOnce(ok([{ ...discount, status: "active" }]));
 
     expect(await client.findActiveDiscountByCode("BFCM20")).toEqual(discount);
     expect(call().url).toBe(`${BASE}/discounts?code=BFCM20&status=active`);
