@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import crypto from "node:crypto";
 
 import { lemonSqueezySetup } from "@lemonsqueezy/lemonsqueezy.js";
 import { addMonths } from "date-fns";
@@ -13,6 +14,7 @@ import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 
 import { stubCloudflareContext } from "../../../../../test/cloudflare-context";
+import { handlePaddleWebhook } from "../../../../app/api/webhooks/paddle/handler";
 import { createLemonsqueezyRouter } from "./lemonsqueezy.procedure";
 
 import type { TRPCContext } from "../../trpc";
@@ -40,11 +42,13 @@ const PORTAL = {
   paymentMethod: "https://customer-portal.paddle.test/payment-method",
 };
 
+const WEBHOOK_SECRET = "pdl_ntfset_manage_test";
+
 const config = buildPaddleConfig({
   BILLING_PROVIDER: undefined,
   PADDLE_ENVIRONMENT: "sandbox",
   PADDLE_API_KEY: "pdl_sdbx_manage_test",
-  PADDLE_WEBHOOK_SECRET: "pdl_ntfset_manage_test",
+  PADDLE_WEBHOOK_SECRET: WEBHOOK_SECRET,
   PADDLE_CLIENT_TOKEN: "test_manage_test",
   PADDLE_PRICE_PRO_MONTHLY: PRICES.proMonthly,
   PADDLE_PRICE_PRO_ANNUAL: PRICES.proAnnual,
@@ -334,7 +338,7 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
       billingMonth: number,
       subscription: Partial<typeof schema.subscription.$inferInsert> = {},
       checkoutInterval: "monthly" | "annual" = "monthly",
-      promoCode = "BFCM20",
+      promoCode: string | null = "BFCM20",
     ) {
       const createdAt = inBillingMonth(billingMonth);
       await db.insert(schema.checkoutStart).values({
@@ -579,6 +583,66 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
 
       expect(discountCall()).toBeUndefined();
       expect(updateCall()).toMatchObject({ discount: null });
+    });
+
+    test("a code typed into Paddle's checkout limits a monthly to annual switch to the first year", async () => {
+      // The checkout was created without a code; the customer entered PRODUCTHUNT20 at Paddle.
+      await seedPromo(5, {}, "monthly", null);
+      const transaction = JSON.stringify({
+        event_id: "evt_01typedcode",
+        event_type: "transaction.completed",
+        occurred_at: new Date().toISOString(),
+        notification_id: "ntf_01typedcode",
+        data: {
+          id: "txn_01typedcode",
+          status: "completed",
+          origin: "web",
+          subscription_id: SUBSCRIPTION_ID,
+          discount_id: "dsc_01producthunt",
+          items: [{ price: { id: PRICES.proMonthly } }],
+          payments: [{ status: "captured", method_details: { card: { last4: "4242" } } }],
+          custom_data: { user_id: USER_ID },
+        },
+      });
+      const ts = Math.floor(Date.now() / 1000);
+      const h1 = crypto
+        .createHmac("sha256", WEBHOOK_SECRET)
+        .update(`${ts}:${transaction}`)
+        .digest("hex");
+      const delivered = await handlePaddleWebhook(
+        new Request("http://localhost/api/webhooks/paddle", {
+          method: "POST",
+          headers: { "Paddle-Signature": `ts=${ts};h1=${h1}` },
+          body: transaction,
+        }),
+        {
+          config,
+          client: {
+            getCustomer: async () => {
+              throw new Error("not called");
+            },
+            getDiscount: async (id) => ({
+              id,
+              code: "PRODUCTHUNT20",
+              recur: true,
+              maximum_recurring_intervals: 12,
+            }),
+          },
+        },
+      );
+      expect(delivered.status).toBe(200);
+      respond = () => paddleSub({ items: [{ price: { id: PRICES.proAnnual } }] });
+
+      await caller().createCheckoutOrUpdate({ plan: "pro", interval: "annual" });
+
+      expect(discountCall()).toMatchObject({
+        percentOff: 20,
+        maximumRecurringIntervals: 1,
+        customData: { user_id: USER_ID, promo_code: "PRODUCTHUNT20" },
+      });
+      expect(updateCall()).toMatchObject({
+        discount: { id: "dsc_01firstyear", effectiveFrom: "immediately" },
+      });
     });
 
     test("a code not in the registry is left alone on a monthly plan switch", async () => {

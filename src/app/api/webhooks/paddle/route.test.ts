@@ -70,6 +70,16 @@ const productionConfig = buildPaddleConfig({
 
 const customerLookups: string[] = [];
 let customerEmail = USER_EMAIL;
+// Paddle's discounts by id; an id missing here fails the lookup like a Paddle outage.
+const DISCOUNTS = new Map([
+  ["dsc_01producthunt", "PRODUCTHUNT20"],
+  ["dsc_01producthuntannual", "PRODUCTHUNT20ANNUAL"],
+]);
+const getDiscount: NonNullable<PaddleWebhookDeps["client"]>["getDiscount"] = async (id) => {
+  const code = DISCOUNTS.get(id);
+  if (!code) throw new Error("Paddle unavailable");
+  return { id, code, recur: true, maximum_recurring_intervals: 12 };
+};
 const deps: PaddleWebhookDeps = {
   config,
   client: {
@@ -77,6 +87,7 @@ const deps: PaddleWebhookDeps = {
       customerLookups.push(id);
       return { id, email: customerEmail, name: null };
     },
+    getDiscount,
   },
 };
 const productionDeps: PaddleWebhookDeps = { ...deps, config: productionConfig };
@@ -310,6 +321,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/paddle (MySQL)", () => {
   });
 
   async function reset() {
+    await db.delete(schema.checkoutStart).where(eq(schema.checkoutStart.userId, USER_ID));
     await db.delete(schema.subscription).where(eq(schema.subscription.userId, USER_ID));
     await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
     await db.insert(schema.user).values({ id: USER_ID, email: USER_EMAIL });
@@ -336,6 +348,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/paddle (MySQL)", () => {
     cancelledSpy.mockRestore();
     captureSpy.mockRestore();
     restoreContext();
+    await db.delete(schema.checkoutStart).where(eq(schema.checkoutStart.userId, USER_ID));
     await db.delete(schema.subscription).where(eq(schema.subscription.userId, USER_ID));
     await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
   });
@@ -508,6 +521,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/paddle (MySQL)", () => {
     const failing: PaddleWebhookDeps = {
       config,
       client: {
+        getDiscount,
         getCustomer: async () => {
           throw new Error("Paddle unavailable");
         },
@@ -634,5 +648,84 @@ describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/paddle (MySQL)", () => {
     await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
 
     expect(await storedSubscription()).toMatchObject({ cardBrand: null, cardLastFour: null });
+  });
+
+  describe("a discount code typed into Paddle's checkout", () => {
+    async function startCheckout(promoCode: string | null = null) {
+      await db.insert(schema.checkoutStart).values({
+        userId: USER_ID,
+        plan: "pro",
+        interval: "monthly",
+        promoCode,
+        provider: "paddle",
+      });
+    }
+    const storedPromoCode = async () =>
+      (
+        await db.query.checkoutStart.findFirst({
+          where: eq(schema.checkoutStart.userId, USER_ID),
+        })
+      )?.promoCode;
+    const typedCode = (discountId: string) =>
+      transactionEvent({
+        items: [{ price_id: PRICES.proMonthly, price: { id: PRICES.proMonthly } }],
+        discount_id: discountId,
+        custom_data: { user_id: USER_ID },
+      });
+
+    test("is stored on the checkout and sent with order_completed", async () => {
+      await startCheckout();
+      await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+      const response = await deliver(typedCode("dsc_01producthunt"), undefined, productionDeps);
+
+      expect(response.status).toBe(200);
+      expect(await storedPromoCode()).toBe("PRODUCTHUNT20");
+      expect(captureSpy).toHaveBeenCalledTimes(1);
+      expect(captureSpy.mock.calls[0]?.[2]).toMatchObject({ discount_code: "PRODUCTHUNT20" });
+    });
+
+    test("an annual promo code is stored as the promo it stands for", async () => {
+      await startCheckout();
+      await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+      await deliver(typedCode("dsc_01producthuntannual"));
+
+      expect(await storedPromoCode()).toBe("PRODUCTHUNT20");
+    });
+
+    test("replaces the code the checkout was created with", async () => {
+      await startCheckout("BFCM20");
+      await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+      await deliver(typedCode("dsc_01producthunt"));
+
+      expect(await storedPromoCode()).toBe("PRODUCTHUNT20");
+    });
+
+    test("a failed discount lookup is retried before order_completed is sent", async () => {
+      await startCheckout();
+      await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+      const response = await deliver(typedCode("dsc_01unknown"), undefined, productionDeps);
+
+      expect(response.status).toBe(500);
+      expect(await storedPromoCode()).toBeNull();
+      expect(captureSpy).not.toHaveBeenCalled();
+    });
+
+    test("a renewal with the discount leaves the checkout alone", async () => {
+      await startCheckout();
+      await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+      const renewal = transactionEvent({
+        origin: "subscription_recurring",
+        discount_id: "dsc_01unknown",
+        custom_data: { user_id: USER_ID },
+      });
+      expect((await deliver(renewal)).status).toBe(200);
+
+      expect(await storedPromoCode()).toBeNull();
+    });
   });
 });

@@ -49,6 +49,8 @@ const transactionSchema = z.object({
 
 const discountSchema = z.object({
   id: z.string(),
+  // Null on discounts without a code (the ones createDiscount makes for plan changes).
+  code: z.string().nullish(),
   recur: z.boolean(),
   maximum_recurring_intervals: z.number().nullable(),
 });
@@ -266,6 +268,15 @@ export function createPaddleClient(config: PaddleConfig) {
       discountCache.set(code, { discount, expiresAt: Date.now() + DISCOUNT_CACHE_TTL_MS });
       return discount;
     },
+
+    getDiscount: (id: string, options?: { timeoutMs?: number }) =>
+      request(
+        "GET",
+        `/discounts/${encodeURIComponent(id)}`,
+        discountSchema,
+        undefined,
+        options?.timeoutMs,
+      ),
 
     /** A percentage discount without a code, applied to subscriptions by id only. */
     createDiscount: (input: CreateDiscountInput) =>
