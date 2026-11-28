@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { clientLogger } from "@/lib/logger/client";
 
 import { FeedbackModal } from "./_components/navigation/feedback-modal";
+import { buildClientErrorReport } from "./_lib/client-error-report";
+import { reportClientError } from "./report-client-error";
 
 // The boundary remounts when a retry throws again, so component state can't
 // remember the retry; a module-level timestamp does.
@@ -30,6 +32,10 @@ export default function DashboardError({
     clientLogger.error(
       { err: error, digest: error.digest, retryFailed },
       "dashboard error boundary caught error",
+    );
+    // Browser consoles aren't collected; this puts the message and digest in the Worker logs.
+    reportClientError(buildClientErrorReport("dashboard", error, window.location.pathname)).catch(
+      () => {},
     );
   }, [error, retryFailed]);
 
