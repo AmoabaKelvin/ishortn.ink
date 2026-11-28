@@ -35,3 +35,14 @@ export function buildClientErrorReport(
     componentStack: componentStack || undefined,
   };
 }
+
+/** Sends a report to the Worker logs. Best effort: a failed report must never surface to the user. */
+export function sendClientErrorReport(report: ClientErrorReportInput) {
+  // keepalive lets the request finish when a skew reload unloads the page right after.
+  fetch("/api/client-errors", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(report),
+    keepalive: true,
+  }).catch(() => {});
+}
