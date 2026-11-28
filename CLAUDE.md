@@ -156,7 +156,11 @@ All under `src/app/(main)/dashboard/`:
 
 ## Performance rules
 
-- **The redirect path is the product.** `[linkAlias]/page.tsx` → `resolveShortLink`
+- **The redirect path is the product.** Plain links are answered first from KV by
+  `custom-worker.ts` → `src/middlewares/cached-redirect.ts`, without loading Next (which costs ~100ms
+  of CPU per click). Its imports must stay free of db, logger (`server-only` throws outside Next)
+  and anything that needs `process.env` at load time; it returns null for anything it can't answer
+  exactly like the page, and Next takes over. Everything else: `[linkAlias]/page.tsx` → `resolveShortLink`
   (`src/middlewares/resolve-link.ts`) → `resolveLink` (cache-first, `src/lib/core/cache`) →
   `recordClick`, which only enqueues (`src/server/lib/click-queue.ts`). Do not add a DB query,
   external call or `await` there without removing more cost than you add. Side effects go through

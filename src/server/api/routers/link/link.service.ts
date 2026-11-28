@@ -20,6 +20,7 @@ import {
 } from "drizzle-orm";
 import { z } from "zod";
 
+import { env } from "@/env.mjs";
 import {
   canUseCampaignUtmDefaults,
   canUseLinkUtmParams,
@@ -54,8 +55,10 @@ import { runBackgroundTask } from "@/lib/utils/background";
 import { INVALID_URL_MESSAGE, normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { hashIp } from "@/lib/utils/ip-hash";
 import { displayName } from "@/lib/utils/user-name";
-import { findLinkByAlias, recordClick } from "@/middlewares/record-click";
-import { checkLinkExpiration, isLinkScheduled } from "@/middlewares/resolve-link";
+import { recordClick } from "@/middlewares/enqueue-click";
+import { isLinkScheduled } from "@/middlewares/link-policy";
+import { findLinkByAlias } from "@/middlewares/record-click";
+import { checkLinkExpiration } from "@/middlewares/resolve-link";
 import {
   campaign,
   folder,
@@ -1844,7 +1847,14 @@ export const verifyLinkPassword = async (
   const ip = getClientIp(ctx.headers);
   const attemptKeys = [
     { key: `pwattempts:link:${input.id}`, limit: PASSWORD_ATTEMPTS_PER_LINK },
-    ...(ip ? [{ key: `pwattempts:ip:${hashIp(ip)}`, limit: PASSWORD_ATTEMPTS_PER_IP }] : []),
+    ...(ip
+      ? [
+          {
+            key: `pwattempts:ip:${hashIp(ip, env.IP_HASH_SECRET)}`,
+            limit: PASSWORD_ATTEMPTS_PER_IP,
+          },
+        ]
+      : []),
   ];
   const now = Date.now();
   const attempts = await Promise.all(
@@ -1932,6 +1942,7 @@ export const verifyLinkPassword = async (
     ip: getClientIp(ctx.headers) ?? "",
     country: geo.country ?? "",
     city: geo.city ?? "",
+    ipHashSecret: env.IP_HASH_SECRET,
     matchedGeoRuleId: geoResult.matched ? geoResult.ruleId : undefined,
     visitId: tokenIssue?.visitId ?? null,
   });

@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { env } from "@/env.mjs";
 import { externalReferrer } from "@/lib/core/analytics/visitor";
 import { setStringIfAbsent } from "@/lib/core/cache";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
@@ -39,7 +40,11 @@ export async function POST(request: NextRequest) {
   // unauthenticated endpoint can't be spammed to inflate views or drain the
   // page owner's monthly event quota.
   if (ip) {
-    const fresh = await setStringIfAbsent(`biobeacon:${page.id}:${hashIp(ip)}`, "1", 60);
+    const fresh = await setStringIfAbsent(
+      `biobeacon:${page.id}:${hashIp(ip, env.IP_HASH_SECRET)}`,
+      "1",
+      60,
+    );
     if (!fresh) return new Response(null, { status: 204 });
   }
 

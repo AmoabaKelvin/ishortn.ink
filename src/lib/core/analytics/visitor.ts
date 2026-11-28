@@ -14,8 +14,6 @@ import type { Visitor } from "./click-event";
 // (link clicks, bio-page views). Keeping these in one place stops the click
 // and view pipelines from drifting apart.
 
-const isLocalhost = process.env.NODE_ENV === "development";
-
 export type DeviceDetails = {
   browser: string;
   os: string;
@@ -38,7 +36,7 @@ export async function parseDeviceDetails(headers: Headers): Promise<DeviceDetail
 
 /** Resolve full country/continent/city names from raw geo codes. */
 export function resolveGeo(country: string, city: string) {
-  if (isLocalhost) {
+  if (process.env.NODE_ENV === "development") {
     return {
       countryName: "United States",
       continentName: "North America",
@@ -166,8 +164,18 @@ export async function describeVisitor(opts: {
   referrer?: string | null;
   /** The event is a click on a QR code's tracking link. */
   isQrCode?: boolean | null;
+  /** `IP_HASH_SECRET`; see hashIp. */
+  ipHashSecret: string | undefined;
 }): Promise<Visitor | null> {
-  const { headers, ip, country, city, isQrCode, referrer = headers.get("referer") } = opts;
+  const {
+    headers,
+    ip,
+    country,
+    city,
+    isQrCode,
+    ipHashSecret,
+    referrer = headers.get("referer"),
+  } = opts;
   const userAgent = headers.get("user-agent") ?? "";
   if (userAgent && isBot(userAgent)) return null;
 
@@ -175,7 +183,7 @@ export async function describeVisitor(opts: {
   const { countryName, continentName, cityName } = resolveGeo(country, city);
 
   return {
-    ipHash: hashIp(ip && ip !== "undefined" ? ip : "localhost-dev"),
+    ipHash: hashIp(ip && ip !== "undefined" ? ip : "localhost-dev", ipHashSecret),
     ...deviceDetails,
     referer: inferSource({ referrer, browser: deviceDetails.browser, userAgent, isQrCode }),
     country: countryName,

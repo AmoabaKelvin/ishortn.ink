@@ -14,6 +14,7 @@ import {
   RangeTransitionProvider,
 } from "@/app/(main)/dashboard/analytics/_components/range-transition";
 import { consumeRateLimit } from "@/app/api/v1/rate-limit";
+import { env } from "@/env.mjs";
 import { getSharedStatsReferralUrl } from "@/lib/attribution/referral";
 import { isAppHost } from "@/lib/constants/domains";
 import { getClientIp } from "@/lib/platform";
@@ -57,7 +58,7 @@ export default async function SharedStatsPage(props: Props) {
 
   const ip = getClientIp(headersList);
   if (ip) {
-    const decision = await consumeRateLimit(`stats:${hashIp(ip)}`, [
+    const decision = await consumeRateLimit(`stats:${hashIp(ip, env.IP_HASH_SECRET)}`, [
       { limit: PAGE_LOADS_PER_MINUTE, windowSeconds: 60 },
     ]);
     if (!decision.allowed) return <RateLimited />;

@@ -1,12 +1,15 @@
+// @ts-ignore `.open-next/cloudflare/init.js` is generated at build time
+import { runWithCloudflareRequestContext } from "./.open-next/cloudflare/init.js";
 // @ts-ignore `.open-next/worker.js` is generated at build time
 import { default as handler } from "./.open-next/worker.js";
 import { APP_BASE_DOMAIN } from "./src/lib/constants/domains";
 import { applyLinkStateStatus } from "./src/lib/routing/link-state";
+import { getCachedRedirectTarget } from "./src/lib/routing/short-link-request";
 import { getWwwRedirectUrl } from "./src/lib/routing/www-redirect";
 
 import type { ClickEvent } from "./src/lib/core/analytics/click-event";
 
-type Env = CloudflareEnv & { CRON_SECRET: string };
+type Env = CloudflareEnv & { CRON_SECRET: string; IP_HASH_SECRET?: string };
 
 // Maps each cron expression (see triggers.crons in wrangler.jsonc) to the
 // Next.js routes it runs. Hourly jobs share a slot rather than adding cron
@@ -54,12 +57,42 @@ function callApp(env: Env, path: string, body?: ClickEvent[]): Promise<Response>
   });
 }
 
+// A plain short-link click answered from KV without loading Next, which costs
+// ~100ms of CPU per click. Runs in OpenNext's request context so the app's
+// cache and queue helpers find their bindings. Null, or any failure, falls
+// through to Next.
+async function redirectFromCache(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response | null> {
+  try {
+    return await runWithCloudflareRequestContext(request, env, ctx, async () => {
+      const target = getCachedRedirectTarget(request);
+      if (!target) return null;
+      // Evaluated on first use, so requests that aren't short-link visits never
+      // load the visitor parsing it pulls in.
+      const cached = await import("./src/middlewares/cached-redirect");
+      const redirect = await cached.redirectFromCache(request, target, env);
+      if (!redirect) return null;
+      ctx.waitUntil(redirect.click.catch((error) => console.error("Failed to queue click", error)));
+      return redirect.response;
+    });
+  } catch (error) {
+    console.error("Cached redirect failed, falling back to Next", error);
+    return null;
+  }
+}
+
 export default {
-  fetch(request, env, ctx) {
+  async fetch(request, env, ctx) {
     const wwwRedirect = getWwwRedirectUrl(request.url);
     if (wwwRedirect) return Response.redirect(wwwRedirect, 301);
     const render = (req: Request): Promise<Response> => handler.fetch(req, env, ctx);
-    return render(request).then((response) => applyLinkStateStatus(request, response, render));
+    // A cached redirect goes through the state-route handling too, exactly as
+    // the page's redirect would (a destination may be a same-origin state route).
+    const response = (await redirectFromCache(request, env, ctx)) ?? (await render(request));
+    return applyLinkStateStatus(request, response, render);
   },
 
   async scheduled(controller, env) {

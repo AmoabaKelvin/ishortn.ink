@@ -1,5 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 
+import { env } from "@/env.mjs";
 import { parseDeviceDetails } from "@/lib/core/analytics/visitor";
 import {
   type Link,
@@ -12,7 +13,9 @@ import { matchTargetingRules, rulesNeedDevice } from "@/lib/core/geo-rules/match
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { generateVisitId, signVerifiedClickToken } from "@/lib/utils/verified-click-token";
-import { recordClick, resolveLink } from "@/middlewares/record-click";
+import { recordClick } from "@/middlewares/enqueue-click";
+import { appendUtmParams, isLinkScheduled, isPastDisableDate } from "@/middlewares/link-policy";
+import { resolveLink } from "@/middlewares/record-click";
 import { db } from "@/server/db";
 import { geoRule, link as linkTable } from "@/server/db/schema";
 import { getClicksTowardLimit } from "@/server/lib/total-clicks";
@@ -39,7 +42,7 @@ export async function checkLinkExpiration(link: Link, cacheKey: string): Promise
     return true;
   }
 
-  if (link.disableLinkAfterDate && new Date() >= link.disableLinkAfterDate) {
+  if (isPastDisableDate(link)) {
     void runBackgroundTask(autoDisableLink(link.id, cacheKey));
     return true;
   }
@@ -56,20 +59,19 @@ export async function checkLinkExpiration(link: Link, cacheKey: string): Promise
   return false;
 }
 
-/** True until the owner's scheduled activation instant has passed. */
-export function isLinkScheduled(link: Pick<Link, "activateAt">): boolean {
-  return !!link.activateAt && new Date() < link.activateAt;
-}
-
 type GeoRules = Awaited<ReturnType<typeof getGeoRulesFromCache>>;
 
 async function loadGeoRules(linkId: number): Promise<GeoRules> {
+  const readAt = Date.now();
   const rulesFromDb = await db.query.geoRule.findMany({
     where: eq(geoRule.linkId, linkId),
     orderBy: [asc(geoRule.priority)],
   });
-  if (rulesFromDb.length === 0) return null;
-  void runBackgroundTask(setGeoRulesInCache(linkId, rulesFromDb));
+  // Cache the empty list too: most links have no rules, and without it every
+  // click on them missed KV and queried the database. Every rule write for an
+  // existing link evicts this key (geo-rules.service.ts, updateLink), and the fill is skipped
+  // when one landed after this read.
+  void runBackgroundTask(setGeoRulesInCache(linkId, rulesFromDb, readAt));
   return rulesFromDb;
 }
 
@@ -115,26 +117,6 @@ export async function getLinkStateRoute(
     return `/blocked/${link.id}${geoResult.ruleId ? `?geo=${geoResult.ruleId}` : ""}`;
   }
   return null;
-}
-
-export function appendUtmParams(baseUrl: string, utmParams: Link["utmParams"]): string {
-  if (!utmParams) return baseUrl;
-
-  try {
-    const url = new URL(baseUrl);
-    const keys = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"] as const;
-
-    for (const key of keys) {
-      const value = utmParams[key];
-      if (value !== undefined && value !== null && value !== "") {
-        url.searchParams.set(key, value);
-      }
-    }
-
-    return url.toString();
-  } catch {
-    return baseUrl;
-  }
 }
 
 type ResolveShortLinkParams = {
@@ -228,6 +210,7 @@ export async function resolveShortLink(
           ip,
           country,
           city,
+          ipHashSecret: env.IP_HASH_SECRET,
           matchedGeoRuleId: geoResult.ruleId,
           visitId,
         }),
@@ -244,7 +227,17 @@ export async function resolveShortLink(
     const destinationUrl = appendUtmParams(link.url, link.utmParams);
     const { visitId, verificationToken } = issueToken(destinationUrl);
 
-    void runBackgroundTask(recordClick({ headers, link, ip, country, city, visitId }));
+    void runBackgroundTask(
+      recordClick({
+        headers,
+        link,
+        ip,
+        country,
+        city,
+        ipHashSecret: env.IP_HASH_SECRET,
+        visitId,
+      }),
+    );
 
     return {
       url: destinationUrl,

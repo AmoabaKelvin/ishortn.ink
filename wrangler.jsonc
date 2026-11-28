@@ -4,6 +4,10 @@
   "main": "custom-worker.ts",
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  // The Next build inside is always a production build; without this, `wrangler
+  // dev` (bun run preview) bundles custom-worker.ts's own imports as development,
+  // and the cached redirect would ingest clicks inline instead of queueing them.
+  "define": { "process.env.NODE_ENV": "\"production\"" },
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS",

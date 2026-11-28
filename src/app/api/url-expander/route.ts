@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { env } from "@/env.mjs";
 import { getClientIp } from "@/lib/platform";
 import { hashIp } from "@/lib/utils/ip-hash";
 import { checkGoogleSafeBrowsing } from "@/server/lib/phishing/google-safe-browsing";
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
   if (!body.success) return respond({ ok: false, error: EXPAND_ERRORS.notAUrl }, 400);
 
   const decision = await consumeExpanderRateLimit(
-    hashIp(getClientIp(request.headers) ?? "unknown"),
+    hashIp(getClientIp(request.headers) ?? "unknown", env.IP_HASH_SECRET),
   );
   if (!decision.allowed) {
     return respond({ ok: false, error: rateLimitMessage(decision.retryAfter) }, 429, {

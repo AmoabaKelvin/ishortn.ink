@@ -3,8 +3,9 @@ import { and, eq } from "drizzle-orm";
 import { getBlockedLinkMessage } from "@/components/link-status/utils";
 import { isPlatformDomain } from "@/lib/constants/domains";
 import { APP_TOP_LEVEL_SEGMENTS } from "@/lib/seo/indexing";
+import { appendUtmParams } from "@/middlewares/link-policy";
 import { findLinkByAlias } from "@/middlewares/record-click";
-import { appendUtmParams, getLinkStateRoute } from "@/middlewares/resolve-link";
+import { getLinkStateRoute } from "@/middlewares/resolve-link";
 import { db } from "@/server/db";
 import { customDomain } from "@/server/db/schema";
 

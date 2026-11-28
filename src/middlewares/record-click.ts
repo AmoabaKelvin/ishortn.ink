@@ -1,4 +1,3 @@
-import { describeVisitor } from "@/lib/core/analytics/visitor";
 import {
   type Link,
   buildCacheKey,
@@ -7,9 +6,7 @@ import {
   setInCache,
 } from "@/lib/core/cache";
 import { runBackgroundTask } from "@/lib/utils/background";
-import { generateVisitId } from "@/lib/utils/verified-click-token";
 import { db } from "@/server/db";
-import { enqueueClickEvent } from "@/server/lib/click-queue";
 import { findLinkByAddress, isPreviousAddressOf } from "@/server/lib/link-address";
 
 // Only dashboard and API edits evict a link's previous-address cache entries; the
@@ -47,38 +44,4 @@ export async function findLinkByAlias(input: { alias: string; domain: string }) 
   // The same lookup as the redirect, so previews and metadata also follow moved links.
   const found = await resolveLink(input.domain, input.alias);
   return found?.alias ? found : null;
-}
-
-type RecordClickOptions = {
-  headers: Headers;
-  link: Link;
-  ip: string;
-  country: string;
-  city: string;
-  matchedGeoRuleId?: number;
-  /** Set when a verified-click token was issued; the beacon finds the row by it. */
-  visitId?: string | null;
-};
-
-/** Queues a click. Drops bots here; quota and persistence happen in the consumer. */
-export async function recordClick(opts: RecordClickOptions): Promise<void> {
-  const { headers, link, ip, country, city, matchedGeoRuleId, visitId } = opts;
-  const visitor = await describeVisitor({
-    headers,
-    ip,
-    country,
-    city,
-    isQrCode: link.isQrCode,
-  });
-  if (!visitor) return;
-
-  await enqueueClickEvent({
-    kind: "link",
-    id: visitId ?? generateVisitId(),
-    linkId: link.id,
-    ownerId: link.userId,
-    matchedGeoRuleId: matchedGeoRuleId ?? null,
-    countsTowardLimit: !!link.disableLinkAfterClicks,
-    ...visitor,
-  });
 }

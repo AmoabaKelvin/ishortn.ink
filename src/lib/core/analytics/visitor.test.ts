@@ -114,6 +114,7 @@ describe("describeVisitor", () => {
       country: "US",
       city: "Austin",
       isQrCode,
+      ipHashSecret: undefined,
     });
 
   test("stores an Instagram in-app click without a referrer as social", async () => {

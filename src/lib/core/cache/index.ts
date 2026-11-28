@@ -199,14 +199,30 @@ async function getGeoRulesFromCache(linkId: number): Promise<CachedGeoRule[] | n
   }
 }
 
+// Stamped by every rule write (deleteGeoRulesFromCache) so a cache fill from an earlier database
+// read can't land after the eviction and keep the old list. KV has no conditional writes, so this
+// leaves a window of about one KV round trip, plus KV's cross-location propagation (~60s).
+const GEO_RULES_CHANGED_PREFIX = "geoRulesChangedAt:";
+const GEO_RULES_CHANGED_TTL = 60 * 60;
+// Isolate clocks can drift; erring towards skipping the fill only costs another miss.
+const GEO_RULES_CLOCK_SKEW_MS = 5_000;
+
+/**
+ * Caches rules read from the database at `readAt` (ms). Skipped when a rule write was stamped at
+ * or after that read, since the rules may already be out of date.
+ */
 async function setGeoRulesInCache(
   linkId: number,
   rules: GeoRule[],
+  readAt: number,
   ttlSeconds: number = GEO_RULES_CACHE_TTL,
 ): Promise<boolean> {
   try {
     const kv = await getKV();
     if (!kv) return false;
+
+    const changedAt = Number(await kv.get(`${GEO_RULES_CHANGED_PREFIX}${linkId}`));
+    if (changedAt && changedAt >= readAt - GEO_RULES_CLOCK_SKEW_MS) return false;
 
     const key = `${GEO_RULES_CACHE_PREFIX}${linkId}`;
     await kv.put(key, JSON.stringify(rules), { expirationTtl: clampTtl(ttlSeconds) });
@@ -216,11 +232,18 @@ async function setGeoRulesInCache(
   }
 }
 
+/** Evicts the link's cached rules. Call after every committed rule write. */
 async function deleteGeoRulesFromCache(linkId: number): Promise<boolean> {
   try {
     const kv = await getKV();
     if (!kv) return false;
 
+    // Stamped before the delete, so a fill that runs after the delete sees it.
+    await kv
+      .put(`${GEO_RULES_CHANGED_PREFIX}${linkId}`, String(Date.now()), {
+        expirationTtl: GEO_RULES_CHANGED_TTL,
+      })
+      .catch(() => {});
     await kv.delete(`${GEO_RULES_CACHE_PREFIX}${linkId}`);
     return true;
   } catch {
