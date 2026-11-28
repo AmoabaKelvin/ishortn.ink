@@ -6,6 +6,7 @@ import {
   INACTIVE_LINK_MESSAGE,
   UNSAFE_LINK_MESSAGE,
   getBlockedLinkMessage,
+  getSignupPageUrl,
   getSignupUrl,
   isPlatformHost,
 } from "./utils";
@@ -68,6 +69,17 @@ describe("getSignupUrl", () => {
     );
     expect(getSignupUrl("expired")).toBe(
       "https://ishortn.ink/?utm_source=short_link&utm_medium=referral&utm_campaign=expired",
+    );
+  });
+});
+
+describe("getSignupPageUrl", () => {
+  it("tags the sign-up page link with the campaign", () => {
+    expect(getSignupPageUrl("blocked")).toBe(
+      "https://ishortn.ink/auth/sign-up?utm_source=short_link&utm_medium=referral&utm_campaign=blocked",
+    );
+    expect(getSignupPageUrl("not_found")).toBe(
+      "https://ishortn.ink/auth/sign-up?utm_source=short_link&utm_medium=referral&utm_campaign=not_found",
     );
   });
 });

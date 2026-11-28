@@ -4,7 +4,12 @@ import { useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 
-import { type MarketingCampaign, REPORT_ABUSE_URL, getSignupUrl, isPlatformHost } from "./utils";
+import {
+  type MarketingCampaign,
+  REPORT_ABUSE_URL,
+  getSignupPageUrl,
+  isPlatformHost,
+} from "./utils";
 
 const subscribe = () => () => {};
 
@@ -37,7 +42,7 @@ export function LinkStatusFooter({
     <div className="mt-8 flex flex-col items-center gap-3">
       {campaign && (
         <Button asChild className="rounded-lg bg-blue-600 text-[13px] text-white hover:bg-blue-700">
-          <a href={getSignupUrl(campaign)}>Create your own free short link</a>
+          <a href={getSignupPageUrl(campaign)}>Create your own free short link</a>
         </Button>
       )}
       <a
