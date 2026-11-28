@@ -9,6 +9,7 @@ import {
   formatPromoEnd,
   formatPromoEndShort,
   getActivePromo,
+  isLaunchStripActive,
   promoBannerText,
   promoOfferLine,
   promoPrice,
@@ -42,10 +43,36 @@ describe("findFirstYearPromo", () => {
     });
   });
 
+  test("the Product Hunt launch code is a 20% first-year promo", () => {
+    expect(findFirstYearPromo("PRODUCTHUNT20")).toEqual({
+      code: "PRODUCTHUNT20",
+      percentOff: 20,
+      kind: "first_year",
+    });
+  });
+
   test("unknown and missing codes are not first-year promos", () => {
     expect(findFirstYearPromo("SOMETHINGELSE")).toBeNull();
     expect(findFirstYearPromo(null)).toBeNull();
     expect(findFirstYearPromo("")).toBeNull();
+  });
+});
+
+describe("isLaunchStripActive", () => {
+  test("is false before launch day starts in Pacific time", () => {
+    expect(isLaunchStripActive(new Date("2026-11-28T12:00:00Z"))).toBe(false);
+    expect(isLaunchStripActive(new Date("2026-12-08T07:59:59.999Z"))).toBe(false);
+  });
+
+  test("is true through launch day, including both boundaries", () => {
+    expect(isLaunchStripActive(new Date("2026-12-08T08:00:00Z"))).toBe(true);
+    expect(isLaunchStripActive(new Date("2026-12-08T20:00:00Z"))).toBe(true);
+    expect(isLaunchStripActive(new Date("2026-12-09T07:59:59Z"))).toBe(true);
+  });
+
+  test("is false after launch day", () => {
+    expect(isLaunchStripActive(new Date("2026-12-09T07:59:59.001Z"))).toBe(false);
+    expect(isLaunchStripActive(new Date("2026-12-10T00:00:00Z"))).toBe(false);
   });
 });
 
