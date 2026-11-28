@@ -1,4 +1,5 @@
 import { DELETION_CASCADE_REASON } from "@/lib/account-deletion/constants";
+import { Paths } from "@/lib/constants/app";
 import {
   APP_BASE_DOMAIN,
   extractPlatformSubdomain,
@@ -45,6 +46,11 @@ export function isPlatformHost(rawHost: string | null): boolean {
 
 export function getSignupUrl(campaign: MarketingCampaign): string {
   return `https://${APP_BASE_DOMAIN}/?utm_source=short_link&utm_medium=referral&utm_campaign=${campaign}`;
+}
+
+// The status-page button promises sign-up, so it skips the homepage step.
+export function getSignupPageUrl(campaign: MarketingCampaign): string {
+  return `https://${APP_BASE_DOMAIN}${Paths.Signup}?utm_source=short_link&utm_medium=referral&utm_campaign=${campaign}`;
 }
 
 export const REPORT_ABUSE_URL = `https://${APP_BASE_DOMAIN}/abuse`;
