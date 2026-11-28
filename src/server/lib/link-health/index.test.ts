@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import { eq, inArray } from "drizzle-orm";
+import { count, eq, inArray } from "drizzle-orm";
 
 import { PLAN_VARIANT_IDS } from "@/lib/billing/plans";
 import { db } from "@/server/db";
@@ -202,5 +202,178 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("runLinkHealthCheck", () => {
       .from(schema.linkHealth)
       .where(eq(schema.linkHealth.linkId, 2_000_000_000));
     expect(left).toHaveLength(0);
+  });
+});
+
+// A large synthetic candidate set: each batch is written before the next is loaded, so a run
+// holds at most one batch of links, and overlapping runs never alert a link twice.
+describe.skipIf(!process.env.TEST_DATABASE_URL)("runLinkHealthCheck at scale", () => {
+  const BULK_USER = "user_linkhealth_bulk_test";
+  const OVERLAP_USER = "user_linkhealth_overlap_test";
+  const LINKS = 1_000;
+  const BATCH = 100;
+  const DAY_1 = new Date("2026-12-01T07:00:00Z");
+  const DAY_2 = new Date("2026-12-02T07:00:00Z");
+  const DAY_3 = new Date("2026-12-03T07:00:00Z");
+  const bulkUrl = (i: number) => `https://fixture-bulk.test/${i}`;
+  let bulkIds: number[] = [];
+  let overlapIds: number[] = [];
+
+  const resolve = async () => ["93.184.216.34"];
+  const fakeFetch = (statusOf: (url: string) => Promise<number> | number) =>
+    // SAFETY: the fake takes the (url, init) calls checkDestination makes; nothing else calls it.
+    (async (input: string | URL | Request) =>
+      new Response(null, { status: await statusOf(String(input)) })) as typeof fetch;
+  const cleanUp = async () => {
+    const ids = (
+      await db
+        .select({ id: schema.link.id })
+        .from(schema.link)
+        .where(inArray(schema.link.userId, [BULK_USER, OVERLAP_USER]))
+    ).map((row) => row.id);
+    if (ids.length) {
+      await db.delete(schema.linkHealth).where(inArray(schema.linkHealth.linkId, ids));
+      await db.delete(schema.link).where(inArray(schema.link.id, ids));
+    }
+    await db.delete(schema.subscription).where(eq(schema.subscription.userId, OVERLAP_USER));
+    await db.delete(schema.user).where(inArray(schema.user.id, [BULK_USER, OVERLAP_USER]));
+  };
+
+  beforeAll(async () => {
+    await cleanUp();
+    await db.insert(schema.user).values([
+      { id: BULK_USER, email: "linkhealth-bulk@example.com" },
+      { id: OVERLAP_USER, email: "linkhealth-overlap@example.com" },
+    ]);
+    await db.insert(schema.subscription).values({
+      userId: OVERLAP_USER,
+      plan: "pro",
+      status: "active",
+      variantId: PLAN_VARIANT_IDS.pro.monthly,
+    });
+    // QR-code links are checked on every plan without needing click rows.
+    await db.insert(schema.link).values(
+      Array.from({ length: LINKS }, (_, i) => ({
+        url: bulkUrl(i),
+        alias: `lh-bulk-${i}`,
+        userId: BULK_USER,
+        isQrCode: true,
+      })),
+    );
+    await db.insert(schema.link).values(
+      Array.from({ length: 3 }, (_, i) => ({
+        url: `https://fixture-overlap.test/${i}`,
+        alias: `lh-overlap-${i}`,
+        userId: OVERLAP_USER,
+        isQrCode: true,
+      })),
+    );
+    const idsOf = async (userId: string) =>
+      (
+        await db
+          .select({ id: schema.link.id })
+          .from(schema.link)
+          .where(eq(schema.link.userId, userId))
+          .orderBy(schema.link.id)
+      ).map((row) => row.id);
+    bulkIds = await idsOf(BULK_USER);
+    overlapIds = await idsOf(OVERLAP_USER);
+  });
+
+  afterAll(cleanUp);
+
+  const writtenBulk = async () => {
+    const [row] = await db
+      .select({ n: count() })
+      .from(schema.linkHealth)
+      .where(inArray(schema.linkHealth.linkId, bulkIds));
+    return row!.n;
+  };
+
+  test("checks a large candidate set one batch at a time, writing each batch first", async () => {
+    // Batch k's first fetch records how many links earlier batches had written by then.
+    const writtenBefore = new Map<number, number>();
+    const fetch = fakeFetch(async (url) => {
+      const match = /fixture-bulk\.test\/(\d+)$/.exec(url);
+      if (match) {
+        const batch = Math.floor(Number(match[1]) / BATCH);
+        if (!writtenBefore.has(batch)) {
+          writtenBefore.set(batch, -1);
+          writtenBefore.set(batch, await writtenBulk());
+        }
+      }
+      return 200;
+    });
+
+    // Other tests' links may also be due; the bulk links are the newest, so they come last.
+    const result = await runLinkHealthCheck({
+      now: DAY_1,
+      deps: { resolve, fetch },
+      send: async () => true,
+      sendIntervalMs: 0,
+      maxLinks: 100_000,
+      batchSize: BATCH,
+    });
+
+    expect(result.checked).toBeGreaterThanOrEqual(LINKS);
+    expect(await writtenBulk()).toBe(LINKS);
+    expect([...writtenBefore.keys()].sort((a, b) => a - b)).toEqual(
+      Array.from({ length: LINKS / BATCH }, (_, i) => i),
+    );
+    for (const [batch, written] of writtenBefore) expect(written).toBe(batch * BATCH);
+  });
+
+  test("a dry run over the same set writes nothing", async () => {
+    const before = await db
+      .select()
+      .from(schema.linkHealth)
+      .where(inArray(schema.linkHealth.linkId, bulkIds.slice(0, 5)));
+    const result = await runLinkHealthCheck({
+      now: DAY_2,
+      deps: { resolve, fetch: fakeFetch(() => 404) },
+      maxLinks: 100_000,
+      batchSize: BATCH,
+      dryRun: true,
+    });
+    expect(result.alerts).toBeNull();
+    expect(result.previews?.filter((row) => bulkIds.includes(row.linkId))).toHaveLength(LINKS);
+    const after = await db
+      .select()
+      .from(schema.linkHealth)
+      .where(inArray(schema.linkHealth.linkId, bulkIds.slice(0, 5)));
+    expect(after).toEqual(before);
+  });
+
+  test("overlapping runs record one failure per day and send one email", async () => {
+    // The first test checked every link on DAY_1; from DAY_2 only the overlap user's links fail.
+    const fetch = fakeFetch((url) => (url.includes("fixture-overlap.test") ? 404 : 200));
+    const sent: SendLinkHealthAlertInput[] = [];
+    const send = async (input: SendLinkHealthAlertInput) => {
+      if (input.userId === OVERLAP_USER) sent.push(input);
+      return true;
+    };
+    const run = (now: Date) =>
+      runLinkHealthCheck({
+        now,
+        deps: { resolve, fetch },
+        send,
+        sendIntervalMs: 0,
+        maxLinks: 100_000,
+      });
+
+    await Promise.all([run(DAY_2), run(new Date(DAY_2.getTime() + 1_000))]);
+    await Promise.all([run(DAY_3), run(new Date(DAY_3.getTime() + 1_000))]);
+    // A retry an hour later finds nothing due and nothing to alert.
+    await run(new Date(DAY_3.getTime() + 60 * 60 * 1000));
+
+    const health = await db
+      .select()
+      .from(schema.linkHealth)
+      .where(inArray(schema.linkHealth.linkId, overlapIds));
+    expect(health.map((row) => row.consecutiveFailures)).toEqual([2, 2, 2]);
+    expect(health.every((row) => row.alertedAt !== null)).toBe(true);
+    expect(sent.flatMap((email) => email.links.map((item) => item.destination)).sort()).toEqual(
+      overlapIds.map((_, i) => `https://fixture-overlap.test/${i}`),
+    );
   });
 });
