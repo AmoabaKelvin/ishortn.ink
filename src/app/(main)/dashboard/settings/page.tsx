@@ -9,6 +9,7 @@ import { api } from "@/trpc/server";
 import { AnnualSwitchCard } from "../_components/annual-switch-card";
 import { annualSwitchOffer } from "../_components/annual-switch-state";
 import { getDashboardGraceNotice } from "../_lib/get-subscription";
+import { SectionBoundary } from "./_components/section-boundary";
 import { SettingsNav } from "./_components/settings-nav";
 import Billing from "./billing/billing";
 import { DeleteAccountSection } from "./delete-account/delete-account-section";
@@ -90,7 +91,10 @@ async function SettingsPage(props: Props) {
       </div>
 
       <div className="flex gap-10">
-        <SettingsNav showTeamApiKeys={!!teamTokens} />
+        {/* The sections stay usable without the nav, so a nav crash renders nothing */}
+        <SectionBoundary section="nav" fallback={null}>
+          <SettingsNav showTeamApiKeys={!!teamTokens} />
+        </SectionBoundary>
 
         <div className="flex-1 min-w-0 space-y-12 pb-20">
           {/* Profile */}
@@ -102,7 +106,9 @@ async function SettingsPage(props: Props) {
               Your personal information
             </p>
             <div className="mt-4">
-              <ProfileForm userProfile={userProfile} />
+              <SectionBoundary section="profile">
+                <ProfileForm userProfile={userProfile} />
+              </SectionBoundary>
             </div>
           </section>
 
@@ -115,20 +121,22 @@ async function SettingsPage(props: Props) {
               Default settings and preferences
             </p>
             <div className="mt-4">
-              {/* The default domain is a personal-workspace setting; team domains can't be picked here */}
-              {workspace.type === "personal" ? (
-                <SettingsForm userSettings={userSettings} availableDomains={userDomains} />
-              ) : (
-                <div className="rounded-xl border border-neutral-200 p-5 dark:border-border">
-                  <p className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                    Default Domain
-                  </p>
-                  <p className="mt-1 text-[12px] text-neutral-500 dark:text-neutral-400">
-                    Your default domain applies to your personal workspace. Switch to your personal
-                    workspace to change it.
-                  </p>
-                </div>
-              )}
+              <SectionBoundary section="general">
+                {/* The default domain is a personal-workspace setting; team domains can't be picked here */}
+                {workspace.type === "personal" ? (
+                  <SettingsForm userSettings={userSettings} availableDomains={userDomains} />
+                ) : (
+                  <div className="rounded-xl border border-neutral-200 p-5 dark:border-border">
+                    <p className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                      Default Domain
+                    </p>
+                    <p className="mt-1 text-[12px] text-neutral-500 dark:text-neutral-400">
+                      Your default domain applies to your personal workspace. Switch to your
+                      personal workspace to change it.
+                    </p>
+                  </div>
+                )}
+              </SectionBoundary>
             </div>
           </section>
 
@@ -141,10 +149,12 @@ async function SettingsPage(props: Props) {
               Emails we send about your links and domains
             </p>
             <div className="mt-4">
-              <NotificationSettings
-                productEmailsEnabled={userProfile.productEmailsEnabled}
-                weeklySummaryEnabled={userProfile.weeklySummaryEnabled}
-              />
+              <SectionBoundary section="notifications">
+                <NotificationSettings
+                  productEmailsEnabled={userProfile.productEmailsEnabled}
+                  weeklySummaryEnabled={userProfile.weeklySummaryEnabled}
+                />
+              </SectionBoundary>
             </div>
           </section>
 
@@ -157,15 +167,17 @@ async function SettingsPage(props: Props) {
               Subscription and payment details
             </p>
             <div className="mt-4">
-              {annualOffer && (
-                <AnnualSwitchCard offer={annualOffer} source="billing" className="mb-4" />
-              )}
-              <Billing
-                subscriptions={subscriptions}
-                promo={promo}
-                latestCheckout={latestCheckout}
-                returnedFromCheckout={checkout === "success"}
-              />
+              <SectionBoundary section="billing">
+                {annualOffer && (
+                  <AnnualSwitchCard offer={annualOffer} source="billing" className="mb-4" />
+                )}
+                <Billing
+                  subscriptions={subscriptions}
+                  promo={promo}
+                  latestCheckout={latestCheckout}
+                  returnedFromCheckout={checkout === "success"}
+                />
+              </SectionBoundary>
             </div>
           </section>
 
@@ -183,7 +195,9 @@ async function SettingsPage(props: Props) {
                 and belong to the team, not to a member
               </p>
               <div className="mt-4">
-                <TeamApiKeys teamTokens={teamTokens} />
+                <SectionBoundary section="team-api-keys">
+                  <TeamApiKeys teamTokens={teamTokens} />
+                </SectionBoundary>
               </div>
             </section>
           )}
@@ -213,7 +227,9 @@ async function SettingsPage(props: Props) {
                 : "Programmatic access to your account"}
             </p>
             <div className="mt-4">
-              <ApiKeys tokens={tokens} apiAccess={apiAccess} />
+              <SectionBoundary section="api-keys">
+                <ApiKeys tokens={tokens} apiAccess={apiAccess} />
+              </SectionBoundary>
             </div>
           </section>
 
@@ -242,7 +258,9 @@ async function SettingsPage(props: Props) {
                 : "Signed events for your links and domains"}
             </p>
             <div className="mt-4">
-              <Webhooks webhooks={webhooks} />
+              <SectionBoundary section="webhooks">
+                <Webhooks webhooks={webhooks} />
+              </SectionBoundary>
             </div>
           </section>
 
@@ -255,15 +273,17 @@ async function SettingsPage(props: Props) {
               Browsers signed in to the iShortn extension
             </p>
             <div className="mt-4">
-              <ConnectedBrowsers
-                browsers={extensionTokens}
-                // Absolute: docs are served on the app host only, not on team subdomains.
-                docsUrl={withProductUtm(
-                  `https://${getAppBaseDomain()}/docs/integrations/browser-extension`,
-                  "app",
-                  "settings_extension_docs",
-                )}
-              />
+              <SectionBoundary section="connected-browsers">
+                <ConnectedBrowsers
+                  browsers={extensionTokens}
+                  // Absolute: docs are served on the app host only, not on team subdomains.
+                  docsUrl={withProductUtm(
+                    `https://${getAppBaseDomain()}/docs/integrations/browser-extension`,
+                    "app",
+                    "settings_extension_docs",
+                  )}
+                />
+              </SectionBoundary>
             </div>
           </section>
 
@@ -276,7 +296,9 @@ async function SettingsPage(props: Props) {
               Move your resources to another user
             </p>
             <div className="mt-4">
-              <AccountTransferSection />
+              <SectionBoundary section="account-transfer">
+                <AccountTransferSection />
+              </SectionBoundary>
             </div>
           </section>
 
@@ -289,7 +311,9 @@ async function SettingsPage(props: Props) {
               Close your account and remove your data
             </p>
             <div className="mt-4">
-              <DeleteAccountSection />
+              <SectionBoundary section="delete-account">
+                <DeleteAccountSection />
+              </SectionBoundary>
             </div>
           </section>
         </div>

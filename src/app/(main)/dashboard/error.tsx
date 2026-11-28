@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useVersionSkewReload } from "@/lib/hooks/use-version-skew-reload";
 import { clientLogger } from "@/lib/logger/client";
 
 import { FeedbackModal } from "./_components/navigation/feedback-modal";
+import { buildClientErrorReport, sendClientErrorReport } from "./_lib/client-error-report";
 
 // The boundary remounts when a retry throws again, so component state can't
 // remember the retry; a module-level timestamp does.
@@ -25,12 +27,15 @@ export default function DashboardError({
   const router = useRouter();
   const [retryFailed] = useState(() => Date.now() - lastRetryAt < RETRY_WINDOW_MS);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const reloading = useVersionSkewReload(error);
 
   useEffect(() => {
     clientLogger.error(
       { err: error, digest: error.digest, retryFailed },
       "dashboard error boundary caught error",
     );
+    // Browser consoles aren't collected; this puts the message and digest in the Worker logs.
+    sendClientErrorReport(buildClientErrorReport("dashboard", error, window.location.pathname));
   }, [error, retryFailed]);
 
   const retry = () => {
@@ -41,6 +46,9 @@ export default function DashboardError({
       reset();
     });
   };
+
+  // A stale tab after a deploy: the page is reloading onto the current build.
+  if (reloading) return <div className="min-h-[400px]" aria-busy="true" />;
 
   return (
     <div className="flex min-h-[400px] flex-col items-center justify-center py-20 text-center">
