@@ -25,8 +25,8 @@ const formatDay = (date: Date) =>
 
 /**
  * Plan grace-period and read-only-team notice shown above every dashboard page. With a `promo`
- * (`graceOfferPromo`: a lapsed account that would start a new checkout) it adds the offer and a
- * resubscribe button that opens the checkout with the promo code applied.
+ * (`graceOfferPromo`: a lapsed or over-plan account that would start a new checkout) it adds the
+ * offer, its code and a button that opens the checkout with the code applied.
  */
 export function PlanGraceBanner({
   initialNotice,
@@ -52,13 +52,12 @@ export function PlanGraceBanner({
   });
   // Re-checked against the live notice: a refetch can turn the lapse into a failed payment.
   const offerPlan =
-    promo &&
-    notice?.type === "account" &&
-    notice.reason === "lapsed" &&
-    notice.action === "upgrade" &&
-    notice.plan !== "free"
+    promo && notice?.type === "account" && notice.action === "upgrade" && notice.plan !== "free"
       ? notice.plan
       : null;
+  // A lapsed account had this plan; an over-plan one may never have paid for it.
+  const offerVerb =
+    notice?.type === "account" && notice.reason === "lapsed" ? "Resubscribe" : "Upgrade";
   useTrackUpgradeShown(GRACE_SOURCE, !!offerPlan, promo ? { promo: promo.code } : undefined);
   // Mirrors the branches below: the Upgrade link shows unless the notice asks for a payment
   // update, and on team notices only to the owner.
@@ -94,7 +93,7 @@ export function PlanGraceBanner({
         : `Some features you use need ${plan}. From ${formatDay(notice.endsAt)} they can't be added or changed.`;
   }
 
-  // The resubscribe button replaces the Upgrade link: pricing shows the grace plan as current.
+  // The checkout button replaces the Upgrade link: pricing shows a lapsed grace plan as current.
   if (offerPlan) showUpgrade = false;
   // Stays busy after success until the checkout page loads.
   const isOpening = resubscribe.isLoading || resubscribe.isSuccess;
@@ -123,7 +122,10 @@ export function PlanGraceBanner({
         </p>
         {offerPlan && promo && (
           <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-            <p className="min-w-0 font-medium">{promoOfferLine(promo, PLAN_NAMES[offerPlan])}</p>
+            <p className="min-w-0">
+              <span className="font-medium">{promoOfferLine(promo, PLAN_NAMES[offerPlan])}</span>{" "}
+              Code <span className="font-semibold">{promo.code}</span>, applied at checkout.
+            </p>
             <Button
               size="sm"
               className="h-8 shrink-0 bg-blue-600 text-[12px] text-white hover:bg-blue-700"
@@ -139,7 +141,7 @@ export function PlanGraceBanner({
               }}
             >
               {isOpening && <IconLoader2 size={14} stroke={2} className="mr-1.5 animate-spin" />}
-              {isOpening ? "Opening checkout..." : `Resubscribe to ${PLAN_NAMES[offerPlan]}`}
+              {isOpening ? "Opening checkout..." : `${offerVerb} to ${PLAN_NAMES[offerPlan]}`}
             </Button>
           </div>
         )}
