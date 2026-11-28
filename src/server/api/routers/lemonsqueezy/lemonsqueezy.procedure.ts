@@ -561,8 +561,11 @@ export async function startNewCheckout(deps: NewCheckoutDeps, input: NewCheckout
   const priceId = paddlePriceId(plan, interval, deps.paddleConfig);
   // Configured Paddle always has a client and every price; the checks only narrow the types.
   const paddle =
-    checkoutProviderFor(userId, deps.paddleConfig) === "paddle" && deps.paddleClient && priceId
-      ? { client: deps.paddleClient, priceId }
+    checkoutProviderFor(userId, deps.paddleConfig) === "paddle" &&
+    deps.paddleConfig &&
+    deps.paddleClient &&
+    priceId
+      ? { client: deps.paddleClient, priceId, environment: deps.paddleConfig.environment }
       : null;
   const provider = paddle ? "paddle" : "lemonsqueezy";
 
@@ -590,17 +593,21 @@ export async function startNewCheckout(deps: NewCheckoutDeps, input: NewCheckout
     }),
   );
 
-  captureServerEvent(
-    { id: userId, email: input.user?.email },
-    "checkout_started",
-    checkoutEventProperties({
-      plan,
-      interval,
-      discount_code: discountCode,
-      provider,
-      ...attribution,
-    }),
-  );
+  // Sandbox checkouts are test runs; sending them would count them in the checkout funnel.
+  if (paddle?.environment !== "sandbox") {
+    captureServerEvent(
+      { id: userId, email: input.user?.email },
+      "checkout_started",
+      checkoutEventProperties({
+        plan,
+        interval,
+        discount_code: discountCode,
+        provider,
+        billing_env: paddle?.environment,
+        ...attribution,
+      }),
+    );
+  }
 
   return { status: "redirect" as const, url };
 }

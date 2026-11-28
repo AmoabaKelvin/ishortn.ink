@@ -1,5 +1,15 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  spyOn,
+  test,
+} from "bun:test";
 
+import { env } from "@/env.mjs";
 import { checkoutDiscountCode } from "@/lib/billing/promo";
 import { PaddleApiError } from "@/lib/paddle/client";
 import { buildPaddleConfig } from "@/lib/paddle/config";
@@ -505,6 +515,79 @@ describe("startNewCheckout", () => {
       url: "https://ishortn.test/checkout?_ptxn=txn_1",
     });
     expect(lemonSqueezyCalls).toBe(0);
+  });
+
+  describe("checkout_started", () => {
+    const posthog = {
+      NEXT_PUBLIC_POSTHOG_KEY: env.NEXT_PUBLIC_POSTHOG_KEY,
+      NEXT_PUBLIC_POSTHOG_HOST: env.NEXT_PUBLIC_POSTHOG_HOST,
+    };
+    let fetchSpy: ReturnType<typeof spyOn<typeof globalThis, "fetch">>;
+
+    // A fake PostHog with fetch intercepted, so nothing leaves the process.
+    beforeEach(() => {
+      Object.assign(env, {
+        NEXT_PUBLIC_POSTHOG_KEY: "phc_test",
+        NEXT_PUBLIC_POSTHOG_HOST: "https://posthog.invalid",
+      });
+      fetchSpy = spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }));
+    });
+    afterEach(() => {
+      fetchSpy.mockRestore();
+      Object.assign(env, posthog);
+    });
+
+    const captured = () =>
+      fetchSpy.mock.calls
+        .filter(([url]) => String(url).startsWith("https://posthog.invalid"))
+        .map(([, init]) => JSON.parse(String(init?.body)));
+
+    test("a sandbox Paddle checkout sends nothing to PostHog", async () => {
+      const { client } = stubPaddle({});
+
+      await startNewCheckout(paddleDeps(client), input("user_paddle"));
+
+      expect(starts).toHaveLength(1);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    test("a production Paddle checkout is sent with its billing environment", async () => {
+      const { client } = stubPaddle({});
+      const production = buildPaddleConfig({
+        ...PADDLE_ENV,
+        PADDLE_ENVIRONMENT: "production",
+        PADDLE_API_KEY: "pdl_live_apikey_123",
+        PADDLE_CLIENT_TOKEN: "live_clienttoken",
+      });
+
+      await startNewCheckout(
+        { ...paddleDeps(client), paddleConfig: production },
+        input("user_paddle"),
+      );
+
+      expect(captured()).toEqual([
+        expect.objectContaining({
+          event: "checkout_started",
+          distinct_id: "user_paddle",
+          properties: expect.objectContaining({ provider: "paddle", billing_env: "production" }),
+        }),
+      ]);
+    });
+
+    test("a Lemon Squeezy checkout is sent without a billing environment", async () => {
+      const { client } = stubPaddle({});
+
+      await startNewCheckout(paddleDeps(client), input("user_other"));
+
+      const events = captured();
+      expect(events).toEqual([
+        expect.objectContaining({
+          event: "checkout_started",
+          properties: expect.objectContaining({ provider: "lemonsqueezy" }),
+        }),
+      ]);
+      expect(events[0].properties).not.toHaveProperty("billing_env");
+    });
   });
 
   test("a Paddle subscription that has ended can check out again", async () => {
