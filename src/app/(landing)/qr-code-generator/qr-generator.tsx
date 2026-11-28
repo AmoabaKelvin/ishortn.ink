@@ -1,10 +1,12 @@
 "use client";
 
-import { IconAlertCircle, IconDownload, IconQrcode } from "@tabler/icons-react";
+import { IconAlertCircle, IconCircleCheck, IconDownload, IconQrcode } from "@tabler/icons-react";
 import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
 import { useId, useRef, useState, useSyncExternalStore } from "react";
 
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { serializeShortenIntentCookie } from "@/lib/auth/shorten-intent";
+import { FREE_QR_CODE_LIMIT } from "@/lib/billing/entitlements";
 import { cn } from "@/lib/utils";
 
 import { useSignedIn } from "../_components/header";
@@ -31,6 +33,7 @@ export function QrGenerator() {
   // default) rather than through useSearchParams, which would need a Suspense boundary.
   const urlParam = useSyncExternalStore(subscribeToNothing, readUrlParam, () => null);
   const [typed, setTyped] = useState<string | null>(null);
+  const [downloaded, setDownloaded] = useState<"png" | "svg" | null>(null);
   const value = typed ?? urlParam ?? "https://ishortn.ink";
   const previewRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<HTMLDivElement>(null);
@@ -50,6 +53,11 @@ export function QrGenerator() {
     a.href = canvas.toDataURL("image/png");
     a.download = "qr-code.png";
     a.click();
+    setDownloaded("png");
+    trackEvent(POSTHOG_EVENTS.FREE_TOOL_USED, {
+      tool: "qr_code_generator",
+      action: "download_png",
+    });
   };
 
   const downloadSvg = () => {
@@ -62,6 +70,27 @@ export function QrGenerator() {
     a.download = "qr-code.svg";
     a.click();
     URL.revokeObjectURL(href);
+    setDownloaded("svg");
+    trackEvent(POSTHOG_EVENTS.FREE_TOOL_USED, {
+      tool: "qr_code_generator",
+      action: "download_svg",
+    });
+  };
+
+  const signupHref = getQrSignupHref(enteredUrl, signedIn);
+  // Signed out, the URL goes in a cookie set on click, not the href. No prefetch on the links: the
+  // sign-up page reads that cookie when it renders, so it must load after the click.
+  const onSignupClick = (placement: "post_download" | "static_card") => {
+    trackEvent(POSTHOG_EVENTS.FREE_TOOL_SIGNUP_CLICKED, {
+      tool: "qr_code_generator",
+      placement,
+      signed_in: signedIn === true,
+    });
+    if (signedIn) return;
+    document.cookie = serializeShortenIntentCookie(
+      enteredUrl,
+      window.location.protocol === "https:",
+    );
   };
 
   return (
@@ -80,7 +109,11 @@ export function QrGenerator() {
             spellCheck={false}
             placeholder="https://example.com"
             value={value}
-            onChange={(e) => setTyped(e.target.value)}
+            onChange={(e) => {
+              setTyped(e.target.value);
+              // A new URL is a new code, so the saved-file note no longer applies.
+              setDownloaded(null);
+            }}
             aria-invalid={!result.ok && !isEmpty}
             aria-describedby={messageId}
             className={fieldClass}
@@ -159,6 +192,30 @@ export function QrGenerator() {
               Download SVG
             </button>
           </div>
+          <div aria-live="polite" className="w-full max-w-60 empty:hidden">
+            {downloaded && (
+              <div className="flex flex-col gap-3 duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] animate-in fade-in-0 motion-safe:slide-in-from-bottom-1">
+                <p className="flex items-center gap-1.5 text-sm text-neutral-600">
+                  <IconCircleCheck aria-hidden="true" className="size-4 shrink-0" />
+                  Saved qr-code.{downloaded}
+                </p>
+                <p className="text-pretty text-sm text-neutral-600">
+                  Printing it? This code can&apos;t be changed or tracked later.
+                </p>
+                <ButtonLink
+                  href={signupHref}
+                  prefetch={false}
+                  onClick={() => onSignupClick("post_download")}
+                  className="w-full whitespace-normal"
+                >
+                  {signedIn ? "Make it dynamic" : "Make it dynamic, free"}
+                </ButtonLink>
+                <p className="text-pretty text-xs text-neutral-500">
+                  {`Free includes ${FREE_QR_CODE_LIMIT} dynamic QR codes. No card needed.`}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Upgrade path: directly under the preview on mobile */}
@@ -171,18 +228,10 @@ export function QrGenerator() {
             printing, and you can&apos;t see how many people scan it. A free iShortn account gives
             you dynamic codes you can edit and track.
           </p>
-          {/* Signed out, the URL goes in a cookie set on click, not the href. No prefetch: the
-              sign-up page reads that cookie when it renders, so it must load after the click. */}
           <ButtonLink
-            href={getQrSignupHref(enteredUrl, signedIn)}
+            href={signupHref}
             prefetch={false}
-            onClick={() => {
-              if (signedIn) return;
-              document.cookie = serializeShortenIntentCookie(
-                enteredUrl,
-                window.location.protocol === "https:",
-              );
-            }}
+            onClick={() => onSignupClick("static_card")}
             className="mt-4 whitespace-normal"
           >
             {`${enteredUrl ? "Track scans of this code" : "Make it dynamic and trackable"}${signedIn ? "" : ", free"}`}

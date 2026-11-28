@@ -71,6 +71,10 @@ export const POSTHOG_EVENTS = {
   EXTENSION_PROMPT_CLICKED: "extension_prompt_clicked",
   EXTENSION_PROMPT_DISMISSED: "extension_prompt_dismissed",
 
+  // Free tools on the marketing site; `tool` names the tool, no user input in properties
+  FREE_TOOL_USED: "free_tool_used",
+  FREE_TOOL_SIGNUP_CLICKED: "free_tool_signup_clicked",
+
   // Clerk replaced the sign-up/sign-in placeholder (auth-form-ready.tsx)
   AUTH_FORM_READY: "auth_form_ready",
 } as const;
