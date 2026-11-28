@@ -60,9 +60,11 @@ const readSearch = () => window.location.search;
 export const Pricing = ({
   showHeading = true,
   promo = null,
+  className,
 }: {
   showHeading?: boolean;
   promo?: Promo | null;
+  className?: string;
 }) => {
   // The marketing pages are static, so `?interval=monthly` is read from the URL on the client
   // (the server snapshot is the annual default) rather than through useSearchParams, which would
@@ -78,7 +80,7 @@ export const Pricing = ({
   const plans = buildPlans(interval, promo, readAttribution(params));
 
   return (
-    <Section id="pricing">
+    <Section id="pricing" className={className}>
       {showHeading && (
         <SectionHeading
           eyebrow={<Eyebrow icon={<IconTagFilled aria-hidden="true" />}>Pricing</Eyebrow>}
@@ -128,7 +130,7 @@ export const Pricing = ({
 
       <div className={cn("grid gap-4 lg:grid-cols-3", promo ? "mt-8" : "mt-12")}>
         {plans.map((p) => (
-          <div key={p.name} className={cn(cardClass, "flex flex-col justify-between p-6 sm:p-8")}>
+          <div key={p.name} className={cn(cardClass, "flex flex-col p-6 sm:p-8")}>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className={h3Class}>{p.name}</h3>
@@ -164,6 +166,13 @@ export const Pricing = ({
                   {p.price.note}
                 </p>
               </div>
+              <ButtonLink
+                href={p.href}
+                variant={p.featured ? "primary" : "secondary"}
+                className="mt-6 w-full"
+              >
+                {p.cta}
+              </ButtonLink>
               <hr className="my-6 border-neutral-950/[0.07]" />
               <ul className="flex flex-col gap-3">
                 {p.features.map((f) => (
@@ -177,13 +186,6 @@ export const Pricing = ({
                 ))}
               </ul>
             </div>
-            <ButtonLink
-              href={p.href}
-              variant={p.featured ? "primary" : "secondary"}
-              className="mt-8 w-full"
-            >
-              {p.cta}
-            </ButtonLink>
           </div>
         ))}
       </div>
