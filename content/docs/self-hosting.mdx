@@ -221,6 +221,7 @@ Some text still names the hosted service and doesn't come from configuration: th
 | `10 * * * *` | `/api/cron/promo-paused-notice` | While a promo in `src/lib/billing/promo.ts` runs, emails Free accounts whose analytics tracking is paused this month, once per promo | Only with email and billing |
 | `10 * * * *` | `/api/cron/upgrade-nudge` | Emails Free accounts 4 to 10 days old that show use (3+ links, 25+ clicks or a plan limit hit) what Pro adds, once | Only with email, billing and `EMAIL_FROM_LIFECYCLE` |
 | `40 * * * *` | `/api/cron/link-creation-health` | Posts to `DISCORD_WEBHOOK_URL` when link creation starts failing | Only with `DISCORD_WEBHOOK_URL` |
+| `40 * * * *` | `/api/cron/link-health` | Checks a few hundred active links' destinations per run (each about once a day) and emails Pro and Ultra owners about broken ones | Only with email and billing |
 | `0 9-17 * * MON` | `/api/cron/weekly-summary` | Emails accounts whose links got at least 5 clicks last week (Monday to Sunday) a summary, once per week; the later hourly runs finish large lists and retry failed sends | Only with email and `EMAIL_FROM_LIFECYCLE` |
 
 One expression can run several routes: `10 * * * *` runs `api-access-sunset`, `first-link-nudge`, `promo-paused-notice` and `upgrade-nudge`. To drop a job that shares its expression, remove its route from `CRON_ROUTES`; otherwise remove the expression from `triggers.crons`. An expression missing from `CRON_ROUTES` only logs an error. To run a job by hand:

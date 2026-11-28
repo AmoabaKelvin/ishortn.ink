@@ -7,16 +7,18 @@ import { runLinkHealthCheck } from "@/server/lib/link-health";
 const log = logger.child({ job: "link-health" });
 
 /**
- * Cron job endpoint for the daily destination check: fetches the destinations of active links
+ * Cron job endpoint for the destination check: fetches the destinations of active links
  * (clicked in the last 30 days on Pro and Ultra, or on a QR code on any plan), records each
  * link's LinkHealth, and emails Pro and Ultra owners about links that failed two checks in a row.
  *
- * Schedule: 0 7 * * * (daily) - configured in wrangler.jsonc. Links are rechecked at most every
- * 20 hours, so a rerun the same day only picks up links the first run didn't reach.
+ * Schedule: 40 * * * * (hourly, a few hundred links per run) - configured in wrangler.jsonc.
+ * Links are rechecked at most every 20 hours, so each link is checked about once a day and an
+ * overlapping or repeated run only picks up links no other run has written.
  *
  * Usage:
  * GET /api/cron/link-health[?dryRun=1]
  * Headers: { "Authorization": "Bearer <CRON_SECRET>" }
+ * Manual run: `bun run cron link-health --url https://ishortn.ink [--dry-run]`
  * `dryRun` checks and returns the new states without writing them or sending email.
  */
 export async function GET(request: Request) {

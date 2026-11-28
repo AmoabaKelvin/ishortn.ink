@@ -36,21 +36,27 @@ import type { Plan } from "@/lib/billing/plans";
 const log = logger.child({ component: "link-health" });
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-/** Links checked per run; the least recently checked go first, so a backlog rotates. */
-export const LINK_HEALTH_MAX_LINKS = 2_000;
-/** Below a day so a daily run whose start drifts still rechecks yesterday's links. */
+/**
+ * Links checked per run. The job runs hourly, so a day covers ~7,200 links; the least recently
+ * checked go first, so a backlog rotates. Small runs keep each invocation short: everything a
+ * run's subrequests hold in the shared app isolate is released when its invocation ends.
+ */
+export const LINK_HEALTH_MAX_LINKS = 300;
+/** Links loaded, checked and written together; bounds what a run holds in memory. */
+export const LINK_HEALTH_BATCH_SIZE = 100;
+/** Below a day so each link is rechecked about daily, by the first hourly run past this. */
 const RECHECK_AFTER_MS = 20 * 60 * 60 * 1000;
 /** A link counts as active with a click in this window. */
 const ACTIVE_WINDOW_MS = 30 * DAY_MS;
 /** Workers allow six simultaneous outbound connections per invocation. */
 const CONCURRENCY = 6;
 const PER_HOST = 2;
-// Stops starting checks well inside the scheduled handler's 15-minute limit and the Workers
-// subrequest limit (DNS lookups count); unchecked links go first next run.
-const RUN_BUDGET_MS = 10 * 60 * 1000;
+// Stops starting checks, then sends, well inside the scheduled handler's 15-minute limit and the
+// Workers subrequest limit (DNS lookups count); what's left goes first next run.
+const CHECK_BUDGET_MS = 4 * 60 * 1000;
+const RUN_BUDGET_MS = 8 * 60 * 1000;
 const SUBREQUEST_BUDGET = 8_000;
-const WRITE_CHUNK = 200;
-const MAX_ALERT_ROWS = 5_000;
+const MAX_ALERT_ROWS = 1_000;
 // Resend allows 2 requests per second per team by default; stay just under it.
 const SEND_INTERVAL_MS = 550;
 const MAX_CONSECUTIVE_SEND_FAILURES = 5;
@@ -117,11 +123,18 @@ function paidOwnerFilter(paid: PaidAccounts) {
 
 type Candidate = { linkId: number; url: string; health: LinkHealthState | null };
 
+const isDue = (now: Date) =>
+  or(
+    isNull(linkHealth.lastCheckedAt),
+    lt(linkHealth.lastCheckedAt, new Date(now.getTime() - RECHECK_AFTER_MS)),
+  );
+
 /**
- * Links due a check: live, not checked in the last 20 hours, on an account in good standing,
- * and either on a QR code (every plan) or clicked in the last 30 days (Pro and Ultra).
+ * Ids of the links due a check: live, not checked in the last 20 hours, on an account in good
+ * standing, and either on a QR code (every plan) or clicked in the last 30 days (Pro and Ultra).
+ * Only ids, so the one expensive query stays small; loadBatch reads the rest per batch.
  */
-async function loadCandidates(now: Date, paid: PaidAccounts, limit: number): Promise<Candidate[]> {
+async function loadDueLinkIds(now: Date, paid: PaidAccounts, limit: number): Promise<number[]> {
   const paidOwner = paidOwnerFilter(paid);
   const clickedRecently = exists(
     db
@@ -137,6 +150,32 @@ async function loadCandidates(now: Date, paid: PaidAccounts, limit: number): Pro
   const paidActive = paidOwner ? and(paidOwner, clickedRecently) : undefined;
 
   const rows = await db
+    .select({ linkId: link.id })
+    .from(link)
+    .innerJoin(user, eq(user.id, link.userId))
+    .leftJoin(linkHealth, eq(linkHealth.linkId, link.id))
+    .where(
+      and(
+        liveLink(),
+        notSet(user.banned),
+        isNull(user.deletedAt),
+        isDue(now),
+        paidActive ? or(onQrCode(), paidActive) : onQrCode(),
+      ),
+    )
+    // MySQL sorts NULLs first: never-checked links lead.
+    .orderBy(asc(linkHealth.lastCheckedAt), asc(link.id))
+    .limit(limit);
+  return rows.map((row) => row.linkId);
+}
+
+/**
+ * The destination and current health of each link in `ids` that is still due. Rechecking
+ * dueness here means a run that overlaps another (a retry, a manual run) skips the links the
+ * other already wrote.
+ */
+async function loadBatch(now: Date, ids: number[]): Promise<Candidate[]> {
+  const rows = await db
     .select({
       linkId: link.id,
       url: link.url,
@@ -148,23 +187,8 @@ async function loadCandidates(now: Date, paid: PaidAccounts, limit: number): Pro
       alertedAt: linkHealth.alertedAt,
     })
     .from(link)
-    .innerJoin(user, eq(user.id, link.userId))
     .leftJoin(linkHealth, eq(linkHealth.linkId, link.id))
-    .where(
-      and(
-        liveLink(),
-        notSet(user.banned),
-        isNull(user.deletedAt),
-        or(
-          isNull(linkHealth.lastCheckedAt),
-          lt(linkHealth.lastCheckedAt, new Date(now.getTime() - RECHECK_AFTER_MS)),
-        ),
-        paidActive ? or(onQrCode(), paidActive) : onQrCode(),
-      ),
-    )
-    // MySQL sorts NULLs first: never-checked links lead.
-    .orderBy(asc(linkHealth.lastCheckedAt), asc(link.id))
-    .limit(limit);
+    .where(and(inArray(link.id, ids), liveLink(), isDue(now)));
 
   return rows.flatMap(({ linkId, url, lastCheckedAt, ...health }) =>
     url
@@ -182,21 +206,12 @@ async function loadCandidates(now: Date, paid: PaidAccounts, limit: number): Pro
 }
 
 /**
- * Checks each distinct URL once, at most CONCURRENCY at a time and PER_HOST per destination
- * host, until the time or subrequest budget runs out.
+ * Checks URLs at most CONCURRENCY at a time and PER_HOST per destination host, until the time or
+ * subrequest budget of the whole run runs out. Each URL is checked once per run.
  */
-async function checkUrls(
-  urls: string[],
-  deps: CheckDeps,
-  budget: { deadline: number; subrequests: number },
-): Promise<Map<string, CheckResult>> {
+function createChecker(deps: CheckDeps, budget: { deadline: number; subrequests: number }) {
   const results = new Map<string, CheckResult>();
-  const lanes = hostLanes(
-    urls.map((url) => ({ url })),
-    PER_HOST,
-  );
   let used = 0;
-  let next = 0;
   const checkDeps: CheckDeps = {
     ...deps,
     onSubrequest: (n) => {
@@ -206,37 +221,44 @@ async function checkUrls(
   const hasBudget = () =>
     Date.now() < budget.deadline && used + MAX_SUBREQUESTS_PER_CHECK <= budget.subrequests;
 
-  await Promise.all(
-    Array.from({ length: Math.min(CONCURRENCY, lanes.length) }, async () => {
-      while (next < lanes.length && hasBudget()) {
-        const lane = lanes[next++]!;
-        for (const { url } of lane) {
-          if (!hasBudget()) return;
-          results.set(url, await checkDestination(url, checkDeps));
+  const check = async (urls: string[]) => {
+    const lanes = hostLanes(
+      urls.filter((url) => !results.has(url)).map((url) => ({ url })),
+      PER_HOST,
+    );
+    let next = 0;
+    await Promise.all(
+      Array.from({ length: Math.min(CONCURRENCY, lanes.length) }, async () => {
+        while (next < lanes.length && hasBudget()) {
+          const lane = lanes[next++]!;
+          for (const { url } of lane) {
+            if (!hasBudget()) return;
+            results.set(url, await checkDestination(url, checkDeps));
+          }
         }
-      }
-    }),
-  );
-  return results;
+      }),
+    );
+  };
+
+  return { results, hasBudget, check };
 }
 
 async function writeHealth(rows: Array<LinkHealthState & { linkId: number }>) {
+  if (!rows.length) return;
   const fromInsert = (name: string) => sql`values(${sql.identifier(name)})`;
-  for (let offset = 0; offset < rows.length; offset += WRITE_CHUNK) {
-    await db
-      .insert(linkHealth)
-      .values(rows.slice(offset, offset + WRITE_CHUNK))
-      .onDuplicateKeyUpdate({
-        set: {
-          lastCheckedAt: fromInsert("lastCheckedAt"),
-          lastStatus: fromInsert("lastStatus"),
-          lastError: fromInsert("lastError"),
-          consecutiveFailures: fromInsert("consecutiveFailures"),
-          brokenSince: fromInsert("brokenSince"),
-          alertedAt: fromInsert("alertedAt"),
-        },
-      });
-  }
+  await db
+    .insert(linkHealth)
+    .values(rows)
+    .onDuplicateKeyUpdate({
+      set: {
+        lastCheckedAt: fromInsert("lastCheckedAt"),
+        lastStatus: fromInsert("lastStatus"),
+        lastError: fromInsert("lastError"),
+        consecutiveFailures: fromInsert("consecutiveFailures"),
+        brokenSince: fromInsert("brokenSince"),
+        alertedAt: fromInsert("alertedAt"),
+      },
+    });
 }
 
 type SendAlert = (input: SendLinkHealthAlertInput) => Promise<boolean>;
@@ -244,10 +266,18 @@ type SendAlert = (input: SendLinkHealthAlertInput) => Promise<boolean>;
 /**
  * Emails each Pro and Ultra account one list of its links that are broken and not yet alerted
  * (team links go to the team owner). Links are claimed (alertedAt set) before the send and
- * released if Resend rejects it, so the next run retries. Accounts that turned product emails
+ * released if Resend rejects it, so the next run retries; an email lists only the links its run
+ * claimed, so overlapping runs never alert a link twice. Accounts that turned product emails
  * off, or whose address bounced, are marked alerted without an email so they aren't retried.
+ * Stops sending at `deadline`; unclaimed links go out next run.
  */
-async function sendAlerts(now: Date, paid: PaidAccounts, send: SendAlert, sendIntervalMs: number) {
+async function sendAlerts(
+  now: Date,
+  paid: PaidAccounts,
+  send: SendAlert,
+  sendIntervalMs: number,
+  deadline: number,
+) {
   const counts = { recipients: 0, sent: 0, skipped: 0, failed: 0 };
   const paidOwner = paidOwnerFilter(paid);
   if (!paidOwner) return counts;
@@ -312,17 +342,28 @@ async function sendAlerts(now: Date, paid: PaidAccounts, send: SendAlert, sendIn
   const recipientById = new Map(recipients.map((row) => [row.id, row]));
   const clicksByLink = new Map(clicks.map((row) => [row.linkId, row.clicks]));
 
+  /** Sets alertedAt on the links no other run has claimed yet; returns the ones this run got. */
   const claim = (ids: number[]) =>
-    db
-      .update(linkHealth)
-      .set({ alertedAt: now })
-      .where(and(inArray(linkHealth.linkId, ids), isNull(linkHealth.alertedAt)));
+    db.transaction(async (tx) => {
+      const free = await tx
+        .select({ linkId: linkHealth.linkId })
+        .from(linkHealth)
+        .where(and(inArray(linkHealth.linkId, ids), isNull(linkHealth.alertedAt)))
+        .for("update");
+      const claimed = new Set(free.map((row) => row.linkId));
+      if (claimed.size) {
+        await tx
+          .update(linkHealth)
+          .set({ alertedAt: now })
+          .where(inArray(linkHealth.linkId, [...claimed]));
+      }
+      return claimed;
+    });
 
   let lastSendAt = 0;
   let consecutiveFailures = 0;
-  for (const [recipientId, rows] of byRecipient) {
-    if (consecutiveFailures >= MAX_CONSECUTIVE_SEND_FAILURES) break;
-    const ids = rows.map((row) => row.linkId);
+  for (const [recipientId, group] of byRecipient) {
+    if (consecutiveFailures >= MAX_CONSECUTIVE_SEND_FAILURES || Date.now() >= deadline) break;
     const recipient = recipientById.get(recipientId);
     if (
       !recipient?.email ||
@@ -332,12 +373,13 @@ async function sendAlerts(now: Date, paid: PaidAccounts, send: SendAlert, sendIn
       recipient.deletedAt
     ) {
       counts.skipped++;
-      await claim(ids);
+      await claim(group.map((row) => row.linkId));
       continue;
     }
 
-    const [claimed] = await claim(ids);
-    if (claimed.affectedRows === 0) {
+    const claimed = await claim(group.map((row) => row.linkId));
+    const rows = group.filter((row) => claimed.has(row.linkId));
+    if (!rows.length) {
       counts.skipped++;
       continue;
     }
@@ -379,7 +421,10 @@ async function sendAlerts(now: Date, paid: PaidAccounts, send: SendAlert, sendIn
     } else {
       counts.failed++;
       consecutiveFailures++;
-      await db.update(linkHealth).set({ alertedAt: null }).where(inArray(linkHealth.linkId, ids));
+      await db
+        .update(linkHealth)
+        .set({ alertedAt: null })
+        .where(inArray(linkHealth.linkId, [...claimed]));
     }
   }
 
@@ -390,16 +435,19 @@ async function sendAlerts(now: Date, paid: PaidAccounts, send: SendAlert, sendIn
 }
 
 /**
- * The daily destination check: checks up to LINK_HEALTH_MAX_LINKS due links (identical
- * destinations once), records each link's LinkHealth, then emails Pro and Ultra owners about
- * links that just broke. Free accounts' QR-code links are checked and recorded, not alerted.
- * `dryRun` checks and returns the transitions without writing or emailing.
+ * The hourly destination check: checks up to LINK_HEALTH_MAX_LINKS due links in batches of
+ * LINK_HEALTH_BATCH_SIZE (identical destinations once), writing each batch's LinkHealth before
+ * loading the next, then emails Pro and Ultra owners about links that just broke. Free
+ * accounts' QR-code links are checked and recorded, not alerted. Each link is rechecked about
+ * once a day (RECHECK_AFTER_MS). `dryRun` checks and returns the transitions without writing
+ * or emailing.
  */
 export async function runLinkHealthCheck({
   now = new Date(),
   deps = {},
   send = sendLinkHealthAlertEmail,
   maxLinks = LINK_HEALTH_MAX_LINKS,
+  batchSize = LINK_HEALTH_BATCH_SIZE,
   sendIntervalMs = SEND_INTERVAL_MS,
   dryRun = false,
 }: {
@@ -407,40 +455,48 @@ export async function runLinkHealthCheck({
   deps?: CheckDeps;
   send?: SendAlert;
   maxLinks?: number;
+  batchSize?: number;
   sendIntervalMs?: number;
   dryRun?: boolean;
 } = {}) {
   const started = Date.now();
   const paid = await loadPaidAccounts(now);
-  const candidates = await loadCandidates(now, paid, maxLinks);
-  const urls = [...new Set(candidates.map((row) => row.url))];
-  const results = await checkUrls(urls, deps, {
-    deadline: started + RUN_BUDGET_MS,
+  const ids = await loadDueLinkIds(now, paid, maxLinks);
+  const checker = createChecker(deps, {
+    deadline: started + CHECK_BUDGET_MS,
     subrequests: SUBREQUEST_BUDGET,
   });
 
-  const counts = { candidates: candidates.length, urls: urls.length, checked: 0, broken: 0 };
-  const rows: Array<LinkHealthState & { linkId: number }> = [];
-  for (const candidate of candidates) {
-    const result = results.get(candidate.url);
-    if (!result) continue;
-    const next = nextLinkHealth(candidate.health, result, now);
-    counts.checked++;
-    if (next.brokenSince && !candidate.health?.brokenSince) counts.broken++;
-    rows.push({ linkId: candidate.linkId, ...next });
+  const counts = { candidates: ids.length, urls: 0, checked: 0, broken: 0 };
+  const previews: Array<LinkHealthState & { linkId: number }> = [];
+  for (let offset = 0; offset < ids.length && checker.hasBudget(); offset += batchSize) {
+    const batch = await loadBatch(now, ids.slice(offset, offset + batchSize));
+    await checker.check([...new Set(batch.map((row) => row.url))]);
+
+    const rows: Array<LinkHealthState & { linkId: number }> = [];
+    for (const candidate of batch) {
+      const result = checker.results.get(candidate.url);
+      if (!result) continue;
+      const next = nextLinkHealth(candidate.health, result, now);
+      counts.checked++;
+      if (next.brokenSince && !candidate.health?.brokenSince) counts.broken++;
+      rows.push({ linkId: candidate.linkId, ...next });
+    }
+    if (dryRun) previews.push(...rows);
+    else await writeHealth(rows);
   }
+  counts.urls = checker.results.size;
 
   if (dryRun) {
     log.info({ ...counts, dryRun }, "link health checked");
-    return { ...counts, alerts: null, previews: rows };
+    return { ...counts, alerts: null, previews };
   }
 
-  await writeHealth(rows);
   // Deleted links leave their row behind; there are few, and nothing else cleans them up.
   await db
     .delete(linkHealth)
     .where(notExists(db.select({ id: link.id }).from(link).where(eq(link.id, linkHealth.linkId))));
-  const alerts = await sendAlerts(now, paid, send, sendIntervalMs);
+  const alerts = await sendAlerts(now, paid, send, sendIntervalMs, started + RUN_BUDGET_MS);
   log.info({ ...counts, alerts, durationMs: Date.now() - started }, "link health checked");
   return { ...counts, alerts };
 }
