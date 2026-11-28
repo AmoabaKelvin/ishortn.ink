@@ -106,11 +106,21 @@ describe("graceOfferPromo", () => {
     ).toBe(ACTIVE_PROMO);
   });
 
-  test("is null outside the window", () => {
-    const after = new Date("2026-12-02T10:00:00Z");
+  test("offers the promo to an account in an over-plan grace that would start a checkout", () => {
+    const overPlan = { ...notice, reason: "over_plan" as const };
     expect(
-      graceOfferPromo({ subscription: lapsed, notice, isRestricted: false, now: after }),
-    ).toBeNull();
+      graceOfferPromo({ subscription: free, notice: overPlan, isRestricted: false, now: inside }),
+    ).toBe(ACTIVE_PROMO);
+  });
+
+  test("is null outside the window", () => {
+    const before = new Date("2026-11-24T10:00:00Z");
+    const after = new Date("2026-12-02T10:00:00Z");
+    for (const now of [before, after]) {
+      expect(
+        graceOfferPromo({ subscription: lapsed, notice, isRestricted: false, now }),
+      ).toBeNull();
+    }
   });
 
   test("is null without a grace notice, so Free accounts keep the strip only", () => {
@@ -122,16 +132,16 @@ describe("graceOfferPromo", () => {
   });
 
   test("is null for a failed payment, which is fixed on the existing subscription", () => {
-    const pastDue = { ...notice, action: "update_payment" as const };
     const updateMode = { ...lapsed, subscriptionMode: "update" as const };
-    expect(
-      graceOfferPromo({
-        subscription: updateMode,
-        notice: pastDue,
-        isRestricted: false,
-        now: inside,
-      }),
-    ).toBeNull();
+    for (const reason of ["lapsed", "over_plan"] as const) {
+      const pastDue = { ...notice, reason, action: "update_payment" as const };
+      // Also null if the subscription mode reads as checkout: the notice decides.
+      for (const subscription of [updateMode, lapsed]) {
+        expect(
+          graceOfferPromo({ subscription, notice: pastDue, isRestricted: false, now: inside }),
+        ).toBeNull();
+      }
+    }
   });
 
   test("is null when the account still has a subscription to change or resume", () => {
@@ -147,11 +157,9 @@ describe("graceOfferPromo", () => {
     }
   });
 
-  test("is null for over-plan graces, team notices, team workspaces and restricted accounts", () => {
-    const overPlan = { ...notice, reason: "over_plan" as const };
+  test("is null for team notices, team workspaces and restricted accounts", () => {
     const team = { type: "team" as const };
     const cases = [
-      { subscription: free, notice: overPlan, isRestricted: false },
       { subscription: lapsed, notice: team, isRestricted: false },
       { subscription: { ...lapsed, isTeamWorkspace: true }, notice, isRestricted: false },
       { subscription: lapsed, notice, isRestricted: true },

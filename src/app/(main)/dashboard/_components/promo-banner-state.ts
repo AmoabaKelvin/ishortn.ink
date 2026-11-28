@@ -66,9 +66,9 @@ export type GraceOfferNotice =
     };
 
 /**
- * The promo the plan-grace banner offers with a resubscribe button: an account whose paid plan
- * lapsed (not a failed payment, which is fixed on the existing subscription) and whose resubscribe
- * would be a new checkout. The strip and sidebar skip these accounts, so this is their only offer.
+ * The promo the plan-grace banner offers with a checkout button: an account in a lapse or
+ * over-plan grace (not a failed payment, which is fixed on the existing subscription) whose
+ * upgrade would be a new checkout. The grace banner hides the strip, so this is their only offer.
  */
 export function graceOfferPromo({
   subscription,
@@ -82,9 +82,7 @@ export function graceOfferPromo({
   now?: Date;
 }): Promo | null {
   if (!subscription || !notice || isRestricted) return null;
-  if (notice.type !== "account" || notice.reason !== "lapsed" || notice.action !== "upgrade") {
-    return null;
-  }
+  if (notice.type !== "account" || notice.action !== "upgrade") return null;
   if (notice.plan === "free" || subscription.isTeamWorkspace) return null;
   if (subscription.subscriptionMode !== "checkout") return null;
   return getActivePromo(now);
