@@ -93,7 +93,7 @@ export default function PricingPage() {
       <JsonLd data={createFaqSchema(pricingFaqs.map((f) => ({ question: f.q, answer: f.a })))} />
       <Header />
 
-      <Section className="py-16 sm:py-24">
+      <Section className="pt-12 pb-8 sm:pt-16 sm:pb-10">
         <div className="flex flex-col items-center text-center">
           <Eyebrow icon={<IconTagFilled aria-hidden="true" />}>Pricing</Eyebrow>
           <h1 className={cn(h1Class, "mt-5 max-w-[20ch]")}>Plans that grow with your links</h1>
@@ -103,7 +103,7 @@ export default function PricingPage() {
         </div>
       </Section>
 
-      <Pricing showHeading={false} promo={getActivePromo()} />
+      <Pricing showHeading={false} promo={getActivePromo()} className="pt-8 sm:pt-10" />
 
       <Testimonial />
 
