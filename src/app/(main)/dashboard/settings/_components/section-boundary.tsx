@@ -15,6 +15,8 @@ import type { ErrorInfo, ReactNode } from "react";
 type BoundaryProps = {
   section: string;
   onRetry: () => void;
+  /** Rendered instead of the inline error panel, e.g. `null` for chrome the page works without. */
+  fallback?: ReactNode;
   children: ReactNode;
 };
 
@@ -46,6 +48,7 @@ export class SectionErrorBoundary extends Component<BoundaryProps, BoundaryState
   render() {
     const { error } = this.state;
     if (!error) return this.props.children;
+    if (this.props.fallback !== undefined) return this.props.fallback;
 
     return (
       <div
@@ -89,10 +92,18 @@ export class SectionErrorBoundary extends Component<BoundaryProps, BoundaryState
 }
 
 /** Keeps one settings section's render error inside that section instead of the whole page. */
-export function SectionBoundary({ section, children }: { section: string; children: ReactNode }) {
+export function SectionBoundary({
+  section,
+  fallback,
+  children,
+}: {
+  section: string;
+  fallback?: ReactNode;
+  children: ReactNode;
+}) {
   const router = useRouter();
   return (
-    <SectionErrorBoundary section={section} onRetry={() => router.refresh()}>
+    <SectionErrorBoundary section={section} fallback={fallback} onRetry={() => router.refresh()}>
       {children}
     </SectionErrorBoundary>
   );

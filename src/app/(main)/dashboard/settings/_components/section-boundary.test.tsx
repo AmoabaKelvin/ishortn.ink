@@ -92,4 +92,20 @@ describe("SectionErrorBoundary", () => {
     expect(container.textContent).toContain("Webhooks list");
     expect(container.querySelector('[role="alert"]')).toBeNull();
   });
+
+  test("a fallback replaces the inline error, so a crashing nav renders nothing", () => {
+    act(() =>
+      root.render(
+        <>
+          <SectionErrorBoundary section="nav" fallback={null} onRetry={() => {}}>
+            <Flaky />
+          </SectionErrorBoundary>
+          <p>Profile form</p>
+        </>,
+      ),
+    );
+
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    expect(container.textContent).toBe("Profile form");
+  });
 });

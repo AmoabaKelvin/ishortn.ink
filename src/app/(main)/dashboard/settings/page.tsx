@@ -91,7 +91,10 @@ async function SettingsPage(props: Props) {
       </div>
 
       <div className="flex gap-10">
-        <SettingsNav showTeamApiKeys={!!teamTokens} />
+        {/* The sections stay usable without the nav, so a nav crash renders nothing */}
+        <SectionBoundary section="nav" fallback={null}>
+          <SettingsNav showTeamApiKeys={!!teamTokens} />
+        </SectionBoundary>
 
         <div className="flex-1 min-w-0 space-y-12 pb-20">
           {/* Profile */}
