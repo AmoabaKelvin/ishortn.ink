@@ -1,8 +1,17 @@
 import { TRPCError } from "@trpc/server";
-import { and, count, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { consumeRateLimit } from "@/app/api/v1/rate-limit";
+import {
+  EMAIL_CAPTURE_DEFAULT_BUTTON,
+  EMAIL_CAPTURE_DEFAULT_HEADING,
+  EMAIL_CAPTURE_DEFAULT_SUCCESS,
+  parseEmailCapture,
+  serializeEmailCapture,
+  subscriberEmailSchema,
+} from "@/components/bio/email-capture";
 import {
   oembedUrl,
   parseEmbedUrl,
@@ -34,9 +43,11 @@ import {
   bioPage,
   bioPageView,
   bioPageViewDailySummary,
+  bioSubscriber,
   link,
   linkVisit,
   uniqueBioPageView,
+  user,
 } from "@/server/db/schema";
 import { recordSafetyFollowUp } from "@/server/lib/phishing/follow-up";
 import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
@@ -62,19 +73,24 @@ import {
   lockBioBlockCapacity,
   precheckBioBlockCapacity,
   pageBelongsToWorkspace,
+  MAX_SUBSCRIBER_EXPORT_ROWS,
   referrerHostLabel,
   rethrowBioDuplicate,
   sameBioTheme,
+  subscribersToCsv,
 } from "./utils";
 
 import type { PublicTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 import type {
   AddBioBlockInput,
   CreateBioPageInput,
+  ListSubscribersInput,
+  SubscribeInput,
   ReorderBlocksInput,
   UpdateBioBlockInput,
   UpdateBioPageInput,
 } from "./bio-page.input";
+import type { CounterStore } from "@/app/api/v1/rate-limit";
 import type { BioBlock, BioPageTheme, BioSocialLink } from "@/server/db/schema";
 import type { ImageType } from "@/server/lib/storage/types";
 import type { MySqlColumn } from "drizzle-orm/mysql-core";
@@ -289,6 +305,7 @@ function toEditorBlock(
     socials: b.type === "social" ? parseSocials(b.content) : undefined,
     whatsapp,
     embed: b.type === "embed" ? parseEmbed(b.content) : null,
+    emailCapture: b.type === "email_capture" ? parseEmailCapture(b.content) : null,
     imageWidth: b.imageWidth,
     imageHeight: b.imageHeight,
     shortUrl: trackingLink?.alias ? `https://${trackingLink.domain}/${trackingLink.alias}` : null,
@@ -475,6 +492,7 @@ export async function deleteBioPage(ctx: WorkspaceTRPCContext, id: number) {
     await tx.delete(bioPageView).where(eq(bioPageView.bioPageId, page.id));
     await tx.delete(uniqueBioPageView).where(eq(uniqueBioPageView.bioPageId, page.id));
     await tx.delete(bioPageViewDailySummary).where(eq(bioPageViewDailySummary.bioPageId, page.id));
+    await tx.delete(bioSubscriber).where(eq(bioSubscriber.bioPageId, page.id));
     await tx.delete(bioPage).where(eq(bioPage.id, page.id));
   });
 
@@ -580,6 +598,26 @@ export async function addBlock(ctx: WorkspaceTRPCContext, input: AddBioBlockInpu
     return { id };
   }
 
+  if (input.type === "email_capture") {
+    const id = await ctx.db.transaction(async (tx) => {
+      await lockBioBlockCapacity(tx, ctx.workspace.plan, page.id, ctx.auth.userId, "email_capture");
+      const [res] = await tx.insert(bioBlock).values({
+        bioPageId: page.id,
+        type: "email_capture",
+        title: input.title?.trim() || null,
+        content: serializeEmailCapture(
+          input.emailCapture ?? { buttonLabel: "", successMessage: "", consentText: "" },
+        ),
+        position,
+        scheduledAt: input.scheduledAt ?? null,
+        scheduledUntil: input.scheduledUntil ?? null,
+      });
+      return Number(res.insertId);
+    });
+    revalidateBioPath(page.slug);
+    return { id };
+  }
+
   if (input.type === "image") {
     await assertImageBlocksAllowed(ctx);
     if (!input.image) {
@@ -670,6 +708,8 @@ export async function updateBlock(ctx: WorkspaceTRPCContext, input: UpdateBioBlo
     }
   } else if (block.type === "image") {
     return updateImageBlock(ctx, block, input, updates);
+  } else if (block.type === "email_capture") {
+    if (input.emailCapture) updates.content = serializeEmailCapture(input.emailCapture);
   } else {
     // A link block's content only ever holds its WhatsApp details, so it changes
     // through `whatsapp` and the destination is rebuilt from them.
@@ -877,6 +917,14 @@ export type PublicBioBlock =
     }
   | {
       id: number;
+      type: "email_capture";
+      heading: string;
+      buttonLabel: string;
+      successMessage: string;
+      consentText: string | null;
+    }
+  | {
+      id: number;
       type: "heading" | "text" | "divider";
       title: string | null;
       content: string | null;
@@ -965,6 +1013,17 @@ async function assemblePublicBioPage(
       if (b.type === "email") {
         return { id: b.id, type: "email", title: b.title, href: b.url ? `mailto:${b.url}` : null };
       }
+      if (b.type === "email_capture") {
+        const settings = parseEmailCapture(b.content);
+        return {
+          id: b.id,
+          type: "email_capture",
+          heading: b.title || EMAIL_CAPTURE_DEFAULT_HEADING,
+          buttonLabel: settings.buttonLabel || EMAIL_CAPTURE_DEFAULT_BUTTON,
+          successMessage: settings.successMessage || EMAIL_CAPTURE_DEFAULT_SUCCESS,
+          consentText: settings.consentText || null,
+        };
+      }
       return { id: b.id, type: b.type, title: b.title, content: b.content };
     })
     .filter((b): b is PublicBioBlock => b !== null);
@@ -1011,6 +1070,129 @@ export async function getPublicBioPageByDomain(
   });
   if (!page || page.user?.deletedAt) return null;
   return assemblePublicBioPage(ctx.db, page);
+}
+
+// ---------------------------------------------------------------------------
+// Subscribers
+// ---------------------------------------------------------------------------
+
+export const BIO_SUBSCRIBE_RATE_LIMIT = { limit: 10, windowSeconds: 10 * 60 };
+
+export type SubscribeResult =
+  | { ok: true }
+  | { ok: false; status: 400 | 404 | 429; error: string; retryAfter?: number };
+
+/**
+ * A visitor signs up through a page's email signup block. Signing up twice is
+ * a success that stores nothing new, and a filled honeypot gets the same
+ * success without a write, so bots learn nothing.
+ */
+export async function subscribeToBioPage(
+  db: PublicTRPCContext["db"],
+  input: SubscribeInput,
+  options: {
+    ipHash: string;
+    store?: CounterStore;
+    defer?: (task: Promise<unknown>) => void;
+    nowMs?: number;
+  },
+): Promise<SubscribeResult> {
+  if (input.website) return { ok: true };
+
+  const email = subscriberEmailSchema.safeParse(input.email);
+  if (!email.success) {
+    return {
+      ok: false,
+      status: 400,
+      error: email.error.issues[0]?.message ?? "Enter a valid email address.",
+    };
+  }
+
+  const decision = await consumeRateLimit(
+    `bio-subscribe:${options.ipHash}`,
+    [BIO_SUBSCRIBE_RATE_LIMIT],
+    options,
+  );
+  if (!decision.allowed) {
+    return {
+      ok: false,
+      status: 429,
+      error: "Too many signups from your network. Try again in a few minutes.",
+      retryAfter: decision.retryAfter,
+    };
+  }
+
+  const [row] = await db
+    .select({ block: bioBlock, isPublished: bioPage.isPublished, deletedAt: user.deletedAt })
+    .from(bioBlock)
+    .innerJoin(bioPage, eq(bioPage.id, bioBlock.bioPageId))
+    .leftJoin(user, eq(user.id, bioPage.userId))
+    .where(and(eq(bioBlock.id, input.blockId), eq(bioBlock.type, "email_capture")))
+    .limit(1);
+  if (!row || !row.isPublished || row.deletedAt || !isBlockLive(row.block, Date.now())) {
+    return { ok: false, status: 404, error: "This signup form is no longer available." };
+  }
+
+  if (parseEmailCapture(row.block.content).consentText && !input.consent) {
+    return { ok: false, status: 400, error: "Tick the box to agree before signing up." };
+  }
+
+  await db
+    .insert(bioSubscriber)
+    .values({ bioPageId: row.block.bioPageId, email: email.data })
+    .onDuplicateKeyUpdate({ set: { id: sql`${bioSubscriber.id}` } });
+  return { ok: true };
+}
+
+export async function listSubscribers(ctx: WorkspaceTRPCContext, input: ListSubscribersInput) {
+  const page = await fetchBioPageForWorkspace(ctx, input.bioPageId);
+  const [items, [total]] = await Promise.all([
+    ctx.db
+      .select({
+        id: bioSubscriber.id,
+        email: bioSubscriber.email,
+        createdAt: bioSubscriber.createdAt,
+      })
+      .from(bioSubscriber)
+      .where(eq(bioSubscriber.bioPageId, page.id))
+      .orderBy(desc(bioSubscriber.createdAt), desc(bioSubscriber.id))
+      .limit(input.pageSize)
+      .offset((input.page - 1) * input.pageSize),
+    ctx.db
+      .select({ count: count() })
+      .from(bioSubscriber)
+      .where(eq(bioSubscriber.bioPageId, page.id)),
+  ]);
+  return { items, total: Number(total?.count ?? 0) };
+}
+
+export async function deleteSubscriber(ctx: WorkspaceTRPCContext, id: number) {
+  requirePermission(ctx.workspace, "bio.edit", "edit bio pages");
+  const [row] = await ctx.db
+    .select({ id: bioSubscriber.id })
+    .from(bioSubscriber)
+    .innerJoin(bioPage, eq(bioPage.id, bioSubscriber.bioPageId))
+    .where(
+      and(eq(bioSubscriber.id, id), workspaceFilter(ctx.workspace, bioPage.userId, bioPage.teamId)),
+    );
+  if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Subscriber not found." });
+  await ctx.db.delete(bioSubscriber).where(eq(bioSubscriber.id, row.id));
+  return { success: true };
+}
+
+/** A page's subscribers as CSV, newest first. Available on every plan. */
+export async function exportSubscribers(ctx: WorkspaceTRPCContext, bioPageId: number) {
+  const page = await fetchBioPageForWorkspace(ctx, bioPageId);
+  const rows = await ctx.db
+    .select({ email: bioSubscriber.email, createdAt: bioSubscriber.createdAt })
+    .from(bioSubscriber)
+    .where(eq(bioSubscriber.bioPageId, page.id))
+    .orderBy(desc(bioSubscriber.createdAt), desc(bioSubscriber.id))
+    // One extra row tells a list that hit the cap from one that fits exactly.
+    .limit(MAX_SUBSCRIBER_EXPORT_ROWS + 1);
+  const truncated = rows.length > MAX_SUBSCRIBER_EXPORT_ROWS;
+  const exported = truncated ? rows.slice(0, MAX_SUBSCRIBER_EXPORT_ROWS) : rows;
+  return { csv: subscribersToCsv(exported), rowCount: exported.length, truncated, slug: page.slug };
 }
 
 // ---------------------------------------------------------------------------

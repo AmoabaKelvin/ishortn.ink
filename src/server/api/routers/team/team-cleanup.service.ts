@@ -2,6 +2,8 @@ import { and, eq, inArray, isNotNull, lt, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import {
+  bioPage,
+  bioSubscriber,
   campaign,
   customDomain,
   folder,
@@ -167,7 +169,14 @@ export async function cleanupDeletedTeams(): Promise<CleanupResult> {
       await tx.delete(webhookDelivery).where(inArray(webhookDelivery.webhookId, teamWebhooks));
       await tx.delete(webhook).where(eq(webhook.teamId, teamId));
 
-      // 13. Finally, delete the team itself
+      // 13. Delete bio-page subscribers (visitors' email addresses)
+      const teamBioPages = tx
+        .select({ id: bioPage.id })
+        .from(bioPage)
+        .where(eq(bioPage.teamId, teamId));
+      await tx.delete(bioSubscriber).where(inArray(bioSubscriber.bioPageId, teamBioPages));
+
+      // 14. Finally, delete the team itself
       await tx.delete(team).where(eq(team.id, teamId));
       result.teamsDeleted += 1;
     });

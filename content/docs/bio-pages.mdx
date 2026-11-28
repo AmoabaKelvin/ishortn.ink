@@ -9,6 +9,8 @@ A link-in-bio page collects your links, socials and contact details on one page 
 | --- | --- | --- | --- |
 | Bio pages | <PlanValue plan="free" cap="bioPageLimit" /> | <PlanValue plan="pro" cap="bioPageLimit" /> | <PlanValue plan="ultra" cap="bioPageLimit" /> |
 | Link blocks per page | <PlanValue plan="free" cap="bioLinkBlocksPerPageLimit" /> | <PlanValue plan="pro" cap="bioLinkBlocksPerPageLimit" /> | <PlanValue plan="ultra" cap="bioLinkBlocksPerPageLimit" /> |
+| Email signup blocks per page | <PlanValue plan="free" cap="bioEmailCaptureBlocksPerPageLimit" /> | <PlanValue plan="pro" cap="bioEmailCaptureBlocksPerPageLimit" /> | <PlanValue plan="ultra" cap="bioEmailCaptureBlocksPerPageLimit" /> |
+| Subscriber CSV export | Yes | Yes | Yes |
 | Link blocks use monthly link slots | No | Yes | Unlimited links |
 | Theme presets | Yes | Yes | Yes |
 | Custom themes | No | Yes | Yes |
@@ -38,12 +40,21 @@ Handles are 3 to 100 characters of lowercase letters, numbers, `-` and `_`, and 
 | Email | A button that opens an email to you. |
 | Embed | A YouTube, Vimeo, TikTok, Spotify or SoundCloud player, or a Google Map. |
 | Image | One uploaded image, with alt text and an optional tracked link (Pro and Ultra). |
+| Email signup | A form where visitors leave their email address. See [Collect emails](#collect-emails). |
 
-On the Free plan, only **link** blocks and **embed** blocks are capped per page (one embed per page); headings, text, socials, dividers and email blocks are unlimited, and embeds don't count toward the link-block limit. On Ultra, any block can be scheduled to appear and disappear at set times.
+On the Free plan, only **link**, **embed** and **email signup** blocks are capped per page (one embed and one email signup form per page); headings, text, socials, dividers and email buttons are unlimited, and embeds and signup forms don't count toward the link-block limit. On Ultra, any block can be scheduled to appear and disappear at set times.
 
 Embeds load as a lightweight preview. The provider's player, and its scripts and cookies, only load when a visitor taps it, so embeds don't slow the page down. Paste the full link from the provider: short links such as `vm.tiktok.com` or `maps.app.goo.gl` can't be embedded, and neither can pages that aren't a single video, track, playlist, podcast or place.
 
 Images on a bio page (your avatar, image blocks) must be uploaded rather than linked from another site. An image block with a link uses one link from your monthly link allowance, like any other tracked link; an image without a link doesn't.
+
+## Collect emails
+
+Add an **Email signup** block to let visitors leave their email address. You set the heading, the button label and the message visitors see after they sign up. The block can also show a consent checkbox, which visitors must tick before they can sign up. It starts as "I agree to receive emails from `<page name>`." You can change that text, or clear it to hide the checkbox.
+
+Open the page's **Subscribers** tab to see who signed up, newest first. **Export CSV** downloads every subscriber's email address and signup time (in UTC) on every plan. You can remove a single subscriber from the list. Someone who signs up twice is stored once. Deleting the block keeps the list; deleting the bio page deletes its subscribers.
+
+The form loads no third-party scripts. Signups are rate limited per visitor, and obvious bot submissions are dropped. iShortn doesn't email your subscribers: export the list into the email tool you already use.
 
 ## Themes
 

@@ -3,6 +3,7 @@ import { IconBrandWhatsapp } from "@tabler/icons-react";
 import { getBioReferralUrl } from "@/lib/attribution/referral";
 import { cn } from "@/lib/utils";
 
+import { EmailCaptureForm } from "./email-capture-form";
 import { EmbedFacade } from "./embed-facade";
 import { getInitials } from "./initials";
 import { socialIcon } from "./social-icons";
@@ -16,7 +17,7 @@ import type { CSSProperties } from "react";
 // Shared, presentational renderer used by BOTH the builder's live preview and
 // the public /p/[slug] page, so the two can never drift. No hooks → it renders
 // fine as a server component (near-zero client JS on the public page); embed
-// facades are the only client island.
+// facades and email signup forms are the only client islands.
 
 // `previewNote` is set only by the builder preview, to flag blocks that the
 // public page won't show right now (hidden, scheduled, blocked).
@@ -32,6 +33,13 @@ export type BioRenderBlock = BioRenderBlockBase &
     | { type: "social"; socials: { platform: string; url: string }[] }
     | { type: "divider" }
     | { type: "embed"; title: string | null; provider: EmbedProvider; embedId: string }
+    | {
+        type: "email_capture";
+        heading: string;
+        buttonLabel: string;
+        successMessage: string;
+        consentText: string | null;
+      }
     | {
         type: "image";
         src: string | null;
@@ -50,6 +58,8 @@ export type BioRenderModel = {
   theme: BioPageTheme | null;
   removeBranding: boolean;
   blocks: BioRenderBlock[];
+  /** Builder preview: forms don't submit. */
+  preview?: boolean;
 };
 
 // CSS-based staggered entrance (no JS) so the public page stays light. Gated to
@@ -153,10 +163,20 @@ export function BioRenderer({
                   <p className="mb-1 text-center text-[11px] font-medium uppercase tracking-wide">
                     {block.previewNote}
                   </p>
-                  <BioBlockView block={block} t={t} eager={i < EAGER_MEDIA_BLOCKS} />
+                  <BioBlockView
+                    block={block}
+                    t={t}
+                    eager={i < EAGER_MEDIA_BLOCKS}
+                    preview={model.preview}
+                  />
                 </div>
               ) : (
-                <BioBlockView block={block} t={t} eager={i < EAGER_MEDIA_BLOCKS} />
+                <BioBlockView
+                  block={block}
+                  t={t}
+                  eager={i < EAGER_MEDIA_BLOCKS}
+                  preview={model.preview}
+                />
               )}
             </div>
           ))}
@@ -183,10 +203,12 @@ function BioBlockView({
   block,
   t,
   eager,
+  preview,
 }: {
   block: BioRenderBlock;
   t: ResolvedBioTheme;
   eager: boolean;
+  preview?: boolean;
 }) {
   // Media follows the theme's corners: square for sharp buttons, rounded otherwise
   // (a pill radius would crop a 16:9 frame into a capsule).
@@ -234,6 +256,19 @@ function BioBlockView({
         image
       );
     }
+
+    case "email_capture":
+      return (
+        <EmailCaptureForm
+          blockId={block.id}
+          heading={block.heading}
+          buttonLabel={block.buttonLabel}
+          successMessage={block.successMessage}
+          consentText={block.consentText}
+          t={t}
+          preview={preview}
+        />
+      );
 
     case "heading":
       return block.title ? (

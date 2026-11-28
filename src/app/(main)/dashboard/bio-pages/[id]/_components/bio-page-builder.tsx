@@ -10,6 +10,7 @@ import {
   IconLine,
   IconLink,
   IconMail,
+  IconMailPlus,
   IconPhoto,
   IconPlayerPlay,
   IconPlus,
@@ -25,6 +26,11 @@ import {
   type BioRenderBlock,
   type BioRenderModel,
 } from "@/components/bio/bio-renderer";
+import {
+  EMAIL_CAPTURE_DEFAULT_BUTTON,
+  EMAIL_CAPTURE_DEFAULT_HEADING,
+  EMAIL_CAPTURE_DEFAULT_SUCCESS,
+} from "@/components/bio/email-capture";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +55,7 @@ import { UpgradeCta } from "@/components/upgrade-cta";
 import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
 import {
   canUseBioImageBlocks,
+  getBioEmailCaptureBlockLimit,
   getBioEmbedBlockLimit,
   getBioLinkBlockLimit,
 } from "@/lib/billing/plans";
@@ -62,6 +69,7 @@ import { BlockFormDialog } from "./block-form-dialog";
 import { BlockList } from "./block-list";
 import { PageQrDialog } from "./page-qr-dialog";
 import { SettingsPanel } from "./settings-panel";
+import { SubscribersPanel } from "./subscribers-panel";
 import {
   bioBlockLimitSource,
   formatMutationError,
@@ -86,12 +94,15 @@ const ADD_OPTIONS: { type: BioEditorBlockType; label: string; icon: typeof IconL
   { type: "social", label: "Social icons", icon: IconWorld },
   { type: "email", label: "Email button", icon: IconMail },
   { type: "whatsapp", label: "WhatsApp button", icon: IconBrandWhatsapp },
+  { type: "email_capture", label: "Email signup", icon: IconMailPlus },
   { type: "embed", label: "Embed", icon: IconPlayerPlay },
   { type: "image", label: "Image", icon: IconPhoto },
   { type: "divider", label: "Divider", icon: IconLine },
 ];
 
 const IMAGE_BLOCKS_MESSAGE = "Image blocks are available on Pro and Ultra plans.";
+const emailCaptureLimitMessage = (limit: number) =>
+  `The free plan allows ${limit} email signup ${limit === 1 ? "block" : "blocks"} per bio page. Upgrade to Pro for unlimited signup forms.`;
 
 function toRenderBlock(b: EditorBlock): BioRenderBlock | null {
   switch (b.type) {
@@ -118,6 +129,15 @@ function toRenderBlock(b: EditorBlock): BioRenderBlock | null {
             embedId: b.embed.embedId,
           }
         : null;
+    case "email_capture":
+      return {
+        id: b.id,
+        type: "email_capture",
+        heading: b.title || EMAIL_CAPTURE_DEFAULT_HEADING,
+        buttonLabel: b.emailCapture?.buttonLabel || EMAIL_CAPTURE_DEFAULT_BUTTON,
+        successMessage: b.emailCapture?.successMessage || EMAIL_CAPTURE_DEFAULT_SUCCESS,
+        consentText: b.emailCapture?.consentText || null,
+      };
     case "image":
       return {
         id: b.id,
@@ -150,7 +170,7 @@ export function BioPageBuilder({
   pageId: number;
   initialData: BioPageData;
   plan: Plan;
-  initialTab?: "content" | "design" | "analytics";
+  initialTab?: "content" | "design" | "analytics" | "subscribers";
 }) {
   const utils = api.useUtils();
   const router = useRouter();
@@ -207,6 +227,10 @@ export function BioPageBuilder({
   const embedBlockCount = page.blocks.filter((b) => b.type === "embed").length;
   const atEmbedBlockLimit = embedBlockLimit !== undefined && embedBlockCount >= embedBlockLimit;
   const canAddImages = canUseBioImageBlocks(plan);
+  const emailCaptureLimit = getBioEmailCaptureBlockLimit(plan);
+  const atEmailCaptureLimit =
+    emailCaptureLimit !== undefined &&
+    page.blocks.filter((b) => b.type === "email_capture").length >= emailCaptureLimit;
 
   const refresh = () => utils.bioPage.get.invalidate({ id: pageId });
 
@@ -272,6 +296,13 @@ export function BioPageBuilder({
     } else if (type === "image" && !canAddImages) {
       // The server refuses it too; this saves picking and uploading an image first.
       notifyPlanLimit(IMAGE_BLOCKS_MESSAGE, "bio_image_blocks", "pro", upgradeOffer);
+    } else if (type === "email_capture" && atEmailCaptureLimit) {
+      notifyPlanLimit(
+        emailCaptureLimitMessage(emailCaptureLimit),
+        "bio_email_capture_block_limit",
+        "pro",
+        upgradeOffer,
+      );
     } else {
       setAdding(type);
     }
@@ -284,6 +315,7 @@ export function BioPageBuilder({
     avatarUrl: settings.avatarUrl,
     theme: settings.theme,
     removeBranding: settings.removeBranding,
+    preview: true,
     // Unlike the public page, keep hidden, scheduled and blocked blocks but label
     // them, so the preview explains why the live page differs.
     blocks: page.blocks.flatMap((b) => {
@@ -356,6 +388,7 @@ export function BioPageBuilder({
               <TabsTrigger value="content">Content</TabsTrigger>
               <TabsTrigger value="design">Design</TabsTrigger>
               <TabsTrigger value="analytics">Analytics</TabsTrigger>
+              <TabsTrigger value="subscribers">Subscribers</TabsTrigger>
             </TabsList>
 
             <TabsContent
@@ -387,7 +420,8 @@ export function BioPageBuilder({
                         className="mr-2 text-neutral-500 dark:text-muted-foreground"
                       />
                       {opt.label}
-                      {opt.type === "image" && !canAddImages && (
+                      {((opt.type === "image" && !canAddImages) ||
+                        (opt.type === "email_capture" && atEmailCaptureLimit)) && (
                         <span className="ml-auto">
                           <PlanBadge plan="Pro" />
                         </span>
@@ -440,6 +474,16 @@ export function BioPageBuilder({
             >
               <AnalyticsPanel pageId={pageId} plan={plan} />
             </TabsContent>
+
+            <TabsContent
+              value="subscribers"
+              className="mt-4 max-w-2xl motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:fill-mode-both motion-safe:duration-300"
+            >
+              <SubscribersPanel
+                pageId={pageId}
+                hasSignupBlock={page.blocks.some((b) => b.type === "email_capture")}
+              />
+            </TabsContent>
           </Tabs>
         </div>
 
@@ -464,6 +508,7 @@ export function BioPageBuilder({
           onOpenChange={(o) => !o && setAdding(null)}
           onSaved={refresh}
           canSchedule={plan === "ultra"}
+          pageName={page.title || page.slug}
         />
       )}
 

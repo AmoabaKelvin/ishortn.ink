@@ -6,6 +6,7 @@ export const PLAN_LIMIT_KEYS = [
   "bio_pages",
   "bio_link_blocks",
   "bio_embed_blocks",
+  "bio_email_capture_blocks",
   "bio_image_blocks",
   "campaigns",
   "custom_domains",

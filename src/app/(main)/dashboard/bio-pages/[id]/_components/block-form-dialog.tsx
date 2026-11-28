@@ -6,6 +6,13 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { DateTimePicker } from "@/app/(main)/dashboard/_components/date-time-picker";
+import {
+  defaultConsentText,
+  EMAIL_CAPTURE_CONSENT_MAX,
+  EMAIL_CAPTURE_DEFAULT_BUTTON,
+  EMAIL_CAPTURE_DEFAULT_HEADING,
+  EMAIL_CAPTURE_DEFAULT_SUCCESS,
+} from "@/components/bio/email-capture";
 import { EMBED_PROVIDER_LABELS, parseEmbedUrl } from "@/components/bio/embed";
 import { SOCIAL_PLATFORMS, socialIcon } from "@/components/bio/social-icons";
 import {
@@ -51,6 +58,7 @@ const TYPE_LABELS = {
   divider: "divider",
   embed: "embed",
   image: "image",
+  email_capture: "email signup",
 } satisfies Record<BioEditorBlockType, string>;
 
 type Props = {
@@ -62,6 +70,8 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
   canSchedule: boolean;
+  /** Fills the default consent text when adding an email signup block. */
+  pageName?: string;
 };
 
 export function BlockFormDialog({ open, onOpenChange, ...form }: Props) {
@@ -96,6 +106,7 @@ function BlockForm({
   onOpenChange,
   onSaved,
   canSchedule,
+  pageName,
 }: Omit<Props, "open">) {
   const [title, setTitle] = useState(
     block?.title ?? (mode === "add" && type === "whatsapp" ? WHATSAPP_DEFAULT_LABEL : ""),
@@ -110,6 +121,12 @@ function BlockForm({
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [socials, setSocials] = useState(() => initialSocials(block, type));
+  const [buttonLabel, setButtonLabel] = useState(block?.emailCapture?.buttonLabel ?? "");
+  const [successMessage, setSuccessMessage] = useState(block?.emailCapture?.successMessage ?? "");
+  const [consentText, setConsentText] = useState(
+    block?.emailCapture?.consentText ??
+      (mode === "add" && type === "email_capture" && pageName ? defaultConsentText(pageName) : ""),
+  );
   const [scheduledAt, setScheduledAt] = useState(
     block?.scheduledAt ? new Date(block.scheduledAt) : null,
   );
@@ -165,6 +182,14 @@ function BlockForm({
       imageHeight: type === "image" && image !== block?.content ? imageSize?.height : undefined,
       socials: type === "social" ? cleanSocials : undefined,
       whatsapp: parsedPhone ? { phone: parsedPhone.data, message: message.trim() } : undefined,
+      emailCapture:
+        type === "email_capture"
+          ? {
+              buttonLabel: buttonLabel.trim(),
+              successMessage: successMessage.trim(),
+              consentText: consentText.trim(),
+            }
+          : undefined,
     };
 
     if (type === "link" && !payload.url) return toast.error("Add a destination URL.");
@@ -286,6 +311,63 @@ function BlockForm({
               placeholder="My links"
             />
           </div>
+        )}
+
+        {type === "email_capture" && (
+          <>
+            <div className="space-y-1.5">
+              <Label htmlFor="block-title">Heading</Label>
+              <Input
+                id="block-title"
+                name="heading"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={EMAIL_CAPTURE_DEFAULT_HEADING}
+                maxLength={255}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="block-button-label">Button label</Label>
+              <Input
+                id="block-button-label"
+                name="buttonLabel"
+                value={buttonLabel}
+                onChange={(e) => setButtonLabel(e.target.value)}
+                placeholder={EMAIL_CAPTURE_DEFAULT_BUTTON}
+                maxLength={60}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="block-success">Success message</Label>
+              <Input
+                id="block-success"
+                name="successMessage"
+                value={successMessage}
+                onChange={(e) => setSuccessMessage(e.target.value)}
+                placeholder={EMAIL_CAPTURE_DEFAULT_SUCCESS}
+                maxLength={200}
+              />
+              <p className="text-[12px] text-muted-foreground">
+                Shown in place of the form after someone signs up.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="block-consent">Consent checkbox (optional)</Label>
+              <Textarea
+                id="block-consent"
+                name="consentText"
+                value={consentText}
+                onChange={(e) => setConsentText(e.target.value)}
+                placeholder={defaultConsentText(pageName || "me")}
+                maxLength={EMAIL_CAPTURE_CONSENT_MAX}
+                rows={2}
+              />
+              <p className="text-[12px] text-muted-foreground">
+                Visitors must tick this box to sign up. Leave it empty to hide the checkbox. Find
+                and export signups in the Subscribers tab.
+              </p>
+            </div>
+          </>
         )}
 
         {type === "link" && (

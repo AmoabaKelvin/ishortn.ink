@@ -121,5 +121,6 @@ export function bioBlockLimitSource(message: string): string {
   if (/schedul/i.test(message)) return "bio_scheduled_blocks";
   if (/embed/i.test(message)) return "bio_embed_block_limit";
   if (/image block/i.test(message)) return "bio_image_blocks";
+  if (/email signup/i.test(message)) return "bio_email_capture_block_limit";
   return "bio_link_block_limit";
 }

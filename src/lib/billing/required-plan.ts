@@ -46,6 +46,7 @@ export function planLimitKey(message: string): string {
   if (/social media preview/i.test(message)) return "social_preview";
   if (/qr code/i.test(message)) return "qr_codes";
   if (/embed block/i.test(message)) return "bio_embed_blocks";
+  if (/email signup block/i.test(message)) return "bio_email_capture_blocks";
   if (/image block/i.test(message)) return "bio_image_blocks";
   return "other";
 }

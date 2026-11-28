@@ -18,7 +18,7 @@ type Props = {
 };
 
 // `?tab=analytics` deep-links to a tab; anything else opens the editor.
-const tabSchema = z.enum(["content", "design", "analytics"]).catch("content");
+const tabSchema = z.enum(["content", "design", "analytics", "subscribers"]).catch("content");
 
 export default async function BioPageBuilderPage(props: Props) {
   const [{ id: idParam }, searchParams] = await Promise.all([props.params, props.searchParams]);

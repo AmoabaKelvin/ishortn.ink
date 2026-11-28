@@ -16,6 +16,7 @@ type PlanCaps = {
   bioPageLimit?: number; // Max bio pages (undefined => unlimited)
   bioLinkBlocksPerPageLimit?: number; // Max link blocks per bio page (undefined => unlimited)
   bioEmbedBlocksPerPageLimit?: number; // Max embed blocks per bio page (undefined => unlimited)
+  bioEmailCaptureBlocksPerPageLimit?: number; // Max email signup blocks per bio page (undefined => unlimited)
   campaignLimit?: number; // Max ACTIVE campaigns (archived don't count; undefined => unlimited)
   qrCodeLimit?: number; // Max QR codes in the personal workspace (undefined => unlimited)
   bulkQrBatchLimit?: number; // Max QR codes created by one CSV import (0 => not available)
@@ -106,6 +107,7 @@ export const PLAN_CAPS: PlanCapsByPlan = {
     bioPageLimit: 1,
     bioLinkBlocksPerPageLimit: 3,
     bioEmbedBlocksPerPageLimit: 1,
+    bioEmailCaptureBlocksPerPageLimit: 1,
     campaignLimit: 1,
     qrCodeLimit: 5,
     bulkQrBatchLimit: 0,
@@ -319,6 +321,10 @@ export function getBioLinkBlockLimit(plan: Plan): number | undefined {
 
 export function getBioEmbedBlockLimit(plan: Plan): number | undefined {
   return PLAN_CAPS[plan].bioEmbedBlocksPerPageLimit;
+}
+
+export function getBioEmailCaptureBlockLimit(plan: Plan): number | undefined {
+  return PLAN_CAPS[plan].bioEmailCaptureBlocksPerPageLimit;
 }
 
 /** Pro+ may add image blocks to their bio page. */

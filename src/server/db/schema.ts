@@ -1595,9 +1595,10 @@ export const bioBlock = mysqlTable(
       "email",
       "embed",
       "image",
+      "email_capture",
     ]).notNull(),
-    title: varchar("title", { length: 255 }), // button/heading label; alt text for image blocks
-    content: text("content"), // text body, JSON array of BioSocialLink for social blocks, JSON EmbedDetails for embed blocks, image URL for image blocks
+    title: varchar("title", { length: 255 }), // button/heading label; alt text for image blocks; heading of email signup blocks
+    content: text("content"), // text body, JSON array of BioSocialLink for social blocks, JSON EmbedDetails for embed blocks, image URL for image blocks, JSON settings for email signup blocks
     url: text("url"), // destination for link/image blocks, email/mailto for email blocks, source URL for embed blocks
     linkId: int("linkId"), // backing hidden Link row for link and linked image blocks (clicks reuse the redirect pipeline)
     imageWidth: int("imageWidth"), // image blocks: intrinsic size, so the page reserves the space before the image loads
@@ -1673,6 +1674,22 @@ export const bioPageViewDailySummary = mysqlTable(
   }),
 );
 
+// Emails collected by a page's email signup blocks. They belong to the page,
+// not the block, so removing the block keeps the list.
+export const bioSubscriber = mysqlTable(
+  "BioSubscriber",
+  {
+    id: serial("id").primaryKey(),
+    bioPageId: int("bioPageId").notNull(),
+    email: varchar("email", { length: 254 }).notNull(), // lowercased
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    pageEmailUnique: unique("bio_subscriber_page_email_unique").on(table.bioPageId, table.email),
+    bioPageCreatedAtIdx: index("bioPageId_createdAt_idx").on(table.bioPageId, table.createdAt),
+  }),
+);
+
 export const bioPageRelations = relations(bioPage, ({ one, many }) => ({
   user: one(user, {
     fields: [bioPage.userId],
@@ -1708,6 +1725,7 @@ export type NewBioPage = typeof bioPage.$inferInsert;
 export type BioBlock = typeof bioBlock.$inferSelect;
 export type NewBioBlock = typeof bioBlock.$inferInsert;
 export type BioBlockType = BioBlock["type"];
+export type BioSubscriber = typeof bioSubscriber.$inferSelect;
 export type BioPageView = typeof bioPageView.$inferSelect;
 export type NewBioPageView = typeof bioPageView.$inferInsert;
 

@@ -13,6 +13,7 @@ import {
   bioPage,
   bioPageView,
   bioPageViewDailySummary,
+  bioSubscriber,
   campaign,
   customDomain,
   feedback,
@@ -175,6 +176,7 @@ async function purgeAccount(
       await tx
         .delete(bioPageViewDailySummary)
         .where(inArray(bioPageViewDailySummary.bioPageId, ids));
+      await tx.delete(bioSubscriber).where(inArray(bioSubscriber.bioPageId, ids));
     }
 
     for (const ids of chunk(folderIds)) {
