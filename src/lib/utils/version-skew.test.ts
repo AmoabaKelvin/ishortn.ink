@@ -35,7 +35,7 @@ describe("isVersionSkewError", () => {
     expect(isVersionSkewError(new Error("Loading CSS chunk 3 failed. (/_next/x.css)"))).toBe(true);
   });
 
-  test("matches TypeErrors thrown from a build chunk", () => {
+  test("matches the minified cross-module call to a missing export", () => {
     expect(isVersionSkewError(chunkTypeError())).toBe(true);
   });
 
@@ -44,6 +44,16 @@ describe("isVersionSkewError", () => {
     typeError.stack = "TypeError: x is not a function\n    at https://ishortn.ink/app.js:1:1";
     expect(isVersionSkewError(typeError)).toBe(false);
     expect(isVersionSkewError(new Error("NOT_FOUND"))).toBe(false);
+  });
+
+  test("ignores ordinary TypeErrors even when the stack points into a build chunk", () => {
+    const nullAccess = new TypeError("Cannot read properties of null (reading 'events')");
+    nullAccess.stack =
+      "TypeError: Cannot read properties of null (reading 'events')\n    at https://ishortn.ink/_next/static/chunks/0f1a2b3c4d5e6f70.js:1:2345";
+    expect(isVersionSkewError(nullAccess)).toBe(false);
+    expect(
+      isVersionSkewError(new TypeError("(0 , n.f) is not a function or its return value")),
+    ).toBe(false);
   });
 });
 

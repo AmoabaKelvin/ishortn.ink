@@ -21,6 +21,10 @@ export async function POST(request: NextRequest) {
   const { userId } = await auth();
   if (!userId) return new NextResponse(null, { status: 401 });
 
+  // Check the declared size first so an oversized body is never buffered.
+  if (Number(request.headers.get("content-length")) > BODY_MAX) {
+    return new NextResponse(null, { status: 413 });
+  }
   const body = await request.text();
   if (body.length > BODY_MAX) return new NextResponse(null, { status: 413 });
 

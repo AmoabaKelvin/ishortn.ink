@@ -102,6 +102,25 @@ describe("SectionBoundary", () => {
     expect(String(init?.body)).toContain('"boundary":"settings:webhooks"');
   });
 
+  test("an ordinary TypeError from a build chunk shows the inline error without reloading", () => {
+    // Every production client stack points into /_next/static/chunks, so that alone isn't skew.
+    const error = new TypeError("Cannot read properties of null (reading 'events')");
+    error.stack =
+      "TypeError: Cannot read properties of null (reading 'events')\n    at https://ishortn.ink/_next/static/chunks/0f1a2b3c4d5e6f70.js:1:2345";
+    thrown = error;
+    const reload = mock(() => {});
+    act(() =>
+      root.render(
+        <SectionBoundary section="webhooks" reload={reload}>
+          <Flaky />
+        </SectionBoundary>,
+      ),
+    );
+
+    expect(alert()?.textContent).toContain("This section couldn't load");
+    expect(reload).not.toHaveBeenCalled();
+  });
+
   test("Try again does a full page reload", () => {
     const reload = mock(() => {});
     act(() =>
