@@ -8,10 +8,22 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 
+import { defaultConsentText, serializeEmailCapture } from "../../src/components/bio/email-capture";
 import { DEFAULT_PLATFORM_DOMAIN } from "../../src/lib/constants/domains";
 import * as schema from "../../src/server/db/schema";
 
-const { user, link, linkVisit, uniqueLinkVisit, folder, tag, linkTag } = schema;
+const {
+  user,
+  link,
+  linkVisit,
+  uniqueLinkVisit,
+  folder,
+  tag,
+  linkTag,
+  bioPage,
+  bioBlock,
+  bioSubscriber,
+} = schema;
 
 const DEV_USER = {
   id: "user_local_dev_00000000000000000",
@@ -335,6 +347,99 @@ async function main() {
       await db.insert(uniqueLinkVisit).values(uniques.slice(i, i + CHUNK));
     }
 
+    // Bio pages: one with an email signup block and subscribers, one whose list is empty.
+    const seedBioPages = [
+      {
+        slug: "seed-bakery",
+        title: "Ana's Bakery",
+        description: "Small-batch sourdough, baked fresh every morning.",
+        note: "Open Tuesday to Saturday, 7am to 3pm.",
+        heading: "Get fresh-bake alerts",
+        buttonLabel: "Notify me",
+        subscribers: 12,
+      },
+      {
+        slug: "seed-newsletter",
+        title: "Seed Newsletter",
+        description: "Weekly notes on building small products.",
+        note: "New issue every Friday morning.",
+        heading: "Join the newsletter",
+        buttonLabel: "Subscribe",
+        subscribers: 0,
+      },
+    ];
+    await db
+      .insert(bioPage)
+      .values(
+        seedBioPages.map((p) => ({
+          slug: p.slug,
+          title: p.title,
+          description: p.description,
+          userId,
+          createdByUserId: userId,
+          isPublished: true,
+        })),
+      )
+      .onDuplicateKeyUpdate({
+        set: {
+          title: sql`VALUES(title)`,
+          description: sql`VALUES(description)`,
+          userId,
+          teamId: null,
+          isPublished: true,
+        },
+      });
+    const bioRows = await db
+      .select({ id: bioPage.id, slug: bioPage.slug })
+      .from(bioPage)
+      .where(
+        inArray(
+          bioPage.slug,
+          seedBioPages.map((p) => p.slug),
+        ),
+      );
+    const bioIdBySlug = new Map(bioRows.map((r) => [r.slug, r.id]));
+    const bioIds = bioRows.map((r) => r.id);
+    await db.delete(bioBlock).where(inArray(bioBlock.bioPageId, bioIds));
+    await db.delete(bioSubscriber).where(inArray(bioSubscriber.bioPageId, bioIds));
+
+    let subscriberCount = 0;
+    for (const p of seedBioPages) {
+      const bioPageId = bioIdBySlug.get(p.slug)!;
+      await db.insert(bioBlock).values([
+        { bioPageId, type: "text", content: p.note, position: 0 },
+        {
+          bioPageId,
+          type: "email_capture",
+          title: p.heading,
+          content: serializeEmailCapture({
+            buttonLabel: p.buttonLabel,
+            successMessage: "Thanks, you're on the list.",
+            consentText: defaultConsentText(p.title),
+          }),
+          position: 1,
+        },
+        {
+          bioPageId,
+          type: "social",
+          content: JSON.stringify([
+            { platform: "instagram", url: "https://instagram.com/ishortn" },
+            { platform: "twitter", url: "https://x.com/ishortn_ink" },
+          ]),
+          position: 2,
+        },
+      ]);
+      if (!p.subscribers) continue;
+      await db.insert(bioSubscriber).values(
+        Array.from({ length: p.subscribers }, (_, i) => ({
+          bioPageId,
+          email: `subscriber${i + 1}@example.com`,
+          createdAt: new Date(now.getTime() - (i * 19 + 3) * 3_600_000),
+        })),
+      );
+      subscriberCount += p.subscribers;
+    }
+
     console.log(`Seeded for user ${userId} (${userEmail ?? "no email"})`);
     console.log(
       `  folders: ${folderIds.size}, tags: ${tagIds.size}, links: ${linkRows.length}, ` +
@@ -343,6 +448,10 @@ async function main() {
     console.log(
       `  clicks: ${visits.length}, unique visitors: ${uniques.length} (last ${DAYS} days)`,
     );
+    console.log(`  bio pages: ${bioRows.length}, subscribers: ${subscriberCount}`);
+    for (const r of bioRows) {
+      console.log(`  ${APP_URL}/p/${r.slug}  (editor: /dashboard/bio-pages/${r.id})`);
+    }
     console.log(`  ${APP_URL}/seed-docs`);
     console.log(`  ${APP_URL}/seed-password  (password: ${SEED_PASSWORD})`);
   } finally {
