@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useVersionSkewReload } from "@/lib/hooks/use-version-skew-reload";
 import { clientLogger } from "@/lib/logger/client";
 
 import { FeedbackModal } from "./_components/navigation/feedback-modal";
@@ -27,6 +28,7 @@ export default function DashboardError({
   const router = useRouter();
   const [retryFailed] = useState(() => Date.now() - lastRetryAt < RETRY_WINDOW_MS);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const reloading = useVersionSkewReload(error);
 
   useEffect(() => {
     clientLogger.error(
@@ -47,6 +49,9 @@ export default function DashboardError({
       reset();
     });
   };
+
+  // A stale tab after a deploy: the page is reloading onto the current build.
+  if (reloading) return <div className="min-h-[400px]" aria-busy="true" />;
 
   return (
     <div className="flex min-h-[400px] flex-col items-center justify-center py-20 text-center">
